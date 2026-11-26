@@ -138,3 +138,4 @@ protocol UfuqModule: Identifiable {
 - Does Claude Code run only on this Mac, or also on the Windows machine (for agent status)?
 - Hijri source: calculated (Umm al-Qura) or Kemenag announcements?
 - App icon and wordmark.
+- Android version (later)? AI usage data lives on the Mac (`~/.claude*`, `~/.codex`), so Android needs a sync from the Mac or is prayer + agent status only. Android has no notch: use a status-bar pill and widget like Adwam's island. Leaning: port `UfuqCore` to Kotlin using its Swift tests as the spec, rather than KMP or the Swift SDK for Android.
