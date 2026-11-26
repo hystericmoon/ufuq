@@ -13,6 +13,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.scaleIn
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.layout.Arrangement
@@ -24,6 +25,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -40,15 +42,21 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.CustomAccessibilityAction
 import androidx.compose.ui.semantics.LiveRegionMode
@@ -62,6 +70,7 @@ import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.onClick
 import androidx.compose.ui.semantics.progressBarRangeInfo
 import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.setProgress
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.SpanStyle
@@ -73,6 +82,7 @@ import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.ufuq.android.R
+import app.ufuq.android.media.MediaFormat
 import app.ufuq.android.prayer.SliderMath
 import app.ufuq.core.PeekEvent
 import app.ufuq.core.UsageLevel
@@ -88,6 +98,9 @@ object IslandColors {
     val Icon = Color(0xFFC9CFC9)
     val Amber = Color(0xFFFFB340)
     val Red = Color(0xFFFF6B5E)
+
+    /** Label ink on the active track: dark green on mint, black on amber and red (each at least 4.5:1). */
+    fun onTone(level: UsageLevel): Color = if (level == UsageLevel.NORMAL) OnAccent else Black
 
     fun tone(level: UsageLevel): Color = when (level) {
         UsageLevel.NORMAL -> Accent
@@ -120,66 +133,153 @@ private val Mono = SpanStyle(fontFeatureSettings = "tnum")
 private val IslandFont = FontFamily.SansSerif
 
 /**
- * The slider: active track, 6 dp gap, 4x52 handle, 6 dp gap, inactive track with the label inside.
+ * The slider: active track, 6 dp gap, 4x52 handle, 6 dp gap, inactive track. The handle sits at
+ * `fraction x (width - 4)`, so the row shows its true value (82% reads as 82%); the label spans the
+ * whole row and is clipped per segment: dark ink on the active part, light ink on the inactive part.
  * It is one TalkBack node with progress semantics (label + value); the pieces inside are hidden.
+ * With [onSeek] and [SliderModel.seek] it is draggable and TalkBack can step it by 10 s.
  */
 @Composable
-fun IslandSlider(model: SliderModel, modifier: Modifier = Modifier, pageHint: String? = null) {
+fun IslandSlider(
+    model: SliderModel,
+    modifier: Modifier = Modifier,
+    pageHint: String? = null,
+    onSeek: ((Float) -> Unit)? = null,
+) {
     val tone = IslandColors.tone(model.level)
+    val seek = model.seek?.takeIf { onSeek != null }
+    var dragFraction by remember { mutableStateOf<Float?>(null) }
+    val fraction = (dragFraction ?: model.fraction).coerceIn(0f, 1f)
+    val commit by rememberUpdatedState(onSeek)
+    val setProgress = stringResource(R.string.island_seek_action)
     BoxWithConstraints(
         modifier
             .height(52.dp)
+            .then(
+                if (seek != null) {
+                    Modifier
+                        .pointerInput(seek) {
+                            detectTapGestures { offset ->
+                                commit?.invoke(SliderMath.fractionAt(offset.x / density, size.width / density))
+                            }
+                        }
+                        .pointerInput(seek) {
+                            detectHorizontalDragGestures(
+                                onDragStart = { offset -> dragFraction = SliderMath.fractionAt(offset.x / density, size.width / density) },
+                                onDragEnd = { dragFraction?.let { commit?.invoke(it) }; dragFraction = null },
+                                onDragCancel = { dragFraction = null },
+                            ) { change, _ ->
+                                change.consume()
+                                dragFraction = SliderMath.fractionAt(change.position.x / density, size.width / density)
+                            }
+                        }
+                } else {
+                    Modifier
+                },
+            )
             .clearAndSetSemantics {
                 contentDescription = model.description
-                stateDescription = listOfNotNull(model.stateText, pageHint).joinToString(", ")
-                progressBarRangeInfo = ProgressBarRangeInfo(model.fraction.coerceIn(0f, 1f), 0f..1f)
+                stateDescription = listOfNotNull(model.stateText.ifBlank { null }, pageHint).joinToString(", ")
+                if (seek != null) {
+                    // Compose has no Slider role: range info + setProgress is what makes TalkBack say "adjustable".
+                    progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f, seek.steps)
+                    setProgress(label = setProgress) { target -> commit?.invoke(target.coerceIn(0f, 1f)); true }
+                } else {
+                    progressBarRangeInfo = ProgressBarRangeInfo(fraction, 0f..1f)
+                }
             },
         contentAlignment = Alignment.CenterStart,
     ) {
-        val activeWidth = SliderMath.activeWidthDp(model.fraction, maxWidth.value).dp
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            if (activeWidth > 0.dp) {
-                Box(
-                    Modifier
-                        .width(activeWidth)
-                        .height(44.dp)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 4.dp, bottomEnd = 4.dp, bottomStart = 12.dp))
-                        .background(tone),
-                )
-                Spacer(Modifier.width(6.dp))
-            }
-            Box(Modifier.size(width = 4.dp, height = 52.dp).clip(RoundedCornerShape(2.dp)).background(tone))
-            Spacer(Modifier.width(6.dp))
-            Row(
+        val total = maxWidth.value
+        val handleLeft = SliderMath.handleLeftDp(fraction, total)
+        val activeWidth = SliderMath.activeWidthDp(fraction, total)
+        val inactiveStart = SliderMath.inactiveStartDp(fraction, total)
+        val inactiveWidth = total - inactiveStart
+        if (inactiveWidth > 0f) {
+            Box(
                 Modifier
-                    .weight(1f)
+                    .offset(x = inactiveStart.dp)
+                    .width(inactiveWidth.dp)
                     .height(44.dp)
                     .clip(RoundedCornerShape(topStart = 4.dp, topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 4.dp))
-                    .background(IslandColors.Track)
-                    .padding(horizontal = 12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                // The label ellipsizes at large font scales; the full text stays in the description.
-                Text(
-                    text = buildAnnotatedString {
-                        withStyle(Mono.copy(color = IslandColors.Ink)) { append(model.label) }
-                        model.secondary?.let { withStyle(Mono.copy(color = IslandColors.Ink2, fontWeight = FontWeight.Normal)) { append(" $it") } }
-                    },
-                    modifier = Modifier.weight(1f),
-                    fontFamily = IslandFont,
-                    fontSize = 14.sp,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                model.trailing?.let {
-                    Spacer(Modifier.width(8.dp))
-                    Text(it, color = IslandColors.Ink2, fontFamily = IslandFont, fontSize = 14.sp, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
-                }
-                model.endIcon?.let {
-                    Spacer(Modifier.width(8.dp))
-                    Icon(IslandIcons.of(it), contentDescription = null, tint = IslandColors.Icon, modifier = Modifier.size(18.dp))
-                }
+                    .background(IslandColors.Track),
+            )
+        }
+        if (activeWidth > 0f) {
+            Box(
+                Modifier
+                    .width(activeWidth.dp)
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 4.dp, bottomEnd = 4.dp, bottomStart = 12.dp))
+                    .background(tone),
+            )
+        }
+        Box(Modifier.offset(x = handleLeft.dp).size(width = 4.dp, height = 52.dp).clip(RoundedCornerShape(2.dp)).background(tone))
+
+        // The end icon stays only when it fits wholly inside the inactive track.
+        val iconFits = model.endIcon != null && inactiveStart <= total - LABEL_INSET_DP - ICON_DP - 6f
+        val rawSecondary = dragFraction?.let { f -> seek?.let { MediaFormat.clock((f * it.durationMs).toLong()) } } ?: model.secondary
+        // A secondary text or the end text that would straddle the handle is left out of the row (it
+        // stays in the TalkBack description) instead of being cut in half.
+        val measurer = rememberTextMeasurer()
+        val density = LocalDensity.current.density
+        val style = androidx.compose.ui.text.TextStyle(fontFamily = IslandFont, fontSize = 14.sp, fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
+        fun widthDp(text: String) = measurer.measure(text, style).size.width / density
+        val zoneStart = activeWidth
+        val zoneEnd = inactiveStart
+        fun straddles(from: Float, to: Float) = to > zoneStart && from < zoneEnd
+        val iconBlock = if (iconFits) 8f + ICON_DP else 0f
+        val trailingText = model.trailing
+        val trailingTo = total - LABEL_INSET_DP - iconBlock
+        val showTrailing = trailingText == null || !straddles(trailingTo - widthDp(trailingText), trailingTo)
+        val labelEnd = LABEL_INSET_DP + widthDp(model.label)
+        val secondary = rawSecondary?.takeIf { !straddles(labelEnd, labelEnd + widthDp(" $it")) }
+        // One label across the row, drawn once per segment in the ink that is readable there.
+        val onTone = IslandColors.onTone(model.level)
+        Box(Modifier.fillMaxWidth().height(44.dp).clipSpan(0f, activeWidth)) {
+            SliderLabel(model, secondary, onTone, onTone, iconFits, IslandColors.Icon, showTrailing)
+        }
+        Box(Modifier.fillMaxWidth().height(44.dp).clipSpan(inactiveStart, total)) {
+            SliderLabel(model, secondary, IslandColors.Ink, IslandColors.Ink2, iconFits, IslandColors.Icon, showTrailing)
+        }
+    }
+}
+
+private const val LABEL_INSET_DP = 12f
+private const val ICON_DP = 18f
+
+/** Draws only the part of the content between [startDp] and [endDp]. */
+private fun Modifier.clipSpan(startDp: Float, endDp: Float): Modifier = drawWithContent {
+    if (endDp > startDp) {
+        clipRect(left = startDp.dp.toPx(), right = endDp.dp.toPx()) { this@drawWithContent.drawContent() }
+    }
+}
+
+@Composable
+private fun SliderLabel(model: SliderModel, secondary: String?, ink: Color, ink2: Color, showIcon: Boolean, iconTint: Color, showTrailing: Boolean = true) {
+    Row(Modifier.fillMaxWidth().height(44.dp).padding(horizontal = LABEL_INSET_DP.dp), verticalAlignment = Alignment.CenterVertically) {
+        // The label ellipsizes at large font scales; the full text stays in the description.
+        Text(
+            text = buildAnnotatedString {
+                withStyle(Mono.copy(color = ink)) { append(model.label) }
+                secondary?.let { withStyle(Mono.copy(color = ink2, fontWeight = FontWeight.Normal)) { append(" $it") } }
+            },
+            modifier = Modifier.weight(1f),
+            fontFamily = IslandFont,
+            fontSize = 14.sp,
+            fontWeight = FontWeight.Medium,
+            maxLines = 2,
+            lineHeight = 17.sp,
+            overflow = TextOverflow.Ellipsis,
+        )
+        model.trailing?.takeIf { showTrailing }?.let {
+            Spacer(Modifier.width(8.dp))
+            Text(it, color = ink2, fontFamily = IslandFont, fontSize = 14.sp, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
+        }
+        if (showIcon) {
+            model.endIcon?.let {
+                Spacer(Modifier.width(8.dp))
+                Icon(IslandIcons.of(it), contentDescription = null, tint = iconTint, modifier = Modifier.size(ICON_DP.dp))
             }
         }
     }
@@ -210,6 +310,7 @@ fun ExpandedIsland(
     modifier: Modifier = Modifier,
     initialPage: Int = 0,
     onInteract: () -> Unit = {},
+    onSeek: (Float) -> Unit = {},
 ) {
     val pager = rememberPagerState(initialPage = initialPage.coerceIn(0, (pages.size - 1).coerceAtLeast(0))) { pages.size }
     val interact by rememberUpdatedState(onInteract)
@@ -240,7 +341,7 @@ fun ExpandedIsland(
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                IslandSlider(page.slider, Modifier.weight(1f), pageHint = hint)
+                IslandSlider(page.slider, Modifier.weight(1f), pageHint = hint, onSeek = { interact(); onSeek(it) })
                 IslandButton(page.buttonIcon, page.buttonLabel, onClick = { interact(); onAction(page.buttonAction) })
             }
         }
@@ -340,6 +441,7 @@ fun IslandContent(
     modifier: Modifier = Modifier,
     onInteract: () -> Unit = {},
     reduceMotion: Boolean = LocalReduceMotion.current,
+    onSeek: (Float) -> Unit = {},
 ) {
     AnimatedContent(
         targetState = mode,
@@ -359,7 +461,7 @@ fun IslandContent(
         when (target) {
             IslandMode.Collapsed -> if (pill != null) IslandPill(pill, gapDp, onPillClick)
             is IslandMode.Peek -> IslandPeek(target.event, onPeekDismiss, onPeekHold)
-            IslandMode.Expanded -> ExpandedIsland(pages, onAction, onClose, onInteract = onInteract)
+            IslandMode.Expanded -> ExpandedIsland(pages, onAction, onClose, onInteract = onInteract, onSeek = onSeek)
         }
     }
 }

@@ -14,9 +14,13 @@ object TestStrings : IslandStrings {
     override val pairTitle = "Pair with your Mac"
     override val pairHint = "AI usage"
     override val pairDescription = "AI usage. Pair with your Mac to see your limits here."
-    override val mediaTitle = "Media"
-    override val mediaHint = "Soon"
-    override val mediaDescription = "Media. Coming soon."
+    override val mediaEmpty = "Play something to control it here"
+    override val mediaEmptyDescription = "Media. Play something to control it here."
+    override val allowAccess = "Allow access"
+    override val play = "Play"
+    override val pause = "Pause"
+    override fun mediaSeekDescription(title: String, artist: String?) = "Seek, $title" + (artist?.let { " by $it" } ?: "")
+    override fun mediaPositionSpoken(position: String, duration: String) = "$position of $duration"
     override fun percent(value: Int) = "$value%"
     override fun percentSpoken(value: Int) = "$value percent"
     override fun prayerDescription(name: String, spoken: String, percent: Int) =

@@ -46,13 +46,32 @@ class IslandModelTest {
         assertEquals(65, Fixtures.oneHourTwelve.percent)
     }
 
-    @Test fun activeTrackLeavesRoomForTheLabel() {
-        // 232 dp row: 16 chrome + 136 minimum track leaves 80 dp for the active part.
-        assertEquals(0f, SliderMath.activeWidthDp(0f, 232f))
-        assertEquals(40f, SliderMath.activeWidthDp(0.5f, 232f))
-        assertEquals(80f, SliderMath.activeWidthDp(1f, 232f))
-        assertEquals(12f, SliderMath.activeWidthDp(0.01f, 232f)) // visible, not a sliver
-        assertEquals(0f, SliderMath.activeWidthDp(0.5f, 140f)) // no room at all
+    @Test fun sliderShowsItsTrueValue() {
+        val total = 280f
+        val travel = total - 4f
+        assertEquals(0f, SliderMath.handleLeftDp(0f, total))
+        assertEquals(0f, SliderMath.activeWidthDp(0f, total))
+        assertEquals(0.82f * travel, SliderMath.handleLeftDp(0.82f, total), 0.001f) // 82% of the travel
+        assertEquals(0.82f * travel - 6f, SliderMath.activeWidthDp(0.82f, total), 0.001f)
+        assertEquals(travel, SliderMath.handleLeftDp(1f, total)) // the handle stays inside the row
+        assertEquals(total, SliderMath.inactiveStartDp(1f, total))
+        assertEquals(0f, SliderMath.activeWidthDp(0.01f, total)) // handle within the first gap: no sliver
+        assertEquals(travel, SliderMath.handleLeftDp(7f, total)) // clamped
+        // Active + gap + handle + gap + inactive always add up to the row.
+        for (f in listOf(0f, 0.3f, 0.82f, 0.96f, 1f)) {
+            val start = SliderMath.inactiveStartDp(f, total)
+            assertTrue(start <= total && SliderMath.handleLeftDp(f, total) + 4f <= total)
+        }
+    }
+
+    @Test fun draggingMapsBackToTheFraction() {
+        val total = 280f
+        for (f in listOf(0f, 0.25f, 0.82f, 1f)) {
+            val x = SliderMath.handleLeftDp(f, total) + 2f // the handle's centre
+            assertEquals(f, SliderMath.fractionAt(x, total), 0.001f)
+        }
+        assertEquals(0f, SliderMath.fractionAt(-50f, total))
+        assertEquals(1f, SliderMath.fractionAt(900f, total))
     }
 
     @Test fun countdownIsHoursMinutesFromTenMinutesAndMinutesSecondsBelow() {

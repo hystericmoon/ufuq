@@ -19,20 +19,31 @@ object SliderMath {
     }
 
     /**
-     * Width of the active (filled) track in dp. The slider is `active, 6, handle 4, 6, track`;
-     * the inactive track keeps at least [minTrackDp] so its label stays readable, so a full value
-     * does not fill the row. Zero stays zero (the handle alone); anything above is at least
-     * [MIN_ACTIVE_DP] so it is visible.
+     * Slider geometry, linear in [fraction] over the whole row. The row is
+     * `active, 6 gap, 4 handle, 6 gap, inactive`; the handle's left edge sits at
+     * `fraction x (total - 4)`, so 0 puts it at the start, 1 at the end and 0.82 at 82% of its travel.
+     * The row never reserves room for the label: the label is drawn over both parts.
      */
-    fun activeWidthDp(fraction: Float, totalDp: Float, minTrackDp: Float = MIN_TRACK_DP): Float {
-        val available = (totalDp - CHROME_DP - minTrackDp).coerceAtLeast(0f)
-        if (fraction <= 0f || available <= 0f) return 0f
-        return (fraction.coerceIn(0f, 1f) * available).coerceIn(minOf(MIN_ACTIVE_DP, available), available)
+    fun handleLeftDp(fraction: Float, totalDp: Float): Float =
+        fraction.coerceIn(0f, 1f) * (totalDp - HANDLE_DP).coerceAtLeast(0f)
+
+    /** Width of the filled track left of the handle's gap; 0 near the start (the handle alone). */
+    fun activeWidthDp(fraction: Float, totalDp: Float): Float =
+        (handleLeftDp(fraction, totalDp) - GAP_DP).coerceAtLeast(0f)
+
+    /** Where the inactive track starts (after the handle and its gap); equals [totalDp] when full. */
+    fun inactiveStartDp(fraction: Float, totalDp: Float): Float =
+        minOf(totalDp, handleLeftDp(fraction, totalDp) + HANDLE_DP + GAP_DP)
+
+    /** The inverse, for dragging: a touch at [xDp] centres the handle there. */
+    fun fractionAt(xDp: Float, totalDp: Float): Float {
+        val travel = totalDp - HANDLE_DP
+        if (travel <= 0f) return 0f
+        return ((xDp - HANDLE_DP / 2) / travel).coerceIn(0f, 1f)
     }
 
-    const val CHROME_DP = 16f // 6 + 4 (handle) + 6
-    const val MIN_ACTIVE_DP = 12f
-    const val MIN_TRACK_DP = 136f
+    const val GAP_DP = 6f
+    const val HANDLE_DP = 4f
 }
 
 /** "1:12" from 10 minutes up; "04:32" under 10 minutes. */

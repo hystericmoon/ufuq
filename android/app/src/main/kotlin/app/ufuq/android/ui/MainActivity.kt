@@ -14,6 +14,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -34,16 +35,29 @@ import java.time.Instant
 import java.time.ZoneId
 
 class MainActivity : ComponentActivity() {
+    private val openMediaAccess = mutableStateOf(false)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { UfuqTheme { UfuqRoot() } }
+        openMediaAccess.value = intent?.action == ACTION_ALLOW_MEDIA
+        setContent { UfuqTheme { UfuqRoot(openMediaAccess) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.action == ACTION_ALLOW_MEDIA) openMediaAccess.value = true
+    }
+
+    companion object {
+        /** From the island's media page: open the explanation before Android's notification-access screen. */
+        const val ACTION_ALLOW_MEDIA = "app.ufuq.android.action.ALLOW_MEDIA"
     }
 }
 
-private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN }
+private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN, LISTENER_EXPLAIN }
 
 @Composable
-private fun UfuqRoot() {
+private fun UfuqRoot(openMediaAccess: MutableState<Boolean> = mutableStateOf(false)) {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()
@@ -52,6 +66,13 @@ private fun UfuqRoot() {
     var locationMessage by remember { mutableStateOf<String?>(null) }
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var wantOverlay by remember { mutableStateOf(false) }
+    var mediaGranted by remember { mutableStateOf(graph.media.accessGranted()) }
+    LaunchedEffect(openMediaAccess.value) {
+        if (openMediaAccess.value) {
+            openMediaAccess.value = false
+            screen = Screen.LISTENER_EXPLAIN
+        }
+    }
 
     val notificationLauncher = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { }
     // The Live Update chip is on by default, so ask once at the start (Android 13+).
@@ -66,6 +87,7 @@ private fun UfuqRoot() {
     // Back from Android's overlay-permission screen: finish the switch the user asked for.
     LifecycleResumeEffect(Unit) {
         overlayGranted = Settings.canDrawOverlays(context)
+        mediaGranted = graph.media.accessGranted()
         if (wantOverlay && overlayGranted) {
             wantOverlay = false
             scope.launch { graph.settings.update { it.copy(overlayEnabled = true) } }
@@ -121,11 +143,14 @@ private fun UfuqRoot() {
                 screen = Screen.OVERLAY_EXPLAIN
             }
         },
+        onMediaAccess = { screen = Screen.LISTENER_EXPLAIN },
         onLiveUpdate = { on -> scope.launch { graph.settings.update { it.copy(liveUpdateEnabled = on) } } },
         onLead = { m -> scope.launch { graph.settings.update { it.copy(adhanLeadMinutes = m) } } },
     )
 
-    BackHandler(enabled = screen != Screen.TODAY) { screen = if (screen == Screen.OVERLAY_EXPLAIN) Screen.SETTINGS else Screen.TODAY }
+    BackHandler(enabled = screen != Screen.TODAY) {
+        screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.LISTENER_EXPLAIN) Screen.SETTINGS else Screen.TODAY
+    }
 
     when (screen) {
         Screen.TODAY -> {
@@ -143,12 +168,16 @@ private fun UfuqRoot() {
             val state = remember(now, settings) { graph.apply(settings); TodayState.at(now, graph.prayer) }
             TodayScreen(state, onOpenSettings = { screen = Screen.SETTINGS })
         }
-        Screen.SETTINGS -> SettingsScreen(settings, actions, locationMessage, overlayGranted)
+        Screen.SETTINGS -> SettingsScreen(settings, actions, locationMessage, overlayGranted, mediaAccessGranted = mediaGranted)
         Screen.OVERLAY_EXPLAIN -> OverlayExplainScreen(
             onContinue = {
                 wantOverlay = true
                 context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
             },
+            onCancel = { screen = Screen.SETTINGS },
+        )
+        Screen.LISTENER_EXPLAIN -> ListenerExplainScreen(
+            onContinue = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
             onCancel = { screen = Screen.SETTINGS },
         )
     }

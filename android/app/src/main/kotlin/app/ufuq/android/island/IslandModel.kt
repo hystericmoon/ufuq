@@ -1,5 +1,7 @@
 package app.ufuq.android.island
 
+import app.ufuq.android.media.MediaFormat
+import app.ufuq.android.media.MediaState
 import app.ufuq.android.prayer.PrayerProgress
 import app.ufuq.core.ActivitySource
 import app.ufuq.core.UsageLevel
@@ -15,7 +17,7 @@ enum class IslandIcon { SUN, BELL, BELL_OFF, REFRESH, PHONE, PLAY, PAUSE }
 enum class IslandPageId { PRAYER, AI_USAGE, MEDIA }
 
 /** What a page's round button does; the service and the app decide how. */
-enum class ButtonAction { TOGGLE_MUTE, OPEN_APP, REFRESH }
+enum class ButtonAction { TOGGLE_MUTE, OPEN_APP, REFRESH, PLAY_PAUSE, ALLOW_MEDIA_ACCESS }
 
 /** Texts the models need, so the mapping stays free of Android resources and is unit-testable. */
 interface IslandStrings {
@@ -26,9 +28,17 @@ interface IslandStrings {
     val pairTitle: String
     val pairHint: String
     val pairDescription: String
-    val mediaTitle: String
-    val mediaHint: String
-    val mediaDescription: String
+    val mediaEmpty: String
+    val mediaEmptyDescription: String
+    val allowAccess: String
+    val play: String
+    val pause: String
+
+    /** The seek slider's spoken label, e.g. "Seek, Mishary". */
+    fun mediaSeekDescription(title: String, artist: String?): String
+
+    /** Its spoken value, e.g. "1 minute 24 seconds of 3 minutes 30 seconds". */
+    fun mediaPositionSpoken(position: String, duration: String): String
     /** "82%" for a label. */
     fun percent(value: Int): String
 
@@ -54,7 +64,15 @@ data class SliderModel(
     val description: String,
     /** Its spoken value, e.g. "62 percent". */
     val stateText: String,
+    /** Set on the media page: the slider is draggable and steps by [SeekSpec.stepMs] for TalkBack. */
+    val seek: SeekSpec? = null,
 )
+
+/** A draggable slider's range: TalkBack increment/decrement moves by [stepMs] (10 s). */
+data class SeekSpec(val durationMs: Long, val stepMs: Long = 10_000) {
+    /** Steps strictly between the ends, as Compose's progress range wants them. */
+    val steps: Int get() = (durationMs / stepMs - 1).coerceIn(0, 10_000).toInt()
+}
 
 data class IslandPageModel(
     val id: IslandPageId,
@@ -74,10 +92,13 @@ object IslandPages {
         usage: AiUsageSample?,
         strings: IslandStrings,
         thresholds: UsageThresholds = UsageThresholds.DEFAULT,
+        mediaState: MediaState? = null,
+        mediaAccess: Boolean = false,
+        elapsedNowMs: Long = 0,
     ): List<IslandPageModel> = listOfNotNull(
         progress?.let { prayer(it, muted, strings) },
         aiUsage(usage, strings, thresholds),
-        media(strings),
+        media(mediaState, mediaAccess, strings, elapsedNowMs),
     )
 
     /** Page A: track = time since the previous prayer, label = next prayer + countdown, button = mute adhan. */
@@ -126,14 +147,42 @@ object IslandPages {
         )
     }
 
-    /** Page C: a placeholder until the media phase (A3). */
-    fun media(s: IslandStrings): IslandPageModel = IslandPageModel(
-        id = IslandPageId.MEDIA,
-        slider = SliderModel(0f, s.mediaTitle, s.mediaHint, description = s.mediaDescription, stateText = s.mediaHint),
-        buttonIcon = IslandIcon.PHONE,
-        buttonLabel = s.openApp,
-        buttonAction = ButtonAction.OPEN_APP,
-    )
+    /**
+     * Page C: the seek slider (title, position, duration; draggable) and the play/pause button.
+     * With no session the empty state offers "Allow access" until notification access is granted.
+     */
+    fun media(state: MediaState?, accessGranted: Boolean, s: IslandStrings, elapsedNowMs: Long): IslandPageModel {
+        if (state == null) {
+            return IslandPageModel(
+                id = IslandPageId.MEDIA,
+                slider = SliderModel(0f, s.mediaEmpty, description = s.mediaEmptyDescription, stateText = ""),
+                buttonIcon = IslandIcon.PHONE,
+                buttonLabel = if (accessGranted) s.openApp else s.allowAccess,
+                buttonAction = if (accessGranted) ButtonAction.OPEN_APP else ButtonAction.ALLOW_MEDIA_ACCESS,
+            )
+        }
+        val position = state.positionAt(elapsedNowMs)
+        val seek = if (state.seekable) SeekSpec(state.durationMs) else null
+        return IslandPageModel(
+            id = IslandPageId.MEDIA,
+            slider = SliderModel(
+                fraction = state.fractionAt(elapsedNowMs),
+                label = state.title,
+                secondary = MediaFormat.clock(position),
+                trailing = state.durationMs.takeIf { it > 0 }?.let(MediaFormat::clock),
+                description = s.mediaSeekDescription(state.title, state.artist),
+                stateText = if (state.durationMs > 0) {
+                    s.mediaPositionSpoken(MediaFormat.spoken(position), MediaFormat.spoken(state.durationMs))
+                } else {
+                    MediaFormat.spoken(position)
+                },
+                seek = seek,
+            ),
+            buttonIcon = if (state.playing) IslandIcon.PAUSE else IslandIcon.PLAY,
+            buttonLabel = if (state.playing) s.pause else s.play,
+            buttonAction = ButtonAction.PLAY_PAUSE,
+        )
+    }
 }
 
 /** Small time formats shared with page B. */

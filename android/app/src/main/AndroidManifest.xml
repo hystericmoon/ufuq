@@ -40,6 +40,17 @@
                 android:value="Shows the next prayer in a small island over other apps at the camera cutout, only when the user turns the island on." />
         </service>
 
+        <!-- Shared by the media page (A3) and other apps' live activities (A7); reads only what features subscribe to. -->
+        <service
+            android:name=".listener.UfuqNotificationListener"
+            android:exported="true"
+            android:label="@string/listener_service_label"
+            android:permission="android.permission.BIND_NOTIFICATION_LISTENER_SERVICE">
+            <intent-filter>
+                <action android:name="android.service.notification.NotificationListenerService" />
+            </intent-filter>
+        </service>
+
         <receiver android:name=".live.LiveUpdateReceiver" android:exported="false" />
 
         <receiver

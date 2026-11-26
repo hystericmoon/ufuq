@@ -66,7 +66,20 @@ class IslandScreenshotTest {
         0, listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.96, Duration.ofMinutes(25)), TestStrings)), name = "island-09-expanded-b-96-red",
     )
 
-    @Test fun expandedMediaPlaceholder() = page(2, allPages, name = "island-10-expanded-c-media")
+    private val track = app.ufuq.android.media.MediaState(
+        "Mishary", "Alafasy", durationMs = 210_000, positionMs = 84_000, updatedAtElapsedMs = 0, playing = true,
+    )
+
+    private fun media(state: app.ufuq.android.media.MediaState?, access: Boolean = false) =
+        listOf(IslandPages.media(state, access, TestStrings, 0))
+
+    @Test fun expandedMediaPlaying() = page(0, media(track), name = "island-10-expanded-c-media-playing")
+
+    @Test fun expandedMediaPaused() = page(0, media(track.copy(playing = false)), name = "island-13-expanded-c-media-paused")
+
+    @Test fun expandedMediaEmpty() = page(0, media(null), name = "island-14-expanded-c-media-empty")
+
+    @Test fun expandedMediaFont200() = page(0, media(track), fontScale = 2f, name = "island-15-expanded-c-media-font200")
 
     @Test fun peek() = capture("island-11-peek") {
         PhoneWall {

@@ -3,6 +3,8 @@ package app.ufuq.android
 import android.content.Context
 import app.ufuq.android.live.LiveUpdateController
 import app.ufuq.android.island.IslandController
+import app.ufuq.android.media.MediaModule
+import app.ufuq.android.media.MediaRepository
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.SettingsRepository
 import app.ufuq.core.ActivityArbiter
@@ -15,7 +17,11 @@ import java.time.Duration
 class AppGraph(val context: Context) {
     val settings = SettingsRepository(context)
     val prayer = PrayerModule()
-    val registry = ModuleRegistry().also { it.register(prayer) }
+    val media = MediaRepository(context).also { it.start() }
+    val registry = ModuleRegistry().also {
+        it.register(prayer)
+        it.register(MediaModule(media))
+    }
     val arbiter = ActivityArbiter()
     val peeks = PeekQueue()
     val island = IslandController()

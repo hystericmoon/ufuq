@@ -49,6 +49,7 @@ data class SettingsActions(
     val onUseMyLocation: () -> Unit = {},
     val onMethod: (CalcMethod) -> Unit = {},
     val onOverlay: (Boolean) -> Unit = {},
+    val onMediaAccess: () -> Unit = {},
     val onLiveUpdate: (Boolean) -> Unit = {},
     val onLead: (Int) -> Unit = {},
 )
@@ -61,6 +62,7 @@ fun SettingsScreen(
     locationMessage: String?,
     overlayPermissionGranted: Boolean,
     modifier: Modifier = Modifier,
+    mediaAccessGranted: Boolean = false,
 ) {
     Column(
         modifier
@@ -99,6 +101,18 @@ fun SettingsScreen(
             checked = settings.overlayEnabled,
             onChange = actions.onOverlay,
         )
+        Row(
+            Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Tokens.Card).heightIn(min = 64.dp).padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_media), color = Tokens.Primary, fontSize = 17.sp)
+                Text(stringResource(if (mediaAccessGranted) R.string.settings_media_on else R.string.settings_media_off), color = Tokens.Secondary, fontSize = 13.sp)
+            }
+            TextButton(onClick = actions.onMediaAccess, modifier = Modifier.heightIn(min = 48.dp)) {
+                Text(stringResource(if (mediaAccessGranted) R.string.settings_media_manage else R.string.settings_media_allow), color = Tokens.AccentPrayer)
+            }
+        }
 
         Section(stringResource(R.string.settings_location))
         Button(
