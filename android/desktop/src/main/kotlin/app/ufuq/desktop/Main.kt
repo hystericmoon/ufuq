@@ -8,9 +8,14 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.painter.BitmapPainter
 import androidx.compose.ui.graphics.toComposeImageBitmap
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.ApplicationScope
@@ -29,16 +34,25 @@ import app.ufuq.desktop.platform.Windows
 import app.ufuq.desktop.settings.DesktopSettings
 import app.ufuq.desktop.settings.SettingsScreen
 import app.ufuq.desktop.settings.SettingsStore
+import app.ufuq.desktop.update.BuildInfo
+import app.ufuq.desktop.update.JdkUpdateHttp
+import app.ufuq.desktop.update.UpdateManager
+import app.ufuq.desktop.update.UpdateScreen
+import app.ufuq.desktop.update.UpdateState
+import app.ufuq.desktop.update.autoCheckDue
+import app.ufuq.desktop.update.launchMsiexec
 import app.ufuq.desktop.usage.UsageRepository
 import com.sun.jna.Pointer
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.awt.Color
 import java.awt.GraphicsEnvironment
 import java.awt.RenderingHints
 import java.awt.Toolkit
 import java.awt.image.BufferedImage
+import java.io.File
 
 /** Remembers the window that had focus before the island opened, so Esc can give it back. */
 private class ForegroundKeeper {
@@ -148,7 +162,38 @@ fun main() = application {
         if (loginChanged) Thread { LaunchAtLogin.set(new.launchAtLogin) }.apply { isDaemon = true }.start()
     }
 
+    val build = remember { BuildInfo.current }
+    val updater = remember {
+        UpdateManager(
+            currentVersion = build.version,
+            publicKeyBase64 = build.updatePublicKey,
+            http = JdkUpdateHttp(),
+            tempDir = File(System.getProperty("java.io.tmpdir") ?: "."),
+            launchInstaller = { f -> Windows.isWindows && launchMsiexec(f) },
+            exitApp = ::exitApplication,
+        )
+    }
+    var updateOpen by remember { mutableStateOf(false) }
+    val updateState by updater.state.collectAsState()
+
+    // Checks GitHub off the UI thread and remembers when. A manual check always opens the window;
+    // the daily one opens it only when something new is found.
+    suspend fun checkForUpdates(manual: Boolean) {
+        if (manual) updateOpen = true
+        if (!updater.enabled) return
+        withContext(Dispatchers.IO) { updater.check(settings.betaUpdates) }
+        settings = settings.copy(lastUpdateCheck = System.currentTimeMillis()).also(store::save)
+        if (updater.state.value is UpdateState.Available) updateOpen = true
+    }
+    val scope = rememberCoroutineScope()
+
     LaunchedEffect(Unit) { controller.run() }
+    LaunchedEffect(settings.autoCheckUpdates) {
+        while (settings.autoCheckUpdates && updater.enabled) {
+            if (autoCheckDue(settings.autoCheckUpdates, updater.enabled, settings.lastUpdateCheck, System.currentTimeMillis())) checkForUpdates(manual = false)
+            delay(60 * 60 * 1000L)
+        }
+    }
     DisposableEffect(Unit) {
         val hotkey = GlobalHotkey { controller.toggleWithHotkey() }
         hotkey.start()
@@ -162,6 +207,7 @@ fun main() = application {
         Tray(icon = icon, tooltip = "Ufuq", onAction = controller::pillClicked) {
             Item("Open (Win+Alt+Space)", onClick = controller::pillClicked)
             Item("Settings", onClick = { settingsOpen = true })
+            Item("Check for updates…", onClick = { scope.launch { checkForUpdates(manual = true) } })
             CheckboxItem("Launch at login", checked = settings.launchAtLogin, onCheckedChange = { change(settings.copy(launchAtLogin = it)) })
             Separator()
             Item("Quit", onClick = ::exitApplication)
@@ -174,7 +220,29 @@ fun main() = application {
             title = "Ufuq settings",
             state = rememberWindowState(size = DpSize(520.dp, 720.dp)),
         ) {
-            SettingsScreen(settings, ::change, launchAtLoginSupported = LaunchAtLogin.isSupported(), effectiveReduceMotion = reduceMotion)
+            SettingsScreen(settings, ::change, launchAtLoginSupported = LaunchAtLogin.isSupported(), effectiveReduceMotion = reduceMotion, updatesEnabled = updater.enabled, onCheckForUpdates = { scope.launch { checkForUpdates(manual = true) } })
+        }
+    }
+
+    if (updateOpen) {
+        Window(
+            onCloseRequest = { updateOpen = false; updater.dismiss() },
+            title = "Ufuq updates",
+            state = rememberWindowState(size = DpSize(460.dp, 380.dp)),
+            // Esc closes the window unless it is mid-download.
+            onPreviewKeyEvent = { e ->
+                val busy = updateState is UpdateState.Downloading || updateState is UpdateState.Verifying
+                if (e.type == KeyEventType.KeyDown && e.key == Key.Escape && !busy) { updateOpen = false; updater.dismiss(); true } else false
+            },
+        ) {
+            UpdateScreen(
+                state = updateState,
+                currentVersion = build.version,
+                onCheck = { scope.launch { checkForUpdates(manual = true) } },
+                onDownload = { scope.launch(Dispatchers.IO) { updater.download() } },
+                onRestart = { scope.launch(Dispatchers.IO) { updater.install() } },
+                onClose = { updateOpen = false; updater.dismiss() },
+            )
         }
     }
 }

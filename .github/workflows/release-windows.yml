@@ -1,0 +1,86 @@
+name: Release Windows
+
+# Builds the MSI, signs it for the in-app updater and attaches both files to the tag's GitHub Release.
+# The Mac and Android workflows upload their files to the same release. See docs/release-windows.md.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  msi:
+    name: Signed MSI
+    runs-on: windows-latest
+    env:
+      UFUQ_UPDATE_PUBLIC_KEY: ${{ vars.UFUQ_UPDATE_PUBLIC_KEY }}
+      UFUQ_UPDATE_PRIVATE_KEY: ${{ secrets.UFUQ_UPDATE_PRIVATE_KEY }}
+      WIN_CERT_PFX: ${{ secrets.WIN_CERT_PFX }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check keys and version
+        shell: bash
+        run: |
+          [ -n "$UFUQ_UPDATE_PUBLIC_KEY" ] || { echo "::error::Repository variable UFUQ_UPDATE_PUBLIC_KEY is missing (docs/release-windows.md)"; exit 1; }
+          [ -n "$UFUQ_UPDATE_PRIVATE_KEY" ] || { echo "::error::Secret UFUQ_UPDATE_PRIVATE_KEY is missing (docs/release-windows.md)"; exit 1; }
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match VERSION (${VERSION}); bump VERSION first"; exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Build MSI
+        shell: bash
+        working-directory: android
+        run: ./gradlew :desktop:packageMsi --stacktrace
+
+      - name: Name the installer Ufuq-<version>.msi
+        shell: bash
+        run: |
+          mkdir -p dist
+          SRC="$(ls android/desktop/build/compose/binaries/main/msi/*.msi | head -n 1)"
+          cp "$SRC" "dist/Ufuq-${VERSION}.msi"
+
+      # TODO(Authenticode): once a code-signing certificate exists, add WIN_CERT_PFX (base64 .pfx) and
+      # WIN_CERT_PASSWORD as secrets. This step is skipped while they are absent, and must run BEFORE the
+      # Ed25519 signing below (the .sig covers the final bytes). SmartScreen warns until then.
+      - name: Authenticode sign (skipped without a certificate)
+        if: ${{ env.WIN_CERT_PFX != '' }}
+        shell: pwsh
+        env:
+          WIN_CERT_PASSWORD: ${{ secrets.WIN_CERT_PASSWORD }}
+        run: |
+          [IO.File]::WriteAllBytes("$env:RUNNER_TEMP\cert.pfx", [Convert]::FromBase64String($env:WIN_CERT_PFX))
+          $signtool = (Get-ChildItem "C:\Program Files (x86)\Windows Kits\10\bin\*\x64\signtool.exe" | Sort-Object FullName | Select-Object -Last 1).FullName
+          & $signtool sign /f "$env:RUNNER_TEMP\cert.pfx" /p $env:WIN_CERT_PASSWORD /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "dist\Ufuq-$env:VERSION.msi"
+          Remove-Item "$env:RUNNER_TEMP\cert.pfx"
+
+      - name: Sign for the updater (Ed25519)
+        shell: bash
+        run: |
+          pip install cryptography
+          python tools/sign_update.py "dist/Ufuq-${VERSION}.msi"
+          test -s "dist/Ufuq-${VERSION}.msi.sig"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ufuq-msi-signed
+          path: dist/*
+
+      - name: Attach to the GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          prerelease: ${{ contains(env.VERSION, '-') }}
+          files: |
+            dist/Ufuq-${{ env.VERSION }}.msi
+            dist/Ufuq-${{ env.VERSION }}.msi.sig

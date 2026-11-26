@@ -15,6 +15,13 @@ class SettingsStoreTest {
         assertEquals(null, s.reduceMotion)
     }
 
+    @Test fun updateDefaultsAreDailyCheckNoBeta() {
+        val s = DesktopSettings()
+        assertEquals(true, s.autoCheckUpdates)
+        assertEquals(false, s.betaUpdates)
+        assertEquals(0L, s.lastUpdateCheck)
+    }
+
     @Test fun twelveCitiesJakartaFirst() {
         assertEquals(12, Cities.ALL.size)
         assertEquals("Jakarta", Cities.ALL.first().name)
@@ -25,7 +32,7 @@ class SettingsStoreTest {
         val dir = kotlin.io.path.createTempDirectory("ufuq-settings").toFile()
         try {
             val store = SettingsStore(File(dir, "nested/settings.properties"))
-            val s = DesktopSettings("Makassar", CalcMethod.MWL, listOf("C:\\Users\\me\\.claude", "D:\\work\\.claude-work"), true, true, 1234, 5678)
+            val s = DesktopSettings("Makassar", CalcMethod.MWL, listOf("C:\\Users\\me\\.claude", "D:\\work\\.claude-work"), true, true, 1234, 5678, false, true, 99L)
             store.save(s)
             assertEquals(s, store.load())
         } finally {
