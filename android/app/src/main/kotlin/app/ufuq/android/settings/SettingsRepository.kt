@@ -41,6 +41,10 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
             liveUpdateEnabled = p[LIVE_UPDATE] ?: d.liveUpdateEnabled,
             adhanLeadMinutes = p[LEAD] ?: d.adhanLeadMinutes,
             adhanMuted = p[MUTED] ?: d.adhanMuted,
+            silenceEnabled = p[SILENCE] ?: d.silenceEnabled,
+            silenceMinutes = (p[SILENCE_MIN] ?: d.silenceMinutes).coerceIn(AppSettings.SILENCE_RANGE),
+            ramadanManual = p[RAMADAN] ?: d.ramadanManual,
+            followLocation = p[FOLLOW] ?: d.followLocation,
         )
     }
 
@@ -55,6 +59,10 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         p[LIVE_UPDATE] = s.liveUpdateEnabled
         p[LEAD] = s.adhanLeadMinutes
         p[MUTED] = s.adhanMuted
+        p[SILENCE] = s.silenceEnabled
+        p[SILENCE_MIN] = s.silenceMinutes.coerceIn(AppSettings.SILENCE_RANGE)
+        p[RAMADAN] = s.ramadanManual
+        p[FOLLOW] = s.followLocation
     }
 
     private companion object {
@@ -68,5 +76,9 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val LIVE_UPDATE = booleanPreferencesKey("live_update")
         val LEAD = intPreferencesKey("adhan_lead")
         val MUTED = booleanPreferencesKey("adhan_muted")
+        val SILENCE = booleanPreferencesKey("silence")
+        val SILENCE_MIN = intPreferencesKey("silence_minutes")
+        val RAMADAN = booleanPreferencesKey("ramadan_manual")
+        val FOLLOW = booleanPreferencesKey("follow_location")
     }
 }

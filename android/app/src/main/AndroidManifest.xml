@@ -4,6 +4,12 @@
 
     <!-- Fully offline: no INTERNET permission. -->
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- A4 prayer silence: Do Not Disturb access (granted by the user in system settings), saved mosques
+         (fine location; background location is optional and asked separately), and on-time alarms. -->
+    <uses-permission android:name="android.permission.ACCESS_NOTIFICATION_POLICY" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_BACKGROUND_LOCATION" />
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <!-- Android 16: lets the next-prayer notification be promoted to a Live Update chip. -->
     <uses-permission android:name="android.permission.POST_PROMOTED_NOTIFICATIONS" />
@@ -41,6 +47,8 @@
         </service>
 
         <receiver android:name=".live.LiveUpdateReceiver" android:exported="false" />
+        <receiver android:name=".silence.SilenceReceiver" android:exported="false" />
+        <receiver android:name=".travel.TravelReceiver" android:exported="false" />
 
         <receiver
             android:name=".live.SystemEventsReceiver"

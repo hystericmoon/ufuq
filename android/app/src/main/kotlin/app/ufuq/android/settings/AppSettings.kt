@@ -21,6 +21,13 @@ data class AppSettings(
     val adhanLeadMinutes: Int = DEFAULT_LEAD_MINUTES,
     /** The island's mute-adhan button. */
     val adhanMuted: Boolean = false,
+    /** Prayer silence (Do Not Disturb after the adhan). Off by default; needs Do Not Disturb access. */
+    val silenceEnabled: Boolean = false,
+    val silenceMinutes: Int = DEFAULT_SILENCE_MINUTES,
+    /** Ramadan mode on by hand; it is also on by itself whenever the Hijri month is 9. */
+    val ramadanManual: Boolean = false,
+    /** Travel mode: the city, coordinates and time zone follow the phone. */
+    val followLocation: Boolean = false,
 ) {
     val location: PrayerLocation
         get() = PrayerLocation(cityName, latitude, longitude, runCatching { ZoneId.of(zoneId) }.getOrDefault(ZoneId.systemDefault()))
@@ -30,6 +37,9 @@ data class AppSettings(
     companion object {
         const val DEFAULT_LEAD_MINUTES = 10
         val LEAD_CHOICES = listOf(5, 10, 15, 20)
+        const val DEFAULT_SILENCE_MINUTES = 15
+        val SILENCE_RANGE = 5..45
+        val SILENCE_CHOICES = listOf(5, 10, 15, 20, 30, 45)
         val METHODS = listOf(CalcMethod.KEMENAG, CalcMethod.MWL, CalcMethod.UMM_AL_QURA)
     }
 }

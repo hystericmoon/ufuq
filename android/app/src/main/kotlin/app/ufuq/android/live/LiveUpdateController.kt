@@ -27,6 +27,9 @@ class LiveUpdateController(private val context: Context, private val graph: AppG
     /** Posts or removes the notification for [settings] and schedules the next boundary. */
     fun refresh(settings: AppSettings, now: Instant = Instant.now()) {
         val alarms = context.getSystemService(AlarmManager::class.java)
+        // Prayer extras ride on every refresh (settings change, prayer boundary, boot); each is idempotent.
+        graph.silence.onRefresh(settings, now)
+        graph.travel.onRefresh(settings)
         val pending = alarmIntent()
         if (!settings.liveUpdateEnabled) {
             NotificationManagerCompat.from(context).cancel(LiveUpdate.NOTIFICATION_ID)
@@ -38,7 +41,8 @@ class LiveUpdateController(private val context: Context, private val graph: AppG
             NotificationManagerCompat.from(context).cancel(LiveUpdate.NOTIFICATION_ID)
             return
         }
-        val progress = PrayerProgress.at(now, graph.prayer) ?: return
+        val progress = graph.liveStrategies.firstNotNullOfOrNull { it.progress(now, settings, snapshot) }
+            ?: PrayerProgress.at(now, graph.prayer) ?: return
         LiveUpdate.ensureChannel(context)
         if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
             try {

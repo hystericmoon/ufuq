@@ -40,6 +40,12 @@ import app.ufuq.android.R
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.Cities
 import app.ufuq.core.prayer.CalcMethod
+import app.ufuq.android.ramadan.RamadanSection
+import app.ufuq.android.silence.ExtrasActions
+import app.ufuq.android.silence.ExtrasState
+import app.ufuq.android.silence.MosquesSection
+import app.ufuq.android.silence.SilenceSection
+import app.ufuq.android.travel.TravelSection
 import app.ufuq.core.prayer.PrayerLocation
 
 /** Callbacks from the settings screen. */
@@ -61,6 +67,8 @@ fun SettingsScreen(
     locationMessage: String?,
     overlayPermissionGranted: Boolean,
     modifier: Modifier = Modifier,
+    extras: ExtrasState = ExtrasState(),
+    extrasActions: ExtrasActions = ExtrasActions(),
 ) {
     Column(
         modifier
@@ -142,11 +150,16 @@ fun SettingsScreen(
             }
         }
         Text(stringResource(R.string.settings_lead_hint), color = Tokens.Muted, fontSize = 13.sp)
+
+        SilenceSection(settings, extras, extrasActions)
+        MosquesSection(extras, extrasActions)
+        RamadanSection(settings, extrasActions)
+        TravelSection(settings, extrasActions)
     }
 }
 
 @Composable
-private fun chipColors() = FilterChipDefaults.filterChipColors(
+internal fun chipColors() = FilterChipDefaults.filterChipColors(
     selectedContainerColor = Tokens.Track,
     selectedLabelColor = Tokens.AccentPrayer,
     labelColor = Tokens.Primary,
@@ -162,7 +175,7 @@ private fun methodName(method: CalcMethod): String = when (method) {
 }
 
 @Composable
-private fun Section(title: String) {
+internal fun Section(title: String) {
     Text(
         title,
         color = Tokens.Secondary,
@@ -173,7 +186,7 @@ private fun Section(title: String) {
 }
 
 @Composable
-private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()
