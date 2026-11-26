@@ -25,10 +25,12 @@ Core package (Linux or Mac), from `UfuqCore/`:
 - Build: `swift build`
 - Test: `swift test`
 
-Mac app (Xcode required). Fill in once the Mac phase creates the project:
+Mac app (Xcode required). The Xcode project is generated from `project.yml` and not committed. From the repo root:
 
+- Generate: `brew install xcodegen && xcodegen generate` (rerun after adding or removing files)
 - Build: `xcodebuild -scheme Ufuq -configuration Debug build`
 - Test: `xcodebuild -scheme Ufuq test`
+- CI (`.github/workflows/mac.yml`, macos-15) runs `xcodebuild -scheme Ufuq -destination 'platform=macOS' -configuration Debug CODE_SIGNING_ALLOWED=NO build test`; `CODE_SIGNING_ALLOWED=NO` is for CI only. Snapshot PNGs are written to `$SNAPSHOT_DIR` (CI passes it as `TEST_RUNNER_SNAPSHOT_DIR`) and uploaded as the `snapshots` artifact.
 
 ## Pointers
 

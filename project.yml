@@ -1,0 +1,63 @@
+name: Ufuq
+options:
+  bundleIdPrefix: app.ufuq
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  UfuqCore:
+    path: UfuqCore
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: NO
+    ENABLE_APP_SANDBOX: NO
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+targets:
+  Ufuq:
+    type: application
+    platform: macOS
+    sources:
+      - App/Sources
+    dependencies:
+      - package: UfuqCore
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Ufuq
+        CFBundleDisplayName: Ufuq
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: "Ufuq"
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac
+        PRODUCT_NAME: Ufuq
+  UfuqTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - App/Tests
+    dependencies:
+      - target: Ufuq
+      - package: UfuqCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Ufuq:
+    build:
+      targets:
+        Ufuq: all
+        UfuqTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - UfuqTests
