@@ -22,6 +22,12 @@ data class DesktopSettings(
      */
     val sessionBudgetTokens: Long = DEFAULT_SESSION_BUDGET,
     val weeklyBudgetTokens: Long = DEFAULT_WEEKLY_BUDGET,
+    /** Ask GitHub once a day for a new version. */
+    val autoCheckUpdates: Boolean = true,
+    /** Also offer pre-releases. */
+    val betaUpdates: Boolean = false,
+    /** Epoch millis of the last update check; 0 means never. */
+    val lastUpdateCheck: Long = 0L,
 ) {
     val location: PrayerLocation get() = Cities.byName(cityName) ?: Cities.DEFAULT
 
@@ -87,6 +93,9 @@ class SettingsStore(private val file: File) {
             s.reduceMotion?.let { setProperty("reduceMotion", it.toString()) }
             setProperty("sessionBudget", s.sessionBudgetTokens.toString())
             setProperty("weeklyBudget", s.weeklyBudgetTokens.toString())
+            setProperty("autoCheckUpdates", s.autoCheckUpdates.toString())
+            setProperty("betaUpdates", s.betaUpdates.toString())
+            setProperty("lastUpdateCheck", s.lastUpdateCheck.toString())
             setProperty("claudeDirs.count", s.claudeDirs.size.toString())
             s.claudeDirs.forEachIndexed { i, d -> setProperty("claudeDirs.$i", d) }
         }
@@ -102,6 +111,9 @@ class SettingsStore(private val file: File) {
                 reduceMotion = p.getProperty("reduceMotion")?.toBooleanStrictOrNull(),
                 sessionBudgetTokens = p.getProperty("sessionBudget")?.toLongOrNull()?.takeIf { it > 0 } ?: d.sessionBudgetTokens,
                 weeklyBudgetTokens = p.getProperty("weeklyBudget")?.toLongOrNull()?.takeIf { it > 0 } ?: d.weeklyBudgetTokens,
+                autoCheckUpdates = p.getProperty("autoCheckUpdates")?.toBooleanStrictOrNull() ?: d.autoCheckUpdates,
+                betaUpdates = p.getProperty("betaUpdates")?.toBooleanStrictOrNull() ?: d.betaUpdates,
+                lastUpdateCheck = p.getProperty("lastUpdateCheck")?.toLongOrNull()?.takeIf { it >= 0 } ?: d.lastUpdateCheck,
             )
         }
     }

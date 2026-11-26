@@ -80,6 +80,9 @@ fun SettingsScreen(
     launchAtLoginSupported: Boolean,
     effectiveReduceMotion: Boolean,
     modifier: Modifier = Modifier,
+    /** Null in development builds without an update key: the update switches are disabled with a note. */
+    updatesEnabled: Boolean = true,
+    onCheckForUpdates: () -> Unit = {},
 ) {
     MaterialTheme(colorScheme = if (isSystemInDarkTheme()) darkColorScheme() else lightColorScheme()) {
         Surface(modifier.fillMaxSize()) {
@@ -155,6 +158,20 @@ fun SettingsScreen(
                     effectiveReduceMotion,
                     note = "Cross-fade instead of the morph. Starts from Windows Animation effects.",
                 ) { onChange(settings.copy(reduceMotion = it)) }
+                SectionTitle("Updates")
+                SwitchRow(
+                    "Check for updates automatically",
+                    settings.autoCheckUpdates,
+                    enabled = updatesEnabled,
+                    note = if (updatesEnabled) "Ufuq checks GitHub once a day for a new version." else "Updates are off in development builds",
+                ) { onChange(settings.copy(autoCheckUpdates = it)) }
+                SwitchRow(
+                    "Include beta versions",
+                    settings.betaUpdates,
+                    enabled = updatesEnabled,
+                    note = "Pre-releases may be less stable.",
+                ) { onChange(settings.copy(betaUpdates = it)) }
+                OutlinedButton(onClick = onCheckForUpdates, enabled = updatesEnabled) { Text("Check for updates now") }
                 Spacer(Modifier.height(8.dp))
                 Text("Open the island with Win+Alt+Space. Esc closes it.", style = MaterialTheme.typography.bodySmall)
             }
