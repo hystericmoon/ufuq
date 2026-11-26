@@ -2,6 +2,16 @@
 
 Last updated: 2026-11-26
 
+## Resume here (paused 2026-11-26 15:25)
+
+Auto-update: Mac (Sparkle) and Windows (signed MSI) are merged and green. **Android updater is NOT done** — the agent was stopped before committing. Restart it:
+
+```
+Add the sideload self-updater to the Ufuq Android app: port Adwam's updater (hystericmoon/muslimdaily: app/src/main/java/id/haho/muslimdaily/update/*, feature/settings/UpdateScreen.kt, their tests, FileProvider, SELF_UPDATE/UPDATE_REPO BuildConfig) without Hilt, reusing android/core app.ufuq.core.update (Versions, GitHubReleases). Asset ufuq-<VERSION>.apk; versionName from repo-root VERSION. Release signing from secrets UFUQ_KEYSTORE_BASE64, UFUQ_KEYSTORE_PASSWORD, UFUQ_KEY_ALIAS, UFUQ_KEY_PASSWORD (debug fallback with a warning). Add .github/workflows/release-android.yml (tag v* → assembleRelease → upload to the tag's release with softprops/action-gh-release@v2) and docs/release-android.md. Settings copy: "Ufuq checks GitHub once a day for a new version. Turn this off to check only when you ask." Tests + screenshots; keep CI green.
+```
+
+Then: run `bash tools/setup_release_keys.sh` on the Mac (sets all signing secrets), merge PR #1, tag `v0.1.0`.
+
 ## Status (2026-11-26, overnight)
 
 All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux, macOS and Android. Nothing has run on a real device yet.
