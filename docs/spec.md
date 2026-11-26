@@ -99,6 +99,7 @@ protocol UfuqModule: Identifiable {
 }
 ```
 
+- In `UfuqCore` the protocol is UI-free (no `AnyView`): `refresh()` and `collapsedActivity(at:)` throw, and the Mac app adds the two view methods in a SwiftUI protocol that refines it.
 - **NotchController**: the `NSPanel`, its state, and positioning per screen
 - **ActivityArbiter**: chooses what goes in each wing and rotates a third activity
 - **PeekQueue**: one peek at a time; critical alerts jump the queue
