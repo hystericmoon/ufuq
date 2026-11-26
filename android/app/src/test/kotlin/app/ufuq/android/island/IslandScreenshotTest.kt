@@ -1,0 +1,89 @@
+package app.ufuq.android.island
+
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
+import androidx.test.ext.junit.runners.AndroidJUnit4
+import app.ufuq.android.Fixtures
+import app.ufuq.android.PhoneWall
+import app.ufuq.android.TestStrings
+import app.ufuq.android.capture
+import app.ufuq.core.UsageLevel
+import app.ufuq.core.PeekEvent
+import org.junit.Test
+import org.junit.runner.RunWith
+import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
+import java.time.Duration
+
+/** The island as the overlay draws it, one shot per state in the plan's A2 "done when". Linux renders. */
+@RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
+@Config(qualifiers = "w360dp-h640dp-xhdpi")
+class IslandScreenshotTest {
+    private val prayerPage get() = IslandPages.prayer(Fixtures.oneHourTwelve, muted = false, TestStrings)
+    private val allPages get() = IslandPages.all(Fixtures.oneHourTwelve, false, null, TestStrings)
+
+    private fun page(index: Int, pages: List<IslandPageModel>, fontScale: Float = 1f, name: String) =
+        capture(name) { PhoneWall(fontScale) { ExpandedIsland(pages, onAction = {}, onDismiss = {}, initialPage = index) } }
+
+    @Test fun collapsedPill() = capture("island-01-collapsed-pill") {
+        PhoneWall {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                IslandPill(PillModel("Ashar 15:12", "1:12", UsageLevel.NORMAL, false, "Ashar in 1 hour 12 minutes"), gapDp = 46, onClick = {})
+            }
+        }
+    }
+
+    @Test fun collapsedPillWithAiAmber() = capture("island-02-collapsed-pill-ai") {
+        PhoneWall {
+            Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+                IslandPill(PillModel("Ashar 15:12", "82%", UsageLevel.WARNING, false, "Ashar in 1 hour 12 minutes. Claude 82 percent"), gapDp = 46, onClick = {})
+            }
+        }
+    }
+
+    @Test fun expandedPrayerNormal() = page(0, allPages, name = "island-03-expanded-a-prayer")
+
+    @Test fun expandedPrayerUnderTenMinutes() =
+        page(0, listOf(IslandPages.prayer(Fixtures.underTen, false, TestStrings)), name = "island-04-expanded-a-under-10min")
+
+    @Test fun expandedPrayerMuted() =
+        page(0, listOf(IslandPages.prayer(Fixtures.oneHourTwelve, true, TestStrings)), name = "island-05-expanded-a-muted")
+
+    @Test fun expandedPrayerFont200() = page(0, allPages, fontScale = 2f, name = "island-06-expanded-a-font200")
+
+    @Test fun expandedUsageEmpty() = page(1, allPages, name = "island-07-expanded-b-empty")
+
+    @Test fun expandedUsage82() = page(
+        0, listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72)), TestStrings)), name = "island-08-expanded-b-82",
+    )
+
+    @Test fun expandedUsage96() = page(
+        0, listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.96, Duration.ofMinutes(25)), TestStrings)), name = "island-09-expanded-b-96-red",
+    )
+
+    @Test fun expandedMediaPlaceholder() = page(2, allPages, name = "island-10-expanded-c-media")
+
+    @Test fun peek() = capture("island-11-peek") {
+        PhoneWall {
+            Box(Modifier.padding(0.dp)) {
+                IslandPeek(PeekEvent("p", "prayer", "Ashar", "in 10 minutes, at 15:12"), onDismiss = {}, onHold = {})
+            }
+        }
+    }
+
+    @Test fun reducedMotionRendersTheSame() = capture("island-12-expanded-reduced-motion") {
+        PhoneWall {
+            androidx.compose.runtime.CompositionLocalProvider(LocalReduceMotion provides true) {
+                IslandContent(
+                    mode = IslandMode.Expanded, pill = null, pages = allPages, gapDp = 0, onPillClick = {}, onAction = {},
+                    onClose = {}, onPeekDismiss = {}, onPeekHold = {},
+                )
+            }
+        }
+    }
+}
