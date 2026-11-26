@@ -25,6 +25,10 @@ Core package (Linux or Mac), from `UfuqCore/`:
 - Build: `swift build`
 - Test: `swift test`
 
+Android (from `android/`; JDK 17 or newer, `export ANDROID_HOME=/opt/android-sdk` once the app module exists):
+
+- Test the Kotlin core: `./gradlew :core:test`
+
 Mac app (Xcode required). The Xcode project is generated from `project.yml` and not committed. From the repo root:
 
 - Generate: `brew install xcodegen && xcodegen generate` (rerun after adding or removing files)
