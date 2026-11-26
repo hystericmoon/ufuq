@@ -180,3 +180,139 @@ final class UsageModelTests: XCTestCase {
         XCTAssertFalse(none.status.isAvailable)
     }
 }
+
+final class UsageHardeningTests: XCTestCase {
+    private func line(_ id: String, _ ts: String = "2026-11-26T10:00:00Z", out: String = "1", req: String? = nil) -> String {
+        let r = req.map { #""requestId":"\#($0)","# } ?? ""
+        return #"{"type":"assistant","timestamp":"\#(ts)",\#(r)"message":{"id":"\#(id)","usage":{"output_tokens":\#(out)}}}"#
+    }
+
+    private func tempDir() throws -> String {
+        let dir = NSTemporaryDirectory() + "ufuq-\(UUID().uuidString)"
+        try FileManager.default.createDirectory(atPath: dir, withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: dir) }
+        return dir
+    }
+
+    func testTokenArithmeticSaturatesInsteadOfTrapping() {
+        let big = TokenCounts(input: Int.max, output: Int.max, cacheCreation: Int.max, cacheRead: Int.max)
+        XCTAssertEqual(big.total, Int.max)
+        XCTAssertEqual((big + big).input, Int.max)
+    }
+
+    func testHugeTokenValuesDoNotOverflowAcrossManyEntries() throws {
+        let lines = (0..<20_000).map { line("m\($0)", out: "999999999999999") }
+        let report = try XCTUnwrap(ClaudeLogParser.parse(files: [Data(lines.joined(separator: "\n").utf8)]).value)
+        XCTAssertEqual(report.blocks.first?.tokens.output, Int.max)
+        _ = report.weeklyTokens(at: utc("2026-11-26T12:00:00Z")).total
+    }
+
+    func testPartialLastLineIsNotCountedAsCorruption() throws {
+        let data = Data((line("a") + "\n" + #"{"type":"assistant","timestamp":"2026-11-26T10:0"#).utf8)
+        let report = try XCTUnwrap(ClaudeLogParser.parse(files: [data]).value)
+        XCTAssertEqual(report.skippedLines, 0)
+        XCTAssertEqual(report.entries.count, 1)
+        // A file that is only a half-written first line is empty, not "unavailable".
+        let only = Data(#"{"type":"assist"#.utf8)
+        XCTAssertNotNil(ClaudeLogParser.parse(files: [only]).value)
+    }
+
+    func testCompleteBadLineStillCounted() throws {
+        let data = Data((line("a") + "\nnot json\n" + line("b")).utf8)
+        XCTAssertEqual(ClaudeLogParser.parse(files: [data]).value?.skippedLines, 1)
+    }
+
+    func testBOMAndCRLFAreTolerated() throws {
+        let data = Data([0xEF, 0xBB, 0xBF] + Array((line("a") + "\r\n" + line("b") + "\r\n").utf8))
+        let report = try XCTUnwrap(ClaudeLogParser.parse(files: [data]).value)
+        XCTAssertEqual(report.entries.count, 2)
+        XCTAssertEqual(report.skippedLines, 0)
+    }
+
+    func testDeeplyNestedAndInvalidUTF8LinesDoNotCrash() throws {
+        let deep = String(repeating: "[", count: 200_000)
+        var bytes = Array((deep + "\n").utf8)
+        bytes += [0xFF, 0xFE, 0x7B, 0x0A]
+        bytes += Array(line("ok").utf8)
+        let report = try XCTUnwrap(ClaudeLogParser.parse(files: [Data(bytes)]).value)
+        XCTAssertEqual(report.entries.count, 1)
+    }
+
+    func testDedupeKeysDoNotCollideBetweenMessageIdAndRequestId() throws {
+        let a = #"{"type":"assistant","timestamp":"2026-11-26T10:00:00Z","message":{"id":"x","usage":{"output_tokens":1}}}"#
+        let b = #"{"type":"assistant","timestamp":"2026-11-26T10:00:01Z","requestId":"x","message":{"usage":{"output_tokens":1}}}"#
+        let report = try XCTUnwrap(ClaudeLogParser.parse(files: [Data([a, b].joined(separator: "\n").utf8)]).value)
+        XCTAssertEqual(report.entries.count, 2)
+    }
+
+    func testEpochTimestampsAreAccepted() throws {
+        XCTAssertEqual(JSONLines.date(1_796_000_000), Date(timeIntervalSince1970: 1_796_000_000))
+        XCTAssertEqual(JSONLines.date(1_796_000_000_000), Date(timeIntervalSince1970: 1_796_000_000))
+        XCTAssertNil(JSONLines.date(Double.nan))
+        XCTAssertNil(JSONLines.date(-5))
+        XCTAssertEqual(JSONLines.date("2026-11-26T17:00:00+07:00"), utc("2026-11-26T10:00:00Z"))
+    }
+
+    func testDirectoryNamedLikeLogIsNotAFailedFile() throws {
+        let dir = try tempDir()
+        let proj = dir + "/projects/p"
+        try FileManager.default.createDirectory(atPath: proj + "/weird.jsonl", withIntermediateDirectories: true)
+        try line("a").write(toFile: proj + "/ok.jsonl", atomically: true, encoding: .utf8)
+        let report = try XCTUnwrap(ClaudeLogParser.parse(configDir: dir).value)
+        XCTAssertEqual(report.filesFailed, 0)
+        XCTAssertEqual(report.filesRead, 1)
+    }
+
+    func testTildeConfigDirIsExpanded() throws {
+        let home = NSHomeDirectory()
+        let name = ".ufuq-test-\(UUID().uuidString)"
+        let dir = home + "/" + name
+        try FileManager.default.createDirectory(atPath: dir + "/projects", withIntermediateDirectories: true)
+        addTeardownBlock { try? FileManager.default.removeItem(atPath: dir) }
+        try line("a").write(toFile: dir + "/projects/a.jsonl", atomically: true, encoding: .utf8)
+        XCTAssertEqual(ClaudeLogParser.parse(configDir: "~/" + name).value?.entries.count, 1)
+    }
+
+    func testOversizedFileIsReadFromItsTailOnWholeLines() throws {
+        let dir = try tempDir()
+        let path = dir + "/big.jsonl"
+        let lines = (0..<200).map { line("m\($0)") }
+        try lines.joined(separator: "\n").write(toFile: path, atomically: true, encoding: .utf8)
+        let src = LocalFileSource(maxFileBytes: 2_000)
+        let data = try src.read(path)
+        XCTAssertLessThanOrEqual(data.count, 2_000)
+        let objects = JSONLines.objects(in: data)
+        XCTAssertFalse(objects.isEmpty)
+        XCTAssertTrue(objects.allSatisfy { $0 != nil }, "tail must start on a line boundary")
+        XCTAssertTrue(String(decoding: data, as: UTF8.self).contains("m199"))
+    }
+
+    func testCodexPicksLatestByTimestampNotFileOrder() throws {
+        func rollout(_ ts: String, _ pct: Int) -> String {
+            #"{"timestamp":"\#(ts)","payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":\#(pct),"window_minutes":300}}}}"#
+        }
+        let src = InMemoryFileSource(strings: [
+            "/s/2026/11/26/rollout-b.jsonl": rollout("2026-11-26T08:00:00Z", 10),
+            "/s/2026/11/20/rollout-a.jsonl": rollout("2026-11-26T09:00:00Z", 55) + "\n" + rollout("2026-11-26T07:00:00Z", 5),
+        ])
+        let limits = try XCTUnwrap(CodexParser.parse(sessionsDir: "/s", source: src).value)
+        XCTAssertEqual(limits.readings.first?.snapshot.fraction ?? 0, 0.55, accuracy: 1e-9)
+    }
+
+    func testCodexResetsAtMillisecondsAndOversizedPercent() throws {
+        let l = #"{"timestamp":"2026-11-26T10:00:00Z","payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":"140","window_minutes":300,"resets_at":1796000000000},"secondary":{"used_percent":null}}}}"#
+        let limits = try XCTUnwrap(CodexParser.parse(files: [Data(l.utf8)]).value)
+        XCTAssertEqual(limits.readings.count, 1)
+        XCTAssertEqual(limits.readings[0].snapshot.resetsAt, Date(timeIntervalSince1970: 1_796_000_000))
+        XCTAssertEqual(UsageSummary.worstPercent(of: limits.readings), 100)
+    }
+
+    func testCodexFutureTimestampDoesNotPinSnapshotForever() throws {
+        func rollout(_ ts: String, _ pct: Int) -> String {
+            #"{"timestamp":"\#(ts)","payload":{"type":"token_count","rate_limits":{"primary":{"used_percent":\#(pct),"window_minutes":300}}}}"#
+        }
+        let data = Data([rollout("2099-01-01T00:00:00Z", 99), rollout("2026-11-26T10:00:00Z", 20)].joined(separator: "\n").utf8)
+        let limits = try XCTUnwrap(CodexParser.parse(files: [data], now: utc("2026-11-26T12:00:00Z")).value)
+        XCTAssertEqual(limits.readings.first?.snapshot.fraction ?? 0, 0.20, accuracy: 1e-9)
+    }
+}

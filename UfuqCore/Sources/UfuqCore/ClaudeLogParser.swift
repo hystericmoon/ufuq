@@ -13,11 +13,17 @@ public struct TokenCounts: Equatable, Sendable {
         self.cacheRead = cacheRead
     }
 
-    public var total: Int { input + output + cacheCreation + cacheRead }
+    public var total: Int { Self.add(Self.add(input, output), Self.add(cacheCreation, cacheRead)) }
 
     public static func + (a: TokenCounts, b: TokenCounts) -> TokenCounts {
-        TokenCounts(input: a.input + b.input, output: a.output + b.output,
-                    cacheCreation: a.cacheCreation + b.cacheCreation, cacheRead: a.cacheRead + b.cacheRead)
+        TokenCounts(input: add(a.input, b.input), output: add(a.output, b.output),
+                    cacheCreation: add(a.cacheCreation, b.cacheCreation), cacheRead: add(a.cacheRead, b.cacheRead))
+    }
+
+    /// Saturating add: corrupt logs must not trap the app.
+    private static func add(_ a: Int, _ b: Int) -> Int {
+        let (sum, overflow) = a.addingReportingOverflow(b)
+        return overflow ? (a < 0 ? Int.min : Int.max) : sum
     }
 }
 
@@ -72,9 +78,9 @@ public enum ClaudeLogParser {
         return (home as NSString).appendingPathComponent(".claude")
     }
 
-    /// Reads every `projects/**/*.jsonl` under `configDir`.
+    /// Reads every `projects/**/*.jsonl` under `configDir` (`~` is expanded), one file at a time.
     public static func parse(configDir: String, source: FileSource = LocalFileSource()) -> UsageResult<ClaudeUsageReport> {
-        let projects = (configDir as NSString).appendingPathComponent("projects")
+        let projects = ((configDir as NSString).expandingTildeInPath as NSString).appendingPathComponent("projects")
         let paths: [String]
         do {
             paths = try source.files(under: projects, suffix: ".jsonl")
@@ -82,33 +88,42 @@ public enum ClaudeLogParser {
             return .unavailable(reason: "Claude logs not readable: \(error)")
         }
 
-        var datas: [Data] = []
+        var acc = Accumulator()
         var failed = 0
         for path in paths {
-            if let data = try? source.read(path) { datas.append(data) } else { failed += 1 }
+            if let data = try? source.read(path) { acc.ingest(data) } else { failed += 1 }
         }
-        if !paths.isEmpty, datas.isEmpty {
+        if !paths.isEmpty, acc.filesRead == 0 {
             return .unavailable(reason: "No Claude log file could be read (\(failed) failed)")
         }
-        return parse(files: datas, filesFailed: failed)
+        return acc.finish(filesFailed: failed)
     }
 
     /// Parses raw JSONL file contents.
     public static func parse(files: [Data], filesFailed: Int = 0) -> UsageResult<ClaudeUsageReport> {
+        var acc = Accumulator()
+        for data in files { acc.ingest(data) }
+        return acc.finish(filesFailed: filesFailed)
+    }
+
+    /// Folds files in one at a time so only the deduplicated entries stay in memory.
+    private struct Accumulator {
         var byKey: [String: ClaudeUsageEntry] = [:]
         var keyless: [ClaudeUsageEntry] = []
         var skipped = 0
         var duplicates = 0
         var validObjects = 0
+        var filesRead = 0
 
-        for data in files {
-            for object in JSONLines.objects(in: data) {
-                guard let object else { skipped += 1; continue }
+        mutating func ingest(_ data: Data) {
+            filesRead += 1
+            JSONLines.forEachObject(in: data) { object in
+                guard let object else { skipped += 1; return }
                 validObjects += 1
                 guard (object["type"] as? String) == "assistant",
                       let message = object["message"] as? [String: Any],
-                      let usage = message["usage"] as? [String: Any] else { continue }
-                guard let timestamp = JSONLines.date(object["timestamp"]) else { skipped += 1; continue }
+                      let usage = message["usage"] as? [String: Any] else { return }
+                guard let timestamp = JSONLines.date(object["timestamp"]) else { skipped += 1; return }
 
                 let tokens = TokenCounts(
                     input: max(JSONLines.int(usage["input_tokens"]) ?? 0, 0),
@@ -117,8 +132,10 @@ public enum ClaudeLogParser {
                     cacheRead: max(JSONLines.int(usage["cache_read_input_tokens"]) ?? 0, 0))
                 let entry = ClaudeUsageEntry(timestamp: timestamp, model: message["model"] as? String, tokens: tokens)
 
-                let ids = [message["id"] as? String, object["requestId"] as? String].compactMap { $0 }
-                if ids.isEmpty { keyless.append(entry); continue }
+                // Prefixes keep a message id "x" apart from a request id "x".
+                let ids = [(message["id"] as? String).map { "m:" + $0 }, (object["requestId"] as? String).map { "r:" + $0 }]
+                    .compactMap { $0 }
+                if ids.isEmpty { keyless.append(entry); return }
                 let key = ids.joined(separator: "|")
                 if let existing = byKey[key] {
                     duplicates += 1
@@ -130,15 +147,16 @@ public enum ClaudeLogParser {
             }
         }
 
-        if validObjects == 0, skipped > 0 {
-            return .unavailable(reason: "Claude logs are not valid JSONL (\(skipped) bad lines)")
+        func finish(filesFailed: Int) -> UsageResult<ClaudeUsageReport> {
+            if validObjects == 0, skipped > 0 {
+                return .unavailable(reason: "Claude logs are not valid JSONL (\(skipped) bad lines)")
+            }
+            let entries = (Array(byKey.values) + keyless).sorted { $0.timestamp < $1.timestamp }
+            return .available(ClaudeUsageReport(
+                blocks: ClaudeLogParser.blocks(from: entries), entries: entries,
+                filesRead: filesRead, filesFailed: filesFailed,
+                skippedLines: skipped, duplicatesDropped: duplicates))
         }
-
-        let entries = (Array(byKey.values) + keyless).sorted { $0.timestamp < $1.timestamp }
-        return .available(ClaudeUsageReport(
-            blocks: blocks(from: entries), entries: entries,
-            filesRead: files.count, filesFailed: filesFailed,
-            skippedLines: skipped, duplicatesDropped: duplicates))
     }
 
     static func floorToHour(_ date: Date) -> Date {
