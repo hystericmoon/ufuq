@@ -160,7 +160,7 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         graph.peeks.tick(now)
         pill = PillMapper.from(graph.arbiter.layout(graph.registry.activities(now), now), now)
         val progress = PrayerProgress.at(now, graph.prayer)
-        pages = IslandPages.all(progress, muted, usage = null, strings = strings)
+        pages = IslandPages.all(progress, muted, usage = null, strings = strings) + listOfNotNull(graph.otherApps.page(now))
         val current = graph.peeks.current
         if (current?.id != lastPeekId) {
             lastPeekId = current?.id
@@ -294,6 +294,10 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                 )
             }
             ButtonAction.REFRESH -> scope?.launch { tick() }
+            ButtonAction.OPEN_SOURCE -> {
+                collapse()
+                graph.otherApps.openCurrent()
+            }
         }
     }
 

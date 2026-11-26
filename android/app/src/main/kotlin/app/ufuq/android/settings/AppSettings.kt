@@ -21,6 +21,10 @@ data class AppSettings(
     val adhanLeadMinutes: Int = DEFAULT_LEAD_MINUTES,
     /** The island's mute-adhan button. */
     val adhanMuted: Boolean = false,
+    /** Beta: other apps' ongoing notifications in the island. Off by default. */
+    val otherAppsEnabled: Boolean = false,
+    /** Package names the user allowed; the only thing of this feature that is stored. */
+    val otherAppsAllowed: Set<String> = emptySet(),
 ) {
     val location: PrayerLocation
         get() = PrayerLocation(cityName, latitude, longitude, runCatching { ZoneId.of(zoneId) }.getOrDefault(ZoneId.systemDefault()))

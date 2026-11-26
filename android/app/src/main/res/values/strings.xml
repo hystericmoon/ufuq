@@ -69,4 +69,33 @@
     <string name="overlay_alternative">You can turn it off any time in Settings. The Live Update chip shows the same countdown without this permission, and is the best choice with a screen reader.</string>
     <string name="overlay_continue">Open Android settings</string>
     <string name="overlay_cancel">Not now</string>
+
+    <!-- A7: other apps in the island (Beta) -->
+    <string name="other_section">Other apps in the island (Beta)</string>
+    <string name="other_switch">Other apps in the island</string>
+    <string name="other_switch_hint">Rides, deliveries and timers from apps you choose. Off by default.</string>
+    <string name="other_switch_on_hint">Only the apps you tick below show here.</string>
+    <string name="other_learn_more">What this reads</string>
+    <string name="other_needs_access">Needs notification access to see ongoing notifications.</string>
+    <string name="other_grant">Grant notification access</string>
+    <string name="other_apps_heading">Apps allowed in the island</string>
+    <string name="other_apps_empty">None yet. An app appears here after it shows a ride, delivery, timer or progress notification.</string>
+    <string name="other_title">Show other apps in the island</string>
+    <string name="other_beta">Beta</string>
+    <string name="other_read">Ufuq reads the title and progress of ongoing notifications, such as a ride, a delivery, a timer or a download, from the apps you choose.</string>
+    <string name="other_not_read">It does not read messages, chats or any other notification, and ignores apps you have not chosen, media (shown separately) and calls.</string>
+    <string name="other_stored">Nothing is stored or sent. Ufuq has no internet access and keeps only the list of apps you chose.</string>
+    <string name="other_choose">This uses Android’s notification access, the same permission the media page needs. After you grant it, tick the apps to show in Settings. You can turn it off any time.</string>
+    <string name="other_continue">Grant notification access</string>
+    <string name="other_turn_on">Turn on</string>
+    <string name="other_minutes">%1$d min</string>
+    <plurals name="other_minutes_left_spoken">
+        <item quantity="one">%1$d minute left</item>
+        <item quantity="other">%1$d minutes left</item>
+    </plurals>
+    <plurals name="other_minutes_elapsed_spoken">
+        <item quantity="one">%1$d minute elapsed</item>
+        <item quantity="other">%1$d minutes elapsed</item>
+    </plurals>
+    <string name="other_open">Open %1$s</string>
 </resources>

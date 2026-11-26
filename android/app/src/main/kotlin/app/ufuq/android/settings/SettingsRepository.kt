@@ -41,6 +41,8 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
             liveUpdateEnabled = p[LIVE_UPDATE] ?: d.liveUpdateEnabled,
             adhanLeadMinutes = p[LEAD] ?: d.adhanLeadMinutes,
             adhanMuted = p[MUTED] ?: d.adhanMuted,
+            otherAppsEnabled = p[OTHER_APPS] ?: d.otherAppsEnabled,
+            otherAppsAllowed = p[OTHER_ALLOWED] ?: d.otherAppsAllowed,
         )
     }
 
@@ -55,6 +57,8 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         p[LIVE_UPDATE] = s.liveUpdateEnabled
         p[LEAD] = s.adhanLeadMinutes
         p[MUTED] = s.adhanMuted
+        p[OTHER_APPS] = s.otherAppsEnabled
+        p[OTHER_ALLOWED] = s.otherAppsAllowed
     }
 
     private companion object {
@@ -68,5 +72,7 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val LIVE_UPDATE = booleanPreferencesKey("live_update")
         val LEAD = intPreferencesKey("adhan_lead")
         val MUTED = booleanPreferencesKey("adhan_muted")
+        val OTHER_APPS = booleanPreferencesKey("other_apps")
+        val OTHER_ALLOWED = androidx.datastore.preferences.core.stringSetPreferencesKey("other_apps_allowed")
     }
 }

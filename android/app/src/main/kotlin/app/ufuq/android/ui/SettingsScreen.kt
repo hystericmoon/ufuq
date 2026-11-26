@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.ufuq.android.R
+import app.ufuq.android.activities.SeenApp
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.Cities
 import app.ufuq.core.prayer.CalcMethod
@@ -51,6 +52,10 @@ data class SettingsActions(
     val onOverlay: (Boolean) -> Unit = {},
     val onLiveUpdate: (Boolean) -> Unit = {},
     val onLead: (Int) -> Unit = {},
+    val onOtherApps: (Boolean) -> Unit = {},
+    val onOtherAppAllow: (String, Boolean) -> Unit = { _, _ -> },
+    val onOtherAppsLearnMore: () -> Unit = {},
+    val onOtherAppsGrant: () -> Unit = {},
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -61,6 +66,8 @@ fun SettingsScreen(
     locationMessage: String?,
     overlayPermissionGranted: Boolean,
     modifier: Modifier = Modifier,
+    otherAppsAccessGranted: Boolean = false,
+    otherApps: List<SeenApp> = emptyList(),
 ) {
     Column(
         modifier
@@ -98,6 +105,17 @@ fun SettingsScreen(
             ),
             checked = settings.overlayEnabled,
             onChange = actions.onOverlay,
+        )
+
+        OtherAppsSection(
+            enabled = settings.otherAppsEnabled,
+            accessGranted = otherAppsAccessGranted,
+            apps = otherApps,
+            allowed = settings.otherAppsAllowed,
+            onToggle = actions.onOtherApps,
+            onAllow = actions.onOtherAppAllow,
+            onLearnMore = actions.onOtherAppsLearnMore,
+            onGrantAccess = actions.onOtherAppsGrant,
         )
 
         Section(stringResource(R.string.settings_location))
@@ -162,7 +180,7 @@ private fun methodName(method: CalcMethod): String = when (method) {
 }
 
 @Composable
-private fun Section(title: String) {
+internal fun Section(title: String) {
     Text(
         title,
         color = Tokens.Secondary,
@@ -173,7 +191,7 @@ private fun Section(title: String) {
 }
 
 @Composable
-private fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+internal fun SwitchRow(title: String, subtitle: String, checked: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         Modifier
             .fillMaxWidth()

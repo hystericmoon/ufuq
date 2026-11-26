@@ -12,10 +12,10 @@ import kotlin.math.ceil
 
 enum class IslandIcon { SUN, BELL, BELL_OFF, REFRESH, PHONE, PLAY, PAUSE }
 
-enum class IslandPageId { PRAYER, AI_USAGE, MEDIA }
+enum class IslandPageId { PRAYER, AI_USAGE, MEDIA, OTHER }
 
 /** What a page's round button does; the service and the app decide how. */
-enum class ButtonAction { TOGGLE_MUTE, OPEN_APP, REFRESH }
+enum class ButtonAction { TOGGLE_MUTE, OPEN_APP, REFRESH, OPEN_SOURCE }
 
 /** Texts the models need, so the mapping stays free of Android resources and is unit-testable. */
 interface IslandStrings {

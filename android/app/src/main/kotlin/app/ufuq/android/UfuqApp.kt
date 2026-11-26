@@ -14,6 +14,7 @@ class UfuqApp : Application() {
 
     override fun onCreate() {
         super.onCreate()
+        graph.bindOtherApps(scope)
         // Every settings change reaches the prayer module, the Live Update chip and the island.
         scope.launch {
             graph.settings.settings.distinctUntilChanged().collect { s ->

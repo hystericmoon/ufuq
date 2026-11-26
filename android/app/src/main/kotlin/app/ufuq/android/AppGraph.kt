@@ -1,6 +1,9 @@
 package app.ufuq.android
 
 import android.content.Context
+import app.ufuq.android.activities.ActivitiesListenerAdapter
+import app.ufuq.android.activities.AndroidActivityStrings
+import app.ufuq.android.activities.OtherAppsModule
 import app.ufuq.android.live.LiveUpdateController
 import app.ufuq.android.island.IslandController
 import app.ufuq.android.settings.AppSettings
@@ -9,13 +12,18 @@ import app.ufuq.core.ActivityArbiter
 import app.ufuq.core.ModuleRegistry
 import app.ufuq.core.PeekQueue
 import app.ufuq.core.prayer.PrayerModule
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.launch
 import java.time.Duration
 
 /** Manual wiring (no Hilt): one instance per process, built lazily by [UfuqApp]. */
 class AppGraph(val context: Context) {
     val settings = SettingsRepository(context)
     val prayer = PrayerModule()
-    val registry = ModuleRegistry().also { it.register(prayer) }
+    /** A7: the notification listener calls this adapter (in memory only). */
+    val activities = ActivitiesListenerAdapter(context)
+    val otherApps = OtherAppsModule(AndroidActivityStrings(context), context.packageName)
+    val registry = ModuleRegistry().also { it.register(prayer); it.register(otherApps) }
     val arbiter = ActivityArbiter()
     val peeks = PeekQueue()
     val island = IslandController()
@@ -26,6 +34,14 @@ class AppGraph(val context: Context) {
         prayer.location = s.location
         prayer.settings = s.calculation
         prayer.preAdhanLead = Duration.ofMinutes(s.adhanLeadMinutes.toLong())
+    }
+
+    /** A7: keeps the other-apps module in step with the listener and the allow list. */
+    fun bindOtherApps(scope: kotlinx.coroutines.CoroutineScope) {
+        scope.launch {
+            combine(activities.ongoing, settings.settings) { list, s -> Triple(list, s.otherAppsEnabled, s.otherAppsAllowed) }
+                .collect { (list, enabled, allowed) -> otherApps.update(list, enabled, allowed) }
+        }
     }
 
     suspend fun currentSettings(): AppSettings = settings.current().also(::apply)
