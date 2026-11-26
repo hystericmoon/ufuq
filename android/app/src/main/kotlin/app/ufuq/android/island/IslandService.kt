@@ -12,6 +12,7 @@ import android.content.res.Configuration
 import android.graphics.PixelFormat
 import android.os.Build
 import android.os.IBinder
+import android.os.SystemClock
 import android.provider.Settings
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
@@ -115,6 +116,8 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
             // The window is as wide as the screen while open and wraps the pill otherwise.
             s.launch { snapshotFlow { expanded || peek != null }.collect { applyLayout() } }
             s.launch { graph.island.expandRequests.collect { expand() } }
+            // A track change or play/pause updates the page and the pill at once.
+            s.launch { graph.media.state.collect { tick() } }
             s.launch {
                 // Switching the island off in Settings stops the service.
                 graph.settings.settings.collect { if (!it.overlayEnabled) stopSelf() }
@@ -160,7 +163,10 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         graph.peeks.tick(now)
         pill = PillMapper.from(graph.arbiter.layout(graph.registry.activities(now), now), now)
         val progress = PrayerProgress.at(now, graph.prayer)
-        pages = IslandPages.all(progress, muted, usage = null, strings = strings) + listOfNotNull(graph.otherApps.page(now))
+        pages = IslandPages.all(
+            progress, muted, usage = null, strings = strings,
+            mediaState = graph.media.state.value, mediaAccess = graph.media.accessGranted(), elapsedNowMs = SystemClock.elapsedRealtime(),
+        ) + listOfNotNull(graph.otherApps.page(now))
         val current = graph.peeks.current
         if (current?.id != lastPeekId) {
             lastPeekId = current?.id
@@ -206,6 +212,7 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                             onPeekDismiss = { graph.peeks.dismissCurrent(Instant.now()); peek = graph.peeks.current },
                             onPeekHold = { graph.peeks.setHovering(it, Instant.now()) },
                             onInteract = ::armCollapse,
+                            onSeek = ::onSeek,
                         )
                     }
                 }
@@ -298,7 +305,23 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                 collapse()
                 graph.otherApps.openCurrent()
             }
+            ButtonAction.PLAY_PAUSE -> graph.media.togglePlayPause()
+            ButtonAction.ALLOW_MEDIA_ACCESS -> {
+                collapse()
+                startActivity(
+                    Intent(this, MainActivity::class.java).setAction(MainActivity.ACTION_ALLOW_MEDIA)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                )
+            }
         }
+    }
+
+    /** A drag or TalkBack step on the media slider: [fraction] of the track. */
+    private fun onSeek(fraction: Float) {
+        val media = graph.media
+        val duration = media.state.value?.takeIf { it.seekable }?.durationMs ?: return
+        media.seekTo((fraction.coerceIn(0f, 1f) * duration).toLong())
+        scope?.launch { tick() }
     }
 
     private fun startInForeground() {

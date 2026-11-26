@@ -22,9 +22,27 @@
     <string name="island_pair_title">Pair with your Mac</string>
     <string name="island_pair_hint">AI usage</string>
     <string name="island_pair_description">AI usage. Pair with your Mac to see your limits here.</string>
-    <string name="island_media_title">Media</string>
-    <string name="island_media_hint">Soon</string>
-    <string name="island_media_description">Media. Coming soon.</string>
+    <string name="island_media_empty">Play something to control it here</string>
+    <string name="island_media_empty_description">Media. Play something to control it here.</string>
+    <string name="island_allow_access">Allow access</string>
+    <string name="island_seek_action">Seek</string>
+    <string name="island_play">Play</string>
+    <string name="island_pause">Pause</string>
+    <string name="island_media_seek">Seek, %1$s</string>
+    <string name="island_media_seek_artist">Seek, %1$s by %2$s</string>
+    <string name="island_media_position">%1$s of %2$s</string>
+    <string name="listener_title">Notification access</string>
+    <string name="listener_what">The island can show what is playing, with a seek bar and a play/pause button, for music, podcasts and video in any app.</string>
+    <string name="listener_reads">To do that Android asks for “Notification access”. Ufuq reads the media session (title, position, play state). If you also turn on “Other apps in the island”, it reads the title and progress of ongoing notifications from the apps you choose. It never reads messages or chats.</string>
+    <string name="listener_privacy">Nothing is stored or sent; this never leaves your phone. You can turn it off any time in Android settings.</string>
+    <string name="listener_continue">Open Android settings</string>
+    <string name="listener_cancel">Not now</string>
+    <string name="listener_service_label">Ufuq media and activities</string>
+    <string name="settings_media">Media on the island</string>
+    <string name="settings_media_on">Allowed. Shows what is playing and lets you seek and pause.</string>
+    <string name="settings_media_off">Needs notification access. Reads only media sessions.</string>
+    <string name="settings_media_manage">Manage access</string>
+    <string name="settings_media_allow">Allow access</string>
     <string name="island_percent">%1$d%%</string>
     <string name="island_percent_spoken">%1$d percent</string>
     <string name="island_prayer_description">%1$s in %2$s, %3$d percent of the time since the previous prayer</string>
@@ -65,7 +83,7 @@
     <string name="overlay_title">Show the island over other apps</string>
     <string name="overlay_what">The island is a small black pill at your camera that shows the next prayer, and opens into a card when you tap it.</string>
     <string name="overlay_why">To draw over other apps, Android asks for the permission “Display over other apps”. Ufuq uses it for the island and nothing else.</string>
-    <string name="overlay_privacy">Ufuq does not read what is on your screen and has no internet access.</string>
+    <string name="overlay_privacy">Ufuq does not read what is on your screen.</string>
     <string name="overlay_alternative">You can turn it off any time in Settings. The Live Update chip shows the same countdown without this permission, and is the best choice with a screen reader.</string>
     <string name="overlay_continue">Open Android settings</string>
     <string name="overlay_cancel">Not now</string>
@@ -84,7 +102,7 @@
     <string name="other_beta">Beta</string>
     <string name="other_read">Ufuq reads the title and progress of ongoing notifications, such as a ride, a delivery, a timer or a download, from the apps you choose.</string>
     <string name="other_not_read">It does not read messages, chats or any other notification, and ignores apps you have not chosen, media (shown separately) and calls.</string>
-    <string name="other_stored">Nothing is stored or sent. Ufuq has no internet access and keeps only the list of apps you chose.</string>
+    <string name="other_stored">Nothing is sent, and the only thing stored is the list of apps you chose.</string>
     <string name="other_choose">This uses Android’s notification access, the same permission the media page needs. After you grant it, tick the apps to show in Settings. You can turn it off any time.</string>
     <string name="other_continue">Grant notification access</string>
     <string name="other_turn_on">Turn on</string>
@@ -127,7 +145,7 @@
     <string name="silence_explain_cancel">Not now</string>
     <string name="background_explain_title">Reach a mosque while the app is closed</string>
     <string name="background_explain_what">Saved mosques work by watching for you coming within 100 m. For this to work when Ufuq is not open, Android needs “Allow all the time” location.</string>
-    <string name="background_explain_why">Ufuq only compares your position with the places you saved. It has no internet access, and nothing leaves your phone. Without it, saved mosques only work while Ufuq is open; the timed silence after each adhan works either way.</string>
+    <string name="background_explain_why">Ufuq only compares your position with the places you saved. Your location never leaves your phone. Without it, saved mosques only work while Ufuq is open; the timed silence after each adhan works either way.</string>
     <string name="background_explain_continue">Continue</string>
     <string name="background_explain_cancel">Not now</string>
 
@@ -139,7 +157,7 @@
     <!-- A4: travel -->
     <string name="travel_title">Travel</string>
     <string name="travel_switch">Follow my location</string>
-    <string name="travel_switch_hint">After you move 25 km or more, Ufuq updates the city and time zone. Coarse location, no internet.</string>
+    <string name="travel_switch_hint">After you move 25 km or more, Ufuq updates the city and time zone. Coarse location, nothing leaves your phone.</string>
     <string name="travel_current_location">Current location</string>
     <string name="travel_updated">Prayer times updated for %1$s</string>
     <string name="channel_travel">Location changes</string>

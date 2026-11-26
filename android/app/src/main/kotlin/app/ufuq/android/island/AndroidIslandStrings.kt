@@ -12,9 +12,14 @@ class AndroidIslandStrings(private val context: Context) : IslandStrings {
     override val pairTitle get() = context.getString(R.string.island_pair_title)
     override val pairHint get() = context.getString(R.string.island_pair_hint)
     override val pairDescription get() = context.getString(R.string.island_pair_description)
-    override val mediaTitle get() = context.getString(R.string.island_media_title)
-    override val mediaHint get() = context.getString(R.string.island_media_hint)
-    override val mediaDescription get() = context.getString(R.string.island_media_description)
+    override val mediaEmpty get() = context.getString(R.string.island_media_empty)
+    override val mediaEmptyDescription get() = context.getString(R.string.island_media_empty_description)
+    override val allowAccess get() = context.getString(R.string.island_allow_access)
+    override val play get() = context.getString(R.string.island_play)
+    override val pause get() = context.getString(R.string.island_pause)
+    override fun mediaSeekDescription(title: String, artist: String?) =
+        if (artist == null) context.getString(R.string.island_media_seek, title) else context.getString(R.string.island_media_seek_artist, title, artist)
+    override fun mediaPositionSpoken(position: String, duration: String) = context.getString(R.string.island_media_position, position, duration)
     override fun percent(value: Int) = context.getString(R.string.island_percent, value)
     override fun percentSpoken(value: Int) = context.getString(R.string.island_percent_spoken, value)
     override fun prayerDescription(name: String, spoken: String, percent: Int) =

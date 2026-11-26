@@ -122,4 +122,35 @@ class IslandSemanticsTest {
         node.performSemanticsAction(SemanticsActions.OnClick)
         assertTrue(dismissed)
     }
+
+    @Test fun seekSliderIsAdjustableWithTenSecondSteps() {
+        val state = app.ufuq.android.media.MediaState("Mishary", durationMs = 210_000, positionMs = 84_000, updatedAtElapsedMs = 0, playing = true)
+        val page = IslandPages.media(state, true, TestStrings, 0)
+        var seeked: Float? = null
+        compose.setContent { PhoneWall { ExpandedIsland(listOf(page), onAction = {}, onDismiss = {}, onSeek = { seeked = it }) } }
+        val node = compose.onNode(hasContentDescription("Seek, Mishary", substring = true))
+        val config = node.fetchSemanticsNode().config
+        assertTrue(SemanticsActions.SetProgress in config) // the adjustable-slider contract
+        val range = config[SemanticsProperties.ProgressBarRangeInfo]
+        assertEquals(0.4f, range.current, 0.01f)
+        assertEquals(20, range.steps) // TalkBack increment/decrement = 210 s / 21 = 10 s
+        assertTrue("1 minute 24 seconds of 3 minutes 30 seconds" in config[SemanticsProperties.StateDescription])
+        node.performSemanticsAction(SemanticsActions.SetProgress) { it(0.5f) }
+        assertEquals(0.5f, seeked)
+    }
+
+    @Test fun usageSliderIsNotInteractive() {
+        val usage = IslandPages.aiUsage(AiUsageSample("Claude", 0.82), TestStrings)
+        compose.setContent { PhoneWall { ExpandedIsland(listOf(usage), onAction = {}, onDismiss = {}) } }
+        val config = compose.onNode(hasContentDescription("Claude, 82 percent", substring = true)).fetchSemanticsNode().config
+        assertTrue(SemanticsActions.SetProgress !in config)
+    }
+
+    @Test fun mediaButtonIsLabelledPlayPause() {
+        var action: ButtonAction? = null
+        val state = app.ufuq.android.media.MediaState("Mishary", durationMs = 210_000, playing = true)
+        compose.setContent { PhoneWall { ExpandedIsland(listOf(IslandPages.media(state, true, TestStrings, 0)), onAction = { action = it }, onDismiss = {}) } }
+        compose.onNodeWithContentDescription("Pause").assertHasClickAction().assertWidthIsAtLeast(48.dp).performClick()
+        assertEquals(ButtonAction.PLAY_PAUSE, action)
+    }
 }

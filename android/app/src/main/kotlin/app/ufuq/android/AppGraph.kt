@@ -6,6 +6,8 @@ import app.ufuq.android.activities.AndroidActivityStrings
 import app.ufuq.android.activities.OtherAppsModule
 import app.ufuq.android.live.LiveUpdateController
 import app.ufuq.android.island.IslandController
+import app.ufuq.android.media.MediaModule
+import app.ufuq.android.media.MediaRepository
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.SettingsRepository
 import app.ufuq.android.live.LiveUpdateStrategy
@@ -25,9 +27,22 @@ class AppGraph(val context: Context) {
     val settings = SettingsRepository(context)
     val prayer = PrayerModule()
     /** A7: the notification listener calls this adapter (in memory only). */
-    val activities = ActivitiesListenerAdapter(context)
+    val activities = ActivitiesListenerAdapter(context).also { adapter ->
+        app.ufuq.android.listener.ListenerRegistry.register(object : app.ufuq.android.listener.ListenerCallback {
+            override fun onConnected(service: android.service.notification.NotificationListenerService) =
+                adapter.onListenerConnected(runCatching { service.activeNotifications }.getOrNull())
+            override fun onDisconnected() = adapter.onListenerDisconnected()
+            override fun onPosted(sbn: android.service.notification.StatusBarNotification) = adapter.onNotificationPosted(sbn)
+            override fun onRemoved(sbn: android.service.notification.StatusBarNotification) = adapter.onNotificationRemoved(sbn)
+        })
+    }
     val otherApps = OtherAppsModule(AndroidActivityStrings(context), context.packageName)
-    val registry = ModuleRegistry().also { it.register(prayer); it.register(otherApps) }
+    val media = MediaRepository(context).also { it.start() }
+    val registry = ModuleRegistry().also {
+        it.register(prayer)
+        it.register(MediaModule(media))
+        it.register(otherApps)
+    }
     val arbiter = ActivityArbiter()
     val peeks = PeekQueue()
     val island = IslandController()
