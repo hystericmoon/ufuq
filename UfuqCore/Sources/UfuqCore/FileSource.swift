@@ -15,7 +15,11 @@ public struct FileSourceError: Error, Equatable, CustomStringConvertible {
 
 /// Real disk access.
 public struct LocalFileSource: FileSource {
-    public init() {}
+    /// Files larger than this are read from their tail (whole lines only): the newest data is
+    /// at the end of an append-only log, and a huge file must not be loaded whole.
+    public var maxFileBytes: Int
+
+    public init(maxFileBytes: Int = 256 * 1024 * 1024) { self.maxFileBytes = max(maxFileBytes, 1) }
 
     public func files(under directory: String, suffix: String) throws -> [String] {
         var isDir: ObjCBool = false
@@ -27,16 +31,40 @@ public struct LocalFileSource: FileSource {
         }
         var result: [String] = []
         for case let relative as String in enumerator where relative.hasSuffix(suffix) {
-            result.append((directory as NSString).appendingPathComponent(relative))
+            let full = (directory as NSString).appendingPathComponent(relative)
+            // Skip directories named like a log and dangling symlinks.
+            var entryIsDir: ObjCBool = false
+            guard FileManager.default.fileExists(atPath: full, isDirectory: &entryIsDir), !entryIsDir.boolValue else { continue }
+            result.append(full)
         }
         return result.sorted()
     }
 
     public func read(_ path: String) throws -> Data {
-        guard let data = FileManager.default.contents(atPath: path) else {
+        // Plain reads, not mmap: a file truncated while mapped would kill the app with SIGBUS.
+        guard let handle = FileHandle(forReadingAtPath: path) else {
             throw FileSourceError("file not readable: \(path)")
         }
-        return data
+        defer { try? handle.close() }
+        do {
+            let size = try handle.seekToEnd()
+            let cap = UInt64(maxFileBytes)
+            if size <= cap {
+                try handle.seek(toOffset: 0)
+                guard let data = try handle.read(upToCount: maxFileBytes) else { return Data() }
+                return data
+            }
+            try handle.seek(toOffset: size - cap)
+            var data = try handle.read(upToCount: maxFileBytes) ?? Data()
+            if let newline = data.firstIndex(of: 0x0A) {
+                data = Data(data[data.index(after: newline)...])
+            } else {
+                data = Data()
+            }
+            return data
+        } catch {
+            throw FileSourceError("file not readable: \(path)")
+        }
     }
 }
 
@@ -73,16 +101,54 @@ public struct InMemoryFileSource: FileSource {
 }
 
 enum JSONLines {
+    /// Calls `body` once per non-blank line: the parsed object, or nil if the line is not a JSON
+    /// object. A final line with no trailing newline that fails to parse is a write in progress
+    /// and is not reported at all.
+    static func forEachObject(in data: Data, _ body: ([String: Any]?) -> Void) {
+        var data = data
+        if data.starts(with: [0xEF, 0xBB, 0xBF]) { data = Data(data.dropFirst(3)) }
+        let endsWithNewline = data.last == 0x0A
+        let slices = data.split(separator: 0x0A, omittingEmptySubsequences: true)
+        for (i, slice) in slices.enumerated() {
+            if slice.allSatisfy({ $0 == 0x20 || $0 == 0x0D || $0 == 0x09 }) { continue }
+            let obj: [String: Any]?
+            if exceedsDepth(slice) {
+                obj = nil
+            } else {
+                obj = (try? JSONSerialization.jsonObject(with: Data(slice))) as? [String: Any]
+            }
+            if obj == nil, !endsWithNewline, i == slices.count - 1 { continue }
+            body(obj)
+        }
+    }
+
     /// Splits on newlines; each line is parsed as a JSON object. Invalid lines come back as nil.
     static func objects(in data: Data) -> [[String: Any]?] {
         var out: [[String: Any]?] = []
-        for slice in data.split(separator: 0x0A, omittingEmptySubsequences: true) {
-            let line = Data(slice)
-            if line.allSatisfy({ $0 == 0x20 || $0 == 0x0D || $0 == 0x09 }) { continue }
-            let obj = try? JSONSerialization.jsonObject(with: line)
-            out.append(obj as? [String: Any])
-        }
+        forEachObject(in: data) { out.append($0) }
         return out
+    }
+
+    /// Real log lines nest a few levels; refuse pathological nesting before it reaches the parser.
+    private static func exceedsDepth(_ line: Data.SubSequence, limit: Int = 128) -> Bool {
+        var depth = 0
+        var inString = false
+        var escaped = false
+        for byte in line {
+            if inString {
+                if escaped { escaped = false } else if byte == 0x5C { escaped = true } else if byte == 0x22 { inString = false }
+                continue
+            }
+            switch byte {
+            case 0x22: inString = true
+            case 0x5B, 0x7B:
+                depth += 1
+                if depth > limit { return true }
+            case 0x5D, 0x7D: depth -= 1
+            default: break
+            }
+        }
+        return false
     }
 
     static func double(_ value: Any?) -> Double? {
@@ -95,11 +161,28 @@ enum JSONLines {
         double(value).flatMap { $0.isFinite && abs($0) < 1e15 ? Int($0) : nil }
     }
 
+    /// Epoch seconds, or milliseconds when the value is too large to be seconds.
+    static func epochDate(_ value: Double) -> Date? {
+        guard value.isFinite, value > 0 else { return nil }
+        let seconds = value >= 1e11 ? value / 1000 : value
+        guard seconds < 1e11 else { return nil }
+        return Date(timeIntervalSince1970: seconds)
+    }
+
+    private nonisolated(unsafe) static let withFraction: ISO8601DateFormatter = {
+        let f = ISO8601DateFormatter()
+        f.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+        return f
+    }()
+    private nonisolated(unsafe) static let plain = ISO8601DateFormatter()
+
+    /// ISO 8601 string (any offset) or epoch number.
     static func date(_ value: Any?) -> Date? {
-        guard let s = value as? String else { return nil }
-        let withFraction = ISO8601DateFormatter()
-        withFraction.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
-        if let d = withFraction.date(from: s) { return d }
-        return ISO8601DateFormatter().date(from: s)
+        if let s = value as? String {
+            if let d = withFraction.date(from: s) { return d }
+            return plain.date(from: s)
+        }
+        if let n = value as? NSNumber { return epochDate(n.doubleValue) }
+        return nil
     }
 }

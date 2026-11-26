@@ -17,7 +17,8 @@ public enum CodexParser {
     /// Reads the newest `maxFiles` rollout files and returns the most recent snapshot.
     public static func parse(sessionsDir: String = defaultSessionsDir(),
                              source: FileSource = LocalFileSource(),
-                             maxFiles: Int = 20) -> UsageResult<CodexRateLimits> {
+                             maxFiles: Int = 20,
+                             now: Date = Date()) -> UsageResult<CodexRateLimits> {
         let paths: [String]
         do {
             paths = try source.files(under: sessionsDir, suffix: ".jsonl")
@@ -30,32 +31,48 @@ public enum CodexParser {
             .prefix(maxFiles)
         guard !rollouts.isEmpty else { return .unavailable(reason: "No Codex session files found") }
 
-        var datas: [Data] = []
+        var acc = Accumulator(now: now)
+        var read = 0
         for path in rollouts {
-            if let data = try? source.read(path) { datas.append(data) }
+            if let data = try? source.read(path) { acc.ingest(data); read += 1 }
         }
-        guard !datas.isEmpty else { return .unavailable(reason: "No Codex session file could be read") }
-        return parse(files: datas)
+        guard read > 0 else { return .unavailable(reason: "No Codex session file could be read") }
+        return acc.finish()
     }
 
-    public static func parse(files: [Data]) -> UsageResult<CodexRateLimits> {
+    /// Snapshots stamped more than a day after `now` are clock skew or corruption and are ignored,
+    /// so one bad line cannot pin the "latest" snapshot forever.
+    public static func parse(files: [Data], now: Date = Date()) -> UsageResult<CodexRateLimits> {
+        var acc = Accumulator(now: now)
+        for data in files { acc.ingest(data) }
+        return acc.finish()
+    }
+
+    private struct Accumulator {
+        var now: Date
         var best: CodexRateLimits?
         var sawSnapshotLine = false
-        for data in files {
-            for object in JSONLines.objects(in: data) {
+
+        mutating func ingest(_ data: Data) {
+            let latestAllowed = now.addingTimeInterval(86_400)
+            JSONLines.forEachObject(in: data) { object in
                 guard let object,
                       let payload = object["payload"] as? [String: Any],
                       (payload["type"] as? String) == "token_count",
                       let limits = payload["rate_limits"] as? [String: Any],
-                      let timestamp = JSONLines.date(object["timestamp"]) else { continue }
+                      let timestamp = JSONLines.date(object["timestamp"]), timestamp <= latestAllowed else { return }
                 sawSnapshotLine = true
-                let readings = readings(from: limits, capturedAt: timestamp)
-                guard !readings.isEmpty else { continue }
-                if best == nil || timestamp >= best!.capturedAt {
-                    best = CodexRateLimits(capturedAt: timestamp, readings: readings)
-                }
+                let readings = CodexParser.readings(from: limits, capturedAt: timestamp)
+                guard !readings.isEmpty else { return }
+                if let current = best, timestamp < current.capturedAt { return }
+                best = CodexRateLimits(capturedAt: timestamp, readings: readings)
             }
         }
+
+        func finish() -> UsageResult<CodexRateLimits> { CodexParser.result(best: best, sawSnapshotLine: sawSnapshotLine) }
+    }
+
+    private static func result(best: CodexRateLimits?, sawSnapshotLine: Bool) -> UsageResult<CodexRateLimits> {
         if let best { return .available(best) }
         return .unavailable(reason: sawSnapshotLine
             ? "Codex rate_limits had no usable window"
@@ -69,9 +86,9 @@ public enum CodexParser {
                   let percent = JSONLines.double(window["used_percent"]), percent.isFinite else { continue }
             let kind = JSONLines.double(window["window_minutes"]).map(kind(forMinutes:)) ?? fallback
             let resetsAt: Date?
-            if let epoch = JSONLines.double(window["resets_at"]), epoch.isFinite {
-                resetsAt = Date(timeIntervalSince1970: epoch)
-            } else if let secs = JSONLines.double(window["resets_in_seconds"]), secs.isFinite {
+            if let epoch = JSONLines.double(window["resets_at"]), let date = JSONLines.epochDate(epoch) {
+                resetsAt = date
+            } else if let secs = JSONLines.double(window["resets_in_seconds"]), secs.isFinite, abs(secs) < 1e9 {
                 resetsAt = capturedAt.addingTimeInterval(secs)
             } else {
                 resetsAt = nil
