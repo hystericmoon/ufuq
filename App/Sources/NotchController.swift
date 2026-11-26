@@ -176,6 +176,7 @@ final class NotchController: NSObject {
     }
 
     private func enqueuePeek(_ event: PeekEvent) {
+        SyncService.shared.publish(event)
         queue.enqueue(event, at: Date())
         machine.setPeek(queue.current)
         announceIfNew()

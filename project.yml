@@ -33,6 +33,9 @@ targets:
         LSUIElement: true
         LSMinimumSystemVersion: "14.0"
         NSHumanReadableCopyright: "Ufuq"
+        NSLocalNetworkUsageDescription: "Ufuq shares usage and agent status with your paired phone over your local network."
+        NSBonjourServices:
+          - _ufuq._tcp
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac

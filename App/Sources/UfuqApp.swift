@@ -11,10 +11,13 @@ struct UfuqApp: App {
                 appDelegate.controller?.toggleExpanded()
             }
             LaunchAtLoginToggle()
+            PairPhoneButton()
             SettingsLink { Text("Settings…") }
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
         }
+        Window("Pair phone", id: "pair-phone") { PairingView() }
+            .windowResizability(.contentSize)
         Settings { SettingsView() }
     }
 }
@@ -32,5 +35,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let controller = NotchController(registry: registry)
         controller.start()
         self.controller = controller
+        SyncService.shared.apply()
     }
 }
