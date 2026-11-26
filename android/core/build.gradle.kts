@@ -23,6 +23,7 @@ kotlin {
 dependencies {
     api(libs.kotlinx.coroutines.core)
     implementation(libs.adhan)
+    implementation(libs.kotlinx.serialization.json)
 
     testImplementation(libs.junit)
     testImplementation(libs.kotlin.test)
