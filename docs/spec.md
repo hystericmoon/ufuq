@@ -128,6 +128,7 @@ protocol UfuqModule: Identifiable {
 | accent.prayer | #4FD1A5 |
 | provider.claude / codex / antigravity | #D97757 / #E5E5EA / #6E9BFF |
 | state.warning / critical | #FFB340 / #FF6B5E |
+| android.accent.container / on-accent / track | #A8D8B9 / #0F3D25 / #26302A (Android expanded island) |
 | Radius | 14 collapsed, 22 peek, 28 expanded |
 | Type | SF Pro: 13/600 collapsed, 26/700 title, 44/600 countdown, tabular numbers |
 
