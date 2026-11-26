@@ -10,9 +10,8 @@ It is a port of `UfuqCore` (Swift) using the Swift tests as the spec: `Models`, 
 
 Differences from the Swift package, by design:
 
-- **Not ported: the Claude and Codex log parsers** (`ClaudeLogParser`, `CodexParser`, `FileSource`, `ClaudeLimitSource`,
-  `UsageEstimate`, `ClaudeUsageResolver`). The logs live on the Mac. Android will get usage by a sync from the Mac later;
-  `UsageModel` and `Usage` (thresholds, alerts, burn rate) are ported because the UI needs them.
+- **Claude and Codex log parsers** are in `app.ufuq.core.usage` (ported with the Swift tests). Windows reads the logs
+  directly; Android gets usage by a sync from the Mac (plan A6), so the Android app does not use them.
 - **Prayer is not a port of the Swift prayer code.** `app.ufuq.core.prayer` is copied from Adwam
   (`id.haho.muslimdaily.domain.prayer`), which uses the `adhan2` library and is calibrated against the Kemenag schedule
   (`KemenagReferenceTest`). Android prayer times may therefore differ from the Mac by a minute until the Mac side converges.
