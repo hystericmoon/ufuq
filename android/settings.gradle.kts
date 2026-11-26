@@ -23,3 +23,4 @@ dependencyResolutionManagement {
 rootProject.name = "Ufuq"
 include(":core")
 include(":app")
+include(":desktop")
