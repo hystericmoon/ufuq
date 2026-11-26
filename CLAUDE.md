@@ -9,6 +9,7 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 - **Swift + SwiftUI, AppKit `NSPanel` for the notch window.** SwiftUI alone can't place a borderless panel above the menu bar.
 - **macOS 14+, Apple Silicon and Intel.** Same floor as the leading notch apps; keeps modern SwiftUI APIs available.
 - **Not sandboxed; notarized DMG + Sparkle; no Mac App Store.** The AI usage module must read `~/.claude*` and `~/.codex`, which the sandbox blocks.
+- **Logic lives in the `UfuqCore` Swift package (Foundation only); the Mac app imports it.** Work starts in Linux cloud sessions with no Xcode, and keeping logic UI-free lets `swift test` run anywhere.
 - **Every module implements `UfuqModule` and is loaded by `ModuleRegistry`.** Several data sources are undocumented (Claude limits, Codex logs, Antigravity, MediaRemote); one breaking must show "unavailable", never crash the app.
 - **Collapsed AI indicator = one ring per provider + worst % as text.** Chosen on the design canvas: all providers visible without opening the panel.
 - **Prayer in the left wing, AI in the right; a third activity rotates every 8 s.** Fixed positions build habit; notch width stays constant.
@@ -19,7 +20,12 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 
 ## Commands
 
-Run on the Mac (Xcode required). Fill in once Phase 1 creates the project:
+Core package (Linux or Mac), from `UfuqCore/`:
+
+- Build: `swift build`
+- Test: `swift test`
+
+Mac app (Xcode required). Fill in once the Mac phase creates the project:
 
 - Build: `xcodebuild -scheme Ufuq -configuration Debug build`
 - Test: `xcodebuild -scheme Ufuq test`

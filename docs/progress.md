@@ -4,17 +4,19 @@ Last updated: 2026-11-26
 
 ## Next up
 
-**Phase 1 — Notch shell** (see `docs/plan.md`). Run on the Mac.
+**Phase 1 — Core skeleton (cloud)**, then Phase 2 — Prayer engine (see `docs/plan.md`). Linux cloud session: no Xcode, no AppKit/SwiftUI. Attach `hystericmoon/muslimdaily` to the session for Phase 2.
 
 First prompt to type:
 
 ```
-Start Phase 1 from docs/plan.md. Read CLAUDE.md, docs/spec.md (Notch states, Architecture, Accessibility) and .claude/rules/ui.md first.
-Create the Xcode project "Ufuq" (SwiftUI app, macOS 14+, not sandboxed, bundle ID app.ufuq.mac, LSUIElement so there is no Dock icon).
-Build NotchController (NSPanel above the menu bar, sized from NSScreen.safeAreaInsets / auxiliaryTopLeftArea), the collapsed/peek/expanded states with a morph animation and Reduce Motion cross-fade, a global ⌥Space hotkey that moves focus into the panel and Esc that returns it, the floating pill for displays without a notch, the UfuqModule protocol + ModuleRegistry, and stub Prayer and AI modules that render in the left and right wings.
-Fill in the Commands section of CLAUDE.md once the build works. Stop when the plan's "done when" for Phase 1 is met.
+Start Phase 1 from docs/plan.md. Read CLAUDE.md and docs/spec.md (Notch states, Architecture) first.
+Linux cloud session: no Xcode, no AppKit/SwiftUI. Install the Swift toolchain if missing.
+Create the Swift package UfuqCore/ (Foundation only, swift-tools 5.9) with the UfuqModule protocol and UI-free ModuleStatus, LiveActivity, PeekEvent; ModuleRegistry, ActivityArbiter (wing priority + 8 s rotation) and PeekQueue (critical jumps the queue); usage thresholds (80/95) and a burn-rate estimate. Unit tests for each.
+Run swift test until green. If time remains, continue with Phase 2 (port the prayer calculation from hystericmoon/muslimdaily).
+Update docs/progress.md before finishing.
 ```
 
 ## History
 
+- 2026-11-26: Plan reordered so cloud sessions build the `UfuqCore` package first (phases 1–3); Mac-only work moved to phases 4+.
 - 2026-11-26: Kickoff. Features, mockups ([design canvas](https://claude.ai/artifact/4HsAKmFv7udUHpofxCsYpi)) and [product spec](https://claude.ai/artifact/TaMXyaqrAM7SMdM7UnRyio) done; name chosen (Ufuq); repo scaffolded with CLAUDE.md, docs, UI rules and start-up hook.
