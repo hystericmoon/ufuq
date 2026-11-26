@@ -4,7 +4,19 @@ Last updated: 2026-11-26
 
 ## Next up
 
-**Phase 4 — Notch shell (Mac).** Needs a Mac with Xcode; the cloud phases (1–3) are done. See `docs/plan.md`.
+**Phase 4 — Notch shell: code done, Mac check pending.** Built and tested on GitHub's macOS runner (`.github/workflows/mac.yml`: 23 app tests green, snapshots uploaded as the `snapshots` artifact). Never run on a real Mac yet.
+
+Check on the Mac (about 15 min), then fix what fails:
+1. `brew install xcodegen && xcodegen generate && open Ufuq.xcodeproj`, run.
+2. Panel sits over the notch, above the menu bar; left wing shows the real next prayer.
+3. ⌥Space opens it, VoiceOver focus lands inside, Tab reaches the tabs with a visible ring, Esc closes and returns focus to the previous app.
+4. External display: floating pill 8 pt below the menu bar.
+5. Reduce Motion cross-fade; Increase Contrast border; hover toggle; launch at login (may refuse on an unsigned debug build).
+6. Compare the `snapshots` artifact PNGs with `refs/` and the design canvas.
+
+Deviation to judge: collapsed width on notch screens is `max(300, notch + 2×90)` (≈368 pt on a 14" MBP), because 300 leaves ~56 pt per wing, too narrow for "Ashar 15:12". The spec says 300.
+
+Then Phase 5 (Prayer + AI UI) on the Mac.
 
 Open items from the cloud phases:
 - Phase 2: the Kemenag check covers 21 cities but only 7 Jakarta days (the plan asked for 30). It is within 1 minute everywhere. To close it, add a full Jakarta month from bimasislam.kemenag.go.id to `Tests/UfuqCoreTests/Fixtures/kemenag_official.tsv` (never hand-typed).
@@ -13,9 +25,9 @@ Open items from the cloud phases:
 First prompt to type (Mac session):
 
 ```
-Start Phase 4 from docs/plan.md. Read CLAUDE.md, docs/spec.md (Notch states, Architecture, Accessibility) and docs/progress.md first.
-Create the Xcode project Ufuq (macOS 14, not sandboxed) importing the local UfuqCore package. Build the NSPanel over the notch with collapsed/peek/expanded states driven by ActivityArbiter and PeekQueue, ⌥Space hotkey with focus in and Esc back, optional hover, floating pill on non-notch displays, launch at login. Wire PrayerModule into the left wing.
-Fill in the Mac build/test commands in CLAUDE.md. Update docs/progress.md before finishing.
+Finish Phase 4 from docs/plan.md on this Mac. Read CLAUDE.md and docs/progress.md ("Check on the Mac") first.
+Generate the project with XcodeGen, run the app, and go through the check list; fix anything that fails (keep the macOS CI green).
+Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 ```
 
 ## Done in Phase 1
@@ -42,6 +54,8 @@ Fill in the Mac build/test commands in CLAUDE.md. Update docs/progress.md before
 - To verify on a Mac: Claude fields `type`, `timestamp`, `requestId`, `message.id`, `message.usage.*`; block rule vs real resets; Codex path, `payload.type == "token_count"`, `rate_limits.primary/secondary.used_percent`, `window_minutes`, `resets_in_seconds`/`resets_at`; Claude live-limit endpoint (only a fake exists); token budgets for the estimate.
 
 ## History
+
+- 2026-11-26: Phase 4 code written in cloud and verified on the macOS CI runner (build + 23 tests + snapshots); real-Mac check pending.
 
 - 2026-11-26: Phases 2 and 3 done in cloud (parallel agents), parser hardening review, CI (`.github/workflows/core.yml`). 123 tests green. Decided: Ufuq replaces Adwam's island on Android later (spec, Open questions).
 
