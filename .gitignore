@@ -1,0 +1,25 @@
+# macOS
+.DS_Store
+
+# Xcode
+build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+*.xcscmblueprint
+*.xccheckout
+
+# Swift Package Manager
+.build/
+.swiftpm/
+Packages/
+Package.resolved
+
+# Release artifacts
+*.dmg
+*.ipa
+*.dSYM.zip
+*.dSYM
+
+# Claude local settings
+.claude/settings.local.json

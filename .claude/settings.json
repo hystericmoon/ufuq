@@ -1,0 +1,15 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "matcher": "startup|resume|clear|compact",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ -f docs/progress.md ] && awk '/^Last updated/{print} /^## (Next up|In flight|Next)/{f=1;print;next} /^## /{f=0} f' docs/progress.md | head -40 || true"
+          }
+        ]
+      }
+    ]
+  }
+}
