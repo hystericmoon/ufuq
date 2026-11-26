@@ -17,7 +17,7 @@ enum class IslandIcon { SUN, BELL, BELL_OFF, REFRESH, PHONE, PLAY, PAUSE }
 enum class IslandPageId { PRAYER, AI_USAGE, MEDIA, OTHER }
 
 /** What a page's round button does; the service and the app decide how. */
-enum class ButtonAction { TOGGLE_MUTE, OPEN_APP, REFRESH, PLAY_PAUSE, ALLOW_MEDIA_ACCESS, OPEN_SOURCE }
+enum class ButtonAction { TOGGLE_MUTE, OPEN_APP, REFRESH, PLAY_PAUSE, ALLOW_MEDIA_ACCESS, OPEN_SOURCE, PAIR_MAC }
 
 /** Texts the models need, so the mapping stays free of Android resources and is unit-testable. */
 interface IslandStrings {

@@ -40,6 +40,7 @@ import app.ufuq.android.R
 import app.ufuq.android.activities.SeenApp
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.Cities
+import app.ufuq.android.sync.MacSyncSection
 import app.ufuq.core.prayer.CalcMethod
 import app.ufuq.android.ramadan.RamadanSection
 import app.ufuq.android.silence.ExtrasActions
@@ -63,6 +64,8 @@ data class SettingsActions(
     val onOtherAppAllow: (String, Boolean) -> Unit = { _, _ -> },
     val onOtherAppsLearnMore: () -> Unit = {},
     val onOtherAppsGrant: () -> Unit = {},
+    val onPairMac: () -> Unit = {},
+    val onForgetMac: () -> Unit = {},
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -78,6 +81,8 @@ fun SettingsScreen(
     extras: ExtrasState = ExtrasState(),
     extrasActions: ExtrasActions = ExtrasActions(),
     mediaAccessGranted: Boolean = false,
+    /** The paired Mac's name, or null when unpaired. */
+    macName: String? = null,
 ) {
     Column(
         modifier
@@ -139,6 +144,8 @@ fun SettingsScreen(
             onLearnMore = actions.onOtherAppsLearnMore,
             onGrantAccess = actions.onOtherAppsGrant,
         )
+
+        MacSyncSection(macName, onPair = actions.onPairMac, onForget = actions.onForgetMac)
 
         Section(stringResource(R.string.settings_location))
         Button(

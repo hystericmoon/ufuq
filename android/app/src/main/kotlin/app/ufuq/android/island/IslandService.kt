@@ -46,6 +46,7 @@ import androidx.savedstate.setViewTreeSavedStateRegistryOwner
 import app.ufuq.android.R
 import app.ufuq.android.graph
 import app.ufuq.android.prayer.PrayerProgress
+import app.ufuq.android.sync.SyncMapper
 import app.ufuq.android.ui.MainActivity
 import app.ufuq.core.PeekEvent
 import kotlinx.coroutines.CoroutineScope
@@ -84,6 +85,7 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private var startedAt: Instant = Instant.now()
     private var lastPeekId: String? = null
     private var muted = false
+    private var syncHeld = false
 
     private val strings by lazy { AndroidIslandStrings(this) }
 
@@ -113,6 +115,10 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
             val s = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate).also { scope = it }
             val graph = graph
             graph.island.isShowing = view != null
+            // The Mac link polls only while the island or the app is visible, and not at all when unpaired.
+            graph.sync.acquire()
+            syncHeld = true
+            s.launch { graph.sync.state.collect { tick() } }
             // The window is as wide as the screen while open and wraps the pill otherwise.
             s.launch { snapshotFlow { expanded || peek != null }.collect { applyLayout() } }
             s.launch { graph.island.expandRequests.collect { expand() } }
@@ -146,6 +152,8 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
 
     override fun onDestroy() {
         graph.island.isShowing = false
+        if (syncHeld) graph.sync.release()
+        syncHeld = false
         scope?.cancel()
         scope = null
         removeOverlay()
@@ -163,9 +171,13 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         graph.peeks.tick(now)
         pill = PillMapper.from(graph.arbiter.layout(graph.registry.activities(now), now), now)
         val progress = PrayerProgress.at(now, graph.prayer)
-        pages = IslandPages.all(
-            progress, muted, usage = null, strings = strings,
-            mediaState = graph.media.state.value, mediaAccess = graph.media.accessGranted(), elapsedNowMs = SystemClock.elapsedRealtime(),
+        // Page B shows the Mac's usage (or its pairing / offline state) from the sync link.
+        pages = SyncMapper.withPageB(
+            IslandPages.all(
+                progress, muted, usage = null, strings = strings,
+                mediaState = graph.media.state.value, mediaAccess = graph.media.accessGranted(), elapsedNowMs = SystemClock.elapsedRealtime(),
+            ),
+            graph.sync.state.value, now, strings, graph.syncStrings,
         ) + listOfNotNull(graph.otherApps.page(now))
         val current = graph.peeks.current
         if (current?.id != lastPeekId) {
@@ -300,7 +312,10 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 )
             }
-            ButtonAction.REFRESH -> scope?.launch { tick() }
+            ButtonAction.REFRESH -> {
+                graph.sync.refreshNow()
+                scope?.launch { tick() }
+            }
             ButtonAction.OPEN_SOURCE -> {
                 collapse()
                 graph.otherApps.openCurrent()
@@ -310,6 +325,14 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                 collapse()
                 startActivity(
                     Intent(this, MainActivity::class.java).setAction(MainActivity.ACTION_ALLOW_MEDIA)
+                        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
+                )
+            }
+            ButtonAction.PAIR_MAC -> {
+                collapse()
+                startActivity(
+                    Intent(this, MainActivity::class.java)
+                        .putExtra(MainActivity.EXTRA_OPEN_PAIRING, true)
                         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
                 )
             }

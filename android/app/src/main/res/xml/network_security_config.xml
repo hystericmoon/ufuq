@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Cleartext stays blocked for every HttpURLConnection/OkHttp-style request. A network security
+  config cannot allow "local addresses" (it matches domain names, not IP ranges), and allowing it
+  for all domains is not acceptable. The Mac sync does not go through this policy: it speaks
+  HTTP/1.1 over a raw java.net.Socket (app.ufuq.core.sync.SocketTransport), and every body and the
+  request token are AES-256-GCM sealed at application level (docs/sync.md).
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false" />
+</network-security-config>

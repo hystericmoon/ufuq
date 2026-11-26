@@ -34,6 +34,7 @@ import app.ufuq.android.silence.BackgroundLocationExplainScreen
 import app.ufuq.android.silence.ExtrasActions
 import app.ufuq.android.silence.ExtrasState
 import app.ufuq.android.silence.SilenceExplainScreen
+import app.ufuq.android.sync.PairingRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -42,32 +43,51 @@ import java.time.ZoneId
 class MainActivity : ComponentActivity() {
     private val openMediaAccess = mutableStateOf(false)
 
+    /** Bumped each time the island's "Pair again" button opens the app, so the pairing screen shows. */
+    private var pairRequests by mutableStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         openMediaAccess.value = intent?.action == ACTION_ALLOW_MEDIA
-        setContent { UfuqTheme { UfuqRoot(openMediaAccess) } }
+        if (intent?.getBooleanExtra(EXTRA_OPEN_PAIRING, false) == true) pairRequests++
+        setContent { UfuqTheme { UfuqRoot(pairRequests, openMediaAccess) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.action == ACTION_ALLOW_MEDIA) openMediaAccess.value = true
+        if (intent.getBooleanExtra(EXTRA_OPEN_PAIRING, false)) pairRequests++
+    }
+
+    // The Mac link polls only while the app (or the island) is visible.
+    override fun onStart() {
+        super.onStart()
+        graph.sync.acquire()
+    }
+
+    override fun onStop() {
+        graph.sync.release()
+        super.onStop()
     }
 
     companion object {
         /** From the island's media page: open the explanation before Android's notification-access screen. */
         const val ACTION_ALLOW_MEDIA = "app.ufuq.android.action.ALLOW_MEDIA"
+        const val EXTRA_OPEN_PAIRING = "app.ufuq.android.extra.OPEN_PAIRING"
     }
 }
 
-private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN }
+private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN, PAIRING }
 
 @Composable
-private fun UfuqRoot(openMediaAccess: MutableState<Boolean> = mutableStateOf(false)) {
+private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> = mutableStateOf(false)) {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()
     val settings by graph.settings.settings.collectAsState(initial = AppSettings())
-    var screen by remember { mutableStateOf(Screen.TODAY) }
+    var screen by remember { mutableStateOf(if (pairRequests > 0) Screen.PAIRING else Screen.TODAY) }
+    LaunchedEffect(pairRequests) { if (pairRequests > 0) screen = Screen.PAIRING }
+    val pairing by graph.pairings.pairing.collectAsState(initial = null)
     var locationMessage by remember { mutableStateOf<String?>(null) }
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var wantOverlay by remember { mutableStateOf(false) }
@@ -204,6 +224,8 @@ private fun UfuqRoot(openMediaAccess: MutableState<Boolean> = mutableStateOf(fal
         },
         onOtherAppsLearnMore = { screen = Screen.OTHER_APPS_EXPLAIN },
         onOtherAppsGrant = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
+        onPairMac = { screen = Screen.PAIRING },
+        onForgetMac = { scope.launch { graph.pairings.forget() } },
     )
 
     val extrasState = ExtrasState(dndGranted, mosques, fineGranted, backgroundGranted, exactAllowed, mosqueMessage)
@@ -249,7 +271,7 @@ private fun UfuqRoot(openMediaAccess: MutableState<Boolean> = mutableStateOf(fal
     )
 
     BackHandler(enabled = screen != Screen.TODAY) {
-        screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.OTHER_APPS_EXPLAIN || screen == Screen.SILENCE_EXPLAIN || screen == Screen.BACKGROUND_EXPLAIN || screen == Screen.LISTENER_EXPLAIN) Screen.SETTINGS else Screen.TODAY
+        screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.OTHER_APPS_EXPLAIN || screen == Screen.SILENCE_EXPLAIN || screen == Screen.BACKGROUND_EXPLAIN || screen == Screen.LISTENER_EXPLAIN || screen == Screen.PAIRING) Screen.SETTINGS else Screen.TODAY
     }
 
     when (screen) {
@@ -274,6 +296,7 @@ private fun UfuqRoot(openMediaAccess: MutableState<Boolean> = mutableStateOf(fal
             otherApps = ActivityAllowList.listed(seenApps, settings.otherAppsAllowed),
             extras = extrasState, extrasActions = extrasActions,
             mediaAccessGranted = mediaGranted,
+            macName = pairing?.let { it.name ?: stringResource(R.string.sync_settings_paired_unnamed) },
         )
         Screen.OTHER_APPS_EXPLAIN -> OtherAppsExplainScreen(
             accessGranted = listenerGranted,
@@ -302,6 +325,7 @@ private fun UfuqRoot(openMediaAccess: MutableState<Boolean> = mutableStateOf(fal
             },
             onCancel = { screen = Screen.SETTINGS },
         )
+        Screen.PAIRING -> PairingRoute(onClose = { screen = Screen.SETTINGS })
         Screen.OVERLAY_EXPLAIN -> OverlayExplainScreen(
             onContinue = {
                 wantOverlay = true
