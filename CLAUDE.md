@@ -28,6 +28,8 @@ Core package (Linux or Mac), from `UfuqCore/`:
 Android (from `android/`; JDK 17 or newer, `export ANDROID_HOME=/opt/android-sdk` once the app module exists):
 
 - Test the Kotlin core: `./gradlew :core:test`
+- App checks (what CI runs): `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`
+- Re-record screenshots (Linux renders, `android/app/src/test/screenshots`): `./gradlew :app:recordRoborazziDebug`; compare with `:app:verifyRoborazziDebug`
 
 Mac app (Xcode required). The Xcode project is generated from `project.yml` and not committed. From the repo root:
 
