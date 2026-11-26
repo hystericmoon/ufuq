@@ -98,4 +98,50 @@
         <item quantity="other">%1$d minutes elapsed</item>
     </plurals>
     <string name="other_open">Open %1$s</string>
+    <!-- A4: prayer silence -->
+    <string name="silence_title">Prayer silence</string>
+    <string name="silence_switch">Silence after adhan</string>
+    <string name="silence_switch_hint">Do Not Disturb for a few minutes after each adhan, then back to how it was. Off by default.</string>
+    <string name="silence_switch_needs_access">Needs Do Not Disturb access. Tap to set it up.</string>
+    <string name="silence_for">Silence for</string>
+    <string name="silence_exact_hint">Android is not allowing exact alarms, so silence may start a few minutes late.</string>
+    <string name="silence_exact_button">Allow exact alarms</string>
+    <string name="mosques_title">Saved mosques</string>
+    <string name="mosques_hint">Silence while you are within 100 m of a saved mosque, and restore when you leave.</string>
+    <string name="mosques_empty">No saved mosques yet.</string>
+    <string name="mosque_name">Mosque name</string>
+    <string name="mosque_add">Add my current location</string>
+    <string name="mosque_row">%1$s · %2$d m</string>
+    <string name="mosque_remove">Remove %1$s</string>
+    <string name="mosque_needs_location">Adding a mosque needs precise location.</string>
+    <string name="mosque_background_title">Background location</string>
+    <string name="mosque_background_hint">Optional. Lets Android tell Ufuq you reached a mosque while the app is closed.</string>
+    <string name="mosque_background_button">Explain and allow</string>
+    <string name="mosque_added">Saved %1$s</string>
+    <string name="mosque_failed">Could not get your location. Try again outdoors.</string>
+    <string name="silence_explain_title">Silence for prayer</string>
+    <string name="silence_explain_what">After each adhan, Ufuq turns on Do Not Disturb for the time you choose, then puts your phone back exactly as it was.</string>
+    <string name="silence_explain_why">Android keeps this behind a special permission, “Do Not Disturb access”. Ufuq uses it only to switch Do Not Disturb on and off for this.</string>
+    <string name="silence_explain_safe">If you had Do Not Disturb on yourself, Ufuq leaves it alone. If you change it during the silence, Ufuq steps aside. Alarms are never blocked.</string>
+    <string name="silence_explain_continue">Open Android settings</string>
+    <string name="silence_explain_cancel">Not now</string>
+    <string name="background_explain_title">Reach a mosque while the app is closed</string>
+    <string name="background_explain_what">Saved mosques work by watching for you coming within 100 m. For this to work when Ufuq is not open, Android needs “Allow all the time” location.</string>
+    <string name="background_explain_why">Ufuq only compares your position with the places you saved. It has no internet access, and nothing leaves your phone. Without it, saved mosques only work while Ufuq is open; the timed silence after each adhan works either way.</string>
+    <string name="background_explain_continue">Continue</string>
+    <string name="background_explain_cancel">Not now</string>
+
+    <!-- A4: Ramadan -->
+    <string name="ramadan_title">Ramadan</string>
+    <string name="ramadan_switch">Ramadan mode</string>
+    <string name="ramadan_switch_hint">Shows when sahur ends (Subuh) and counts down to iftar (Maghrib), with a progress bar. It also turns on by itself during Ramadan.</string>
+
+    <!-- A4: travel -->
+    <string name="travel_title">Travel</string>
+    <string name="travel_switch">Follow my location</string>
+    <string name="travel_switch_hint">After you move 25 km or more, Ufuq updates the city and time zone. Coarse location, no internet.</string>
+    <string name="travel_current_location">Current location</string>
+    <string name="travel_updated">Prayer times updated for %1$s</string>
+    <string name="channel_travel">Location changes</string>
+    <string name="channel_travel_description">A quiet notice when prayer times move with you.</string>
 </resources>

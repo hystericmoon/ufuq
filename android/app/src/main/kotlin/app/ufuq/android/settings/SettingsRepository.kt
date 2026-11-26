@@ -43,6 +43,10 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
             adhanMuted = p[MUTED] ?: d.adhanMuted,
             otherAppsEnabled = p[OTHER_APPS] ?: d.otherAppsEnabled,
             otherAppsAllowed = p[OTHER_ALLOWED] ?: d.otherAppsAllowed,
+            silenceEnabled = p[SILENCE] ?: d.silenceEnabled,
+            silenceMinutes = (p[SILENCE_MIN] ?: d.silenceMinutes).coerceIn(AppSettings.SILENCE_RANGE),
+            ramadanManual = p[RAMADAN] ?: d.ramadanManual,
+            followLocation = p[FOLLOW] ?: d.followLocation,
         )
     }
 
@@ -59,6 +63,10 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         p[MUTED] = s.adhanMuted
         p[OTHER_APPS] = s.otherAppsEnabled
         p[OTHER_ALLOWED] = s.otherAppsAllowed
+        p[SILENCE] = s.silenceEnabled
+        p[SILENCE_MIN] = s.silenceMinutes.coerceIn(AppSettings.SILENCE_RANGE)
+        p[RAMADAN] = s.ramadanManual
+        p[FOLLOW] = s.followLocation
     }
 
     private companion object {
@@ -74,5 +82,9 @@ class SettingsRepository(private val store: DataStore<Preferences>) {
         val MUTED = booleanPreferencesKey("adhan_muted")
         val OTHER_APPS = booleanPreferencesKey("other_apps")
         val OTHER_ALLOWED = androidx.datastore.preferences.core.stringSetPreferencesKey("other_apps_allowed")
+        val SILENCE = booleanPreferencesKey("silence")
+        val SILENCE_MIN = intPreferencesKey("silence_minutes")
+        val RAMADAN = booleanPreferencesKey("ramadan_manual")
+        val FOLLOW = booleanPreferencesKey("follow_location")
     }
 }

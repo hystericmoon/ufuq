@@ -41,6 +41,12 @@ import app.ufuq.android.activities.SeenApp
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.Cities
 import app.ufuq.core.prayer.CalcMethod
+import app.ufuq.android.ramadan.RamadanSection
+import app.ufuq.android.silence.ExtrasActions
+import app.ufuq.android.silence.ExtrasState
+import app.ufuq.android.silence.MosquesSection
+import app.ufuq.android.silence.SilenceSection
+import app.ufuq.android.travel.TravelSection
 import app.ufuq.core.prayer.PrayerLocation
 
 /** Callbacks from the settings screen. */
@@ -68,6 +74,8 @@ fun SettingsScreen(
     modifier: Modifier = Modifier,
     otherAppsAccessGranted: Boolean = false,
     otherApps: List<SeenApp> = emptyList(),
+    extras: ExtrasState = ExtrasState(),
+    extrasActions: ExtrasActions = ExtrasActions(),
 ) {
     Column(
         modifier
@@ -160,11 +168,16 @@ fun SettingsScreen(
             }
         }
         Text(stringResource(R.string.settings_lead_hint), color = Tokens.Muted, fontSize = 13.sp)
+
+        SilenceSection(settings, extras, extrasActions)
+        MosquesSection(extras, extrasActions)
+        RamadanSection(settings, extrasActions)
+        TravelSection(settings, extrasActions)
     }
 }
 
 @Composable
-private fun chipColors() = FilterChipDefaults.filterChipColors(
+internal fun chipColors() = FilterChipDefaults.filterChipColors(
     selectedContainerColor = Tokens.Track,
     selectedLabelColor = Tokens.AccentPrayer,
     labelColor = Tokens.Primary,
