@@ -14,6 +14,9 @@ data class ReleaseInfo(
     val assets: List<ReleaseAsset>,
 )
 
+/** A newer release that carries one named file (Android: the APK, whose own signature the system checks). */
+data class AvailableDownload(val version: String, val notes: String, val asset: ReleaseAsset)
+
 /** A newer release that has the installer and its detached signature. */
 data class AvailableUpdate(
     val version: String,
@@ -82,5 +85,21 @@ object GitHubReleases {
             val sig = r.assets.firstOrNull { it.name == "$name.sig" } ?: return@mapNotNull null
             AvailableUpdate(r.version, r.notes, installer, sig)
         }
+        .reduceOrNull { best, next -> if (Versions.isNewer(next.version, best.version)) next else best }
+
+    /**
+     * The newest release newer than [currentVersion] that carries `<assetName(version)>`. Releases without
+     * it (for example one that only has the Mac files so far) are skipped. Pre-releases only count when
+     * [includePreReleases].
+     */
+    fun pickAsset(
+        releases: List<ReleaseInfo>,
+        currentVersion: String,
+        includePreReleases: Boolean,
+        assetName: (String) -> String,
+    ): AvailableDownload? = releases
+        .filter { includePreReleases || !it.prerelease }
+        .filter { Versions.isNewer(it.version, currentVersion) }
+        .mapNotNull { r -> r.assets.firstOrNull { it.name == assetName(r.version) }?.let { AvailableDownload(r.version, r.notes, it) } }
         .reduceOrNull { best, next -> if (Versions.isNewer(next.version, best.version)) next else best }
 }

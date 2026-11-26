@@ -71,4 +71,22 @@ class UpdateTest {
         val http = assertNotNull(GitHubReleases.parseLatest(release("v0.2.0").replace("https://github.com", "http://github.com")))
         assertTrue(http.assets.isEmpty())
     }
+
+    @Test fun pickAssetNeedsNoSignature() {
+        val apk = { v: String -> "ufuq-$v.apk" }
+        fun apkRelease(tag: String, pre: Boolean = false, withApk: Boolean = true) = """
+            {"tag_name":"$tag","body":"n","prerelease":$pre,"assets":[
+            ${if (withApk) """{"name":"ufuq-${tag.removePrefix("v")}.apk","browser_download_url":"https://github.com/x/y/releases/download/$tag/ufuq-${tag.removePrefix("v")}.apk","size":9,"digest":"sha256:$hash"}""" else """{"name":"Ufuq-${tag.removePrefix("v")}.dmg","browser_download_url":"https://github.com/x/y/a.dmg","size":1}"""}
+            ]}"""
+        val list = assertNotNull(GitHubReleases.parseList("[" + listOf(apkRelease("v0.4.0", withApk = false), apkRelease("v0.3.0-beta.1", pre = true), apkRelease("v0.2.0"), apkRelease("v0.1.0")).joinToString(",") + "]"))
+        // 0.4.0 has no APK yet (Mac files uploaded first): skipped, not half-offered.
+        val stable = assertNotNull(GitHubReleases.pickAsset(list, "0.1.0", includePreReleases = false, assetName = apk))
+        assertEquals("0.2.0", stable.version)
+        assertEquals("ufuq-0.2.0.apk", stable.asset.name)
+        assertEquals(hash, stable.asset.sha256)
+        assertEquals("0.3.0-beta.1", GitHubReleases.pickAsset(list, "0.1.0", includePreReleases = true, assetName = apk)?.version)
+        assertNull(GitHubReleases.pickAsset(list, "0.3.0", includePreReleases = true, assetName = apk))
+        // The Windows picker still requires its .sig, so an APK-only release is not offered there.
+        assertNull(GitHubReleases.pick(list, "0.1.0", includePreReleases = true, installerName = apk))
+    }
 }

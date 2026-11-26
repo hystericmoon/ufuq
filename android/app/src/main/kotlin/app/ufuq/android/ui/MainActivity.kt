@@ -35,6 +35,9 @@ import app.ufuq.android.silence.ExtrasActions
 import app.ufuq.android.silence.ExtrasState
 import app.ufuq.android.silence.SilenceExplainScreen
 import app.ufuq.android.sync.PairingRoute
+import app.ufuq.android.update.UpdateActions
+import app.ufuq.android.update.UpdatePromptDialog
+import app.ufuq.android.update.UpdateScreen
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
@@ -77,7 +80,7 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN, PAIRING }
+private enum class Screen { TODAY, SETTINGS, UPDATES, OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN, PAIRING }
 
 @Composable
 private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> = mutableStateOf(false)) {
@@ -226,7 +229,28 @@ private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> =
         onOtherAppsGrant = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
         onPairMac = { screen = Screen.PAIRING },
         onForgetMac = { scope.launch { graph.pairings.forget() } },
+        onUpdates = { screen = Screen.UPDATES },
     )
+
+    // Sideload updater: a silent daily check on start; the dialog appears only when a newer version exists.
+    val updateState by graph.updates.state.collectAsState()
+    LaunchedEffect(Unit) { graph.updates.autoCheck() }
+    val updateActions = UpdateActions(
+        onBack = { screen = Screen.SETTINGS },
+        onCheck = graph.updates::checkNow,
+        onDownload = graph.updates::download,
+        onInstall = {
+            graph.updates.readyApk()?.let { apk ->
+                val repo = graph.updateRepository
+                context.startActivity(if (repo.canInstall()) repo.installIntent(apk) else repo.installPermissionIntent())
+            }
+        },
+        onAutoCheck = graph.updates::setAutoCheck,
+        onBetaChannel = graph.updates::setBetaChannel,
+    )
+    if (updateState.prompt && screen != Screen.UPDATES) {
+        UpdatePromptDialog(updateState, updateActions, onDismiss = graph.updates::dismissPrompt)
+    }
 
     val extrasState = ExtrasState(dndGranted, mosques, fineGranted, backgroundGranted, exactAllowed, mosqueMessage)
     val extrasActions = ExtrasActions(
@@ -271,7 +295,7 @@ private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> =
     )
 
     BackHandler(enabled = screen != Screen.TODAY) {
-        screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.OTHER_APPS_EXPLAIN || screen == Screen.SILENCE_EXPLAIN || screen == Screen.BACKGROUND_EXPLAIN || screen == Screen.LISTENER_EXPLAIN || screen == Screen.PAIRING) Screen.SETTINGS else Screen.TODAY
+        screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.OTHER_APPS_EXPLAIN || screen == Screen.SILENCE_EXPLAIN || screen == Screen.BACKGROUND_EXPLAIN || screen == Screen.LISTENER_EXPLAIN || screen == Screen.PAIRING || screen == Screen.UPDATES) Screen.SETTINGS else Screen.TODAY
     }
 
     when (screen) {
@@ -326,6 +350,7 @@ private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> =
             onCancel = { screen = Screen.SETTINGS },
         )
         Screen.PAIRING -> PairingRoute(onClose = { screen = Screen.SETTINGS })
+        Screen.UPDATES -> UpdateScreen(updateState, updateActions)
         Screen.OVERLAY_EXPLAIN -> OverlayExplainScreen(
             onContinue = {
                 wantOverlay = true

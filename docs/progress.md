@@ -1,16 +1,21 @@
 # Progress
 
-Last updated: 2026-11-26
+Last updated: 2026-11-27
 
-## Resume here (paused 2026-11-26 15:25)
+## Resume here (2026-11-27 02:30 WIB)
 
-Auto-update: Mac (Sparkle) and Windows (signed MSI) are merged and green. **Android updater is NOT done** — the agent was stopped before committing. Restart it:
+Auto-update is done on all three platforms: Mac (Sparkle), Windows (signed MSI), Android (sideload APK,
+`docs/release-android.md`). Only owner steps remain:
 
-```
-Add the sideload self-updater to the Ufuq Android app: port Adwam's updater (hystericmoon/muslimdaily: app/src/main/java/id/haho/muslimdaily/update/*, feature/settings/UpdateScreen.kt, their tests, FileProvider, SELF_UPDATE/UPDATE_REPO BuildConfig) without Hilt, reusing android/core app.ufuq.core.update (Versions, GitHubReleases). Asset ufuq-<VERSION>.apk; versionName from repo-root VERSION. Release signing from secrets UFUQ_KEYSTORE_BASE64, UFUQ_KEYSTORE_PASSWORD, UFUQ_KEY_ALIAS, UFUQ_KEY_PASSWORD (debug fallback with a warning). Add .github/workflows/release-android.yml (tag v* → assembleRelease → upload to the tag's release with softprops/action-gh-release@v2) and docs/release-android.md. Settings copy: "Ufuq checks GitHub once a day for a new version. Turn this off to check only when you ask." Tests + screenshots; keep CI green.
-```
+1. On the Mac: `bash tools/setup_release_keys.sh` (sets every signing secret), then back up `~/UfuqKeys`.
+2. Merge PR #1.
+3. Tag `v0.1.0` (`git tag v0.1.0 && git push origin v0.1.0`). The three release workflows attach the DMG/zip/appcast, MSI + .sig and `ufuq-0.1.0.apk` to one release.
+4. Install `ufuq-0.1.0.apk` (not the debug APK: debug builds have the updater off) and run the device checks below.
 
-Then: run `bash tools/setup_release_keys.sh` on the Mac (sets all signing secrets), merge PR #1, tag `v0.1.0`.
+Android updater notes: release builds only (`SELF_UPDATE`); Settings → About → Updates; daily check on open
+(20 h min), dialog only when newer; verifies size, GitHub SHA-256 digest and package name, then the system
+installer checks the signing key. `versionCode` = `MAJOR*1000000 + MINOR*1000 + PATCH` from `VERSION`.
+A tag push without the keystore secrets fails on purpose. CI now also runs `:app:assembleRelease` so R8 breaks show before a tag.
 
 ## Status (2026-11-26, overnight)
 
@@ -23,13 +28,14 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 | Windows (W1, W2, W3 config) | Compose Desktop island, Win+Alt+Space, tray, local Claude/Codex usage, MSI config | `:desktop:test` headless + screenshots; MSI built on windows-latest CI | See "Check on Windows" |
 | Wear OS | skipped by owner | | |
 
-### Check on Android (debug APK, ~20 min)
+### Check on Android (~25 min; the debug APK works for 1–6, step 7 needs the release APK)
 1. Install, open, pick Jakarta; Today screen times match Adwam.
 2. Live Update chip in the status bar / lock screen (Android 16); QS tile shows the next prayer.
 3. Settings → island overlay → grant "Display over other apps"; pill sits at the camera cutout; tap → expanded island; swipe pages; TalkBack reads each page as one item.
 4. Media: play something, grant notification access, seek and pause from page C.
 5. Prayer silence: grant DND access, test with a 5-min setting; add a mosque.
 6. Pair with the Mac (QR or paste code) once the Mac app runs.
+7. Updates: Settings → About → Updates shows 0.1.0; after a newer release exists, Check → Download → Install (allow "Install unknown apps" once); app reopens on the new version.
 
 ### Check on Windows (~15 min)
 1. Install the MSI (CI artifact; unsigned, SmartScreen will warn).

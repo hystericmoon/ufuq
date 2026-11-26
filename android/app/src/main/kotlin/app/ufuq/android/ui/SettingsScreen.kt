@@ -1,6 +1,7 @@
 package app.ufuq.android.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -31,6 +32,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
@@ -66,6 +68,7 @@ data class SettingsActions(
     val onOtherAppsGrant: () -> Unit = {},
     val onPairMac: () -> Unit = {},
     val onForgetMac: () -> Unit = {},
+    val onUpdates: () -> Unit = {},
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -83,6 +86,7 @@ fun SettingsScreen(
     mediaAccessGranted: Boolean = false,
     /** The paired Mac's name, or null when unpaired. */
     macName: String? = null,
+    versionName: String = app.ufuq.android.BuildConfig.VERSION_NAME,
 ) {
     Column(
         modifier
@@ -194,6 +198,24 @@ fun SettingsScreen(
         MosquesSection(extras, extrasActions)
         RamadanSection(settings, extrasActions)
         TravelSection(settings, extrasActions)
+
+        Section(stringResource(R.string.settings_about))
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(Tokens.Card)
+                .clickable(role = Role.Button, onClick = actions.onUpdates)
+                .heightIn(min = 64.dp)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Column(Modifier.weight(1f)) {
+                Text(stringResource(R.string.settings_updates), color = Tokens.Primary, fontSize = 17.sp)
+                Text(stringResource(R.string.update_version, versionName), color = Tokens.Secondary, fontSize = 13.sp)
+            }
+            Text("›", color = Tokens.Muted, fontSize = 22.sp, modifier = Modifier.clearAndSetSemantics { })
+        }
     }
 }
 

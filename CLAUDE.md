@@ -28,7 +28,8 @@ Core package (Linux or Mac), from `UfuqCore/`:
 Android (from `android/`; JDK 17 or newer, `export ANDROID_HOME=/opt/android-sdk` once the app module exists):
 
 - Test the Kotlin core: `./gradlew :core:test`
-- App checks (what CI runs): `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`
+- App checks (what CI runs): `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease`
+- Release and self-update: `docs/release-android.md` (tag `v*` → `release-android.yml`)
 - Re-record screenshots (Linux renders, `android/app/src/test/screenshots`): `./gradlew :app:recordRoborazziDebug`; compare with `:app:verifyRoborazziDebug`
 
 Windows (from `android/`; JDK 21, `export ANDROID_HOME=/opt/android-sdk` because the build includes `:app`):

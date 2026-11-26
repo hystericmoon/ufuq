@@ -77,6 +77,10 @@ class AppGraph(val context: Context) {
         },
     )
 
+    // Sideload self-updater (release builds only; see docs/release-android.md).
+    val updateRepository = app.ufuq.android.update.UpdateRepository(context)
+    val updates = app.ufuq.android.update.UpdateController(updateRepository, CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate))
+
     init {
         registry.register(SyncUsageModule(sync, AndroidIslandStrings(context)))
         registry.register(SyncAgentModule(sync, syncStrings))
