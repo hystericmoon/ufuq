@@ -39,6 +39,7 @@ import androidx.compose.ui.unit.sp
 import app.ufuq.android.R
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.settings.Cities
+import app.ufuq.android.sync.MacSyncSection
 import app.ufuq.core.prayer.CalcMethod
 import app.ufuq.core.prayer.PrayerLocation
 
@@ -51,6 +52,8 @@ data class SettingsActions(
     val onOverlay: (Boolean) -> Unit = {},
     val onLiveUpdate: (Boolean) -> Unit = {},
     val onLead: (Int) -> Unit = {},
+    val onPairMac: () -> Unit = {},
+    val onForgetMac: () -> Unit = {},
 )
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -61,6 +64,8 @@ fun SettingsScreen(
     locationMessage: String?,
     overlayPermissionGranted: Boolean,
     modifier: Modifier = Modifier,
+    /** The paired Mac's name, or null when unpaired. */
+    macName: String? = null,
 ) {
     Column(
         modifier
@@ -99,6 +104,8 @@ fun SettingsScreen(
             checked = settings.overlayEnabled,
             onChange = actions.onOverlay,
         )
+
+        MacSyncSection(macName, onPair = actions.onPairMac, onForget = actions.onForgetMac)
 
         Section(stringResource(R.string.settings_location))
         Button(

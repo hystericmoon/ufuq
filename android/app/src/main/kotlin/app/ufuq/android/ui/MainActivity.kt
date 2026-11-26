@@ -28,27 +28,54 @@ import androidx.lifecycle.compose.LifecycleResumeEffect
 import app.ufuq.android.R
 import app.ufuq.android.graph
 import app.ufuq.android.settings.AppSettings
+import app.ufuq.android.sync.PairingRoute
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.Instant
 import java.time.ZoneId
 
 class MainActivity : ComponentActivity() {
+    /** Bumped each time the island's "Pair again" button opens the app, so the pairing screen shows. */
+    private var pairRequests by mutableStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { UfuqTheme { UfuqRoot() } }
+        if (intent?.getBooleanExtra(EXTRA_OPEN_PAIRING, false) == true) pairRequests++
+        setContent { UfuqTheme { UfuqRoot(pairRequests) } }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        if (intent.getBooleanExtra(EXTRA_OPEN_PAIRING, false)) pairRequests++
+    }
+
+    // The Mac link polls only while the app (or the island) is visible.
+    override fun onStart() {
+        super.onStart()
+        graph.sync.acquire()
+    }
+
+    override fun onStop() {
+        graph.sync.release()
+        super.onStop()
+    }
+
+    companion object {
+        const val EXTRA_OPEN_PAIRING = "app.ufuq.android.extra.OPEN_PAIRING"
     }
 }
 
-private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN }
+private enum class Screen { TODAY, SETTINGS, OVERLAY_EXPLAIN, PAIRING }
 
 @Composable
-private fun UfuqRoot() {
+private fun UfuqRoot(pairRequests: Int) {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()
     val settings by graph.settings.settings.collectAsState(initial = AppSettings())
-    var screen by remember { mutableStateOf(Screen.TODAY) }
+    var screen by remember { mutableStateOf(if (pairRequests > 0) Screen.PAIRING else Screen.TODAY) }
+    LaunchedEffect(pairRequests) { if (pairRequests > 0) screen = Screen.PAIRING }
+    val pairing by graph.pairings.pairing.collectAsState(initial = null)
     var locationMessage by remember { mutableStateOf<String?>(null) }
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
     var wantOverlay by remember { mutableStateOf(false) }
@@ -123,9 +150,11 @@ private fun UfuqRoot() {
         },
         onLiveUpdate = { on -> scope.launch { graph.settings.update { it.copy(liveUpdateEnabled = on) } } },
         onLead = { m -> scope.launch { graph.settings.update { it.copy(adhanLeadMinutes = m) } } },
+        onPairMac = { screen = Screen.PAIRING },
+        onForgetMac = { scope.launch { graph.pairings.forget() } },
     )
 
-    BackHandler(enabled = screen != Screen.TODAY) { screen = if (screen == Screen.OVERLAY_EXPLAIN) Screen.SETTINGS else Screen.TODAY }
+    BackHandler(enabled = screen != Screen.TODAY) { screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.PAIRING) Screen.SETTINGS else Screen.TODAY }
 
     when (screen) {
         Screen.TODAY -> {
@@ -143,7 +172,11 @@ private fun UfuqRoot() {
             val state = remember(now, settings) { graph.apply(settings); TodayState.at(now, graph.prayer) }
             TodayScreen(state, onOpenSettings = { screen = Screen.SETTINGS })
         }
-        Screen.SETTINGS -> SettingsScreen(settings, actions, locationMessage, overlayGranted)
+        Screen.SETTINGS -> SettingsScreen(
+            settings, actions, locationMessage, overlayGranted,
+            macName = pairing?.let { it.name ?: stringResource(R.string.sync_settings_paired_unnamed) },
+        )
+        Screen.PAIRING -> PairingRoute(onClose = { screen = Screen.SETTINGS })
         Screen.OVERLAY_EXPLAIN -> OverlayExplainScreen(
             onContinue = {
                 wantOverlay = true
