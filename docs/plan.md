@@ -30,7 +30,7 @@ A2. **App shell.** Island overlay (ported from Adwam) with collapsed pill and th
    Done when: Robolectric screenshots of pill, expanded A/B/C, chip and tile match the mockup; TalkBack labels tested.
 A3. **Media.** Media page in the island (MediaSession via notification listener, seek + play/pause).
 A4. **Prayer extras.** Prayer silence (DND for N min after adhan; geofenced saved mosques), Ramadan imsak→iftar progress Live Update, travel mode (city follows GPS).
-A5. **Wear OS.** `:wear` module: tile + complication (next prayer, worst AI %), haptic at adhan.
+A5. ~~Wear OS~~ — skipped by the owner (2026-11-26).
 A6. **Mac → phone sync.** AI usage page (B) and agent status ("needs input", "done") on the phone. Transport (decided 2026-11-26): local network first — the Mac app serves usage and agent events on the LAN (Bonjour/NSD discovery), paired once by QR code with a shared key, encrypted; no backend. Later, opt-in: a push relay the user hosts (e.g. self-hosted ntfy) for away-from-desk agent alerts.
 A7. **Other apps' live activities (opt-in, beta).** Rides/deliveries from ongoing notifications in the island; shares the notification-listener permission with A3; nothing stored or sent.
 
