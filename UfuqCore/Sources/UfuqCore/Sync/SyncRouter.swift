@@ -20,16 +20,22 @@ public enum SyncAuth {
 
     /// True when the token opens with our key and its time is within `maxClockSkew` of `now`.
     public static func verify(_ token: String?, sealer: SyncSealer, now: Date) -> Bool {
+        issuedAt(token, sealer: sealer, now: now) != nil
+    }
+
+    /// The client time sealed in a valid token, or nil when it fails to open or is outside the skew window.
+    public static func issuedAt(_ token: String?, sealer: SyncSealer, now: Date) -> Date? {
         guard let token, let sealed = SyncCoding.base64URLDecode(token),
               let plain = try? sealer.open(sealed),
               let text = String(data: plain, encoding: .utf8), text.hasPrefix(SyncProtocol.authPrefix),
-              let seconds = TimeInterval(text.dropFirst(SyncProtocol.authPrefix.count)) else { return false }
-        return abs(now.timeIntervalSince1970 - seconds) <= SyncProtocol.maxClockSkew
+              let seconds = TimeInterval(text.dropFirst(SyncProtocol.authPrefix.count)),
+              abs(now.timeIntervalSince1970 - seconds) <= SyncProtocol.maxClockSkew else { return nil }
+        return Date(timeIntervalSince1970: seconds)
     }
 }
 
 /// Maps a parsed request to a response. Transport-free, so it is tested on Linux.
-/// Order: unpaired requests get an empty 401 before anything else is revealed.
+/// Order: unpaired or replayed requests get an empty 401 before anything else is revealed.
 public struct SyncRouter: Sendable {
     public typealias ContentProvider = @Sendable () async -> SyncSnapshotContent
 
@@ -38,6 +44,7 @@ public struct SyncRouter: Sendable {
     private let content: ContentProvider
     private let now: @Sendable () -> Date
     private let longPollTimeout: TimeInterval
+    private let replayGuard = SyncReplayGuard()
 
     public init(sealer: SyncSealer, log: SyncEventLog, content: @escaping ContentProvider,
                 now: @escaping @Sendable () -> Date = { Date() },
@@ -50,7 +57,13 @@ public struct SyncRouter: Sendable {
     }
 
     public func handle(_ request: HTTPRequest) async -> HTTPResponse {
-        guard SyncAuth.verify(request.headers[SyncProtocol.authHeader.lowercased()], sealer: sealer, now: now()) else {
+        let token = request.headers[SyncProtocol.authHeader.lowercased()]
+        let at = now()
+        // A token is usable once: a replay on the same network gets the same empty 401 as a stranger.
+        // Keyed on the canonical encoding, so a re-padded copy of the same bytes is still a replay.
+        guard let token, let issued = SyncAuth.issuedAt(token, sealer: sealer, now: at),
+              let sealed = SyncCoding.base64URLDecode(token),
+              await replayGuard.admit(SyncCoding.base64URLEncode(sealed), expires: issued.addingTimeInterval(SyncProtocol.maxClockSkew), now: at) else {
             return HTTPResponse(status: 401)
         }
         do {

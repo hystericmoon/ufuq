@@ -48,7 +48,6 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 - Desktop Claude % uses **made-up token budgets** (30M / 5 h, 300M / week, editable in Settings) and is labelled "estimated". Proposal: show tokens used, no %, until the live limit source is verified (Phase 5).
 - Slider hides the trailing text (reset time, media position) when it would straddle the handle; it stays in the TalkBack/Narrator description. Needs a design decision (move it outside the track?).
 - Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
-- Sync auth header can be replayed within its 5-min window on the same Wi-Fi (read-only data). Add a nonce cache.
 - Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
 - Ramadan: Adwam has no Imsak (owner decision 19 Nov); Android shows "Sahur" at Subuh. Add a Kemenag Imsak offset only if you want it.
 - Code-signing: Windows needs a certificate; Mac needs Developer ID + notarization (Phase 9).
@@ -105,6 +104,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - To verify on a Mac: Claude fields `type`, `timestamp`, `requestId`, `message.id`, `message.usage.*`; block rule vs real resets; Codex path, `payload.type == "token_count"`, `rate_limits.primary/secondary.used_percent`, `window_minutes`, `resets_in_seconds`/`resets_at`; Claude live-limit endpoint (only a fake exists); token budgets for the estimate.
 
 ## History
+
+- 2026-11-26 (late): Sync replay fix: the Mac server accepts each auth token once (`SyncReplayGuard`, keyed on the decoded bytes, entries expire with the 5-min window, capped at 4096). No Android change: it already seals a fresh token per request.
 
 - 2026-11-26 (night): Android A1–A4, A6, A7 and Windows W1–W2 built in cloud with parallel agents; Mac sync server; Wear OS skipped. CI green on all three platforms; device checks pending.
 

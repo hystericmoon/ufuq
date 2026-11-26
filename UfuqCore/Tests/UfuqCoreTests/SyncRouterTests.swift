@@ -66,6 +66,56 @@ final class SyncRouterTests: XCTestCase {
         XCTAssertEqual(okResponse.status, 200)
     }
 
+    func testReplayedTokenRejected() async throws {
+        let r = router()
+        let req = try request("/v1/snapshot")
+        let first = await r.handle(req)
+        XCTAssertEqual(first.status, 200)
+        let replay = await r.handle(req)
+        XCTAssertEqual(replay, HTTPResponse(status: 401))
+        // A fresh token from the same client still works.
+        let fresh = await r.handle(try request("/v1/snapshot", at: now.addingTimeInterval(1)))
+        XCTAssertEqual(fresh.status, 200)
+    }
+
+    func testReencodedReplayRejected() async throws {
+        let r = router()
+        let token = try SyncAuth.token(sealer: FakeSealer(key: 0x5A), now: now)
+        let first = await r.handle(try request("/v1/snapshot", token: .some(token)))
+        XCTAssertEqual(first.status, 200)
+        // Same bytes as standard, padded base64: still the same token.
+        let standard = try XCTUnwrap(SyncCoding.base64URLDecode(token)).base64EncodedString()
+        XCTAssertNotEqual(standard, token)
+        let replay = await r.handle(try request("/v1/snapshot", token: .some(standard)))
+        XCTAssertEqual(replay.status, 401)
+    }
+
+    func testRejectedTokenIsNotRemembered() async throws {
+        let r = router()
+        let stale = try request("/v1/snapshot", at: now.addingTimeInterval(-600))
+        let staleResponse = await r.handle(stale)
+        XCTAssertEqual(staleResponse.status, 401)
+        let ok = await r.handle(try request("/v1/snapshot"))
+        XCTAssertEqual(ok.status, 200)
+    }
+
+    func testReplayGuardExpiresAndStaysBounded() async {
+        let guardian = SyncReplayGuard(capacity: 3)
+        let t0 = now
+        let first = await guardian.admit("a", expires: t0.addingTimeInterval(300), now: t0)
+        let again = await guardian.admit("a", expires: t0.addingTimeInterval(300), now: t0.addingTimeInterval(10))
+        XCTAssertTrue(first)
+        XCTAssertFalse(again)
+        // After its window the token is outside the skew check anyway; the guard forgets it.
+        let late = await guardian.admit("a", expires: t0.addingTimeInterval(700), now: t0.addingTimeInterval(400))
+        XCTAssertTrue(late)
+        for i in 0..<10 { _ = await guardian.admit("t\(i)", expires: t0.addingTimeInterval(1000 + Double(i)), now: t0.addingTimeInterval(400)) }
+        let size = await guardian.count
+        XCTAssertEqual(size, 3)
+        let newest = await guardian.admit("t9", expires: t0.addingTimeInterval(1009), now: t0.addingTimeInterval(400))
+        XCTAssertFalse(newest)
+    }
+
     func testUnknownPathIs404ForPairedClient() async throws {
         let response = await router().handle(try request("/v2/other"))
         XCTAssertEqual(response.status, 404)
