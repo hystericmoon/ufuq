@@ -31,6 +31,12 @@ Android (from `android/`; JDK 17 or newer, `export ANDROID_HOME=/opt/android-sdk
 - App checks (what CI runs): `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug`
 - Re-record screenshots (Linux renders, `android/app/src/test/screenshots`): `./gradlew :app:recordRoborazziDebug`; compare with `:app:verifyRoborazziDebug`
 
+Windows (from `android/`; JDK 21, `export ANDROID_HOME=/opt/android-sdk` because the build includes `:app`):
+
+- Test (headless, also on Linux; writes PNGs to `android/desktop/build/screenshots`): `./gradlew :desktop:test`
+- Run the island on a dev machine: `./gradlew :desktop:run`
+- MSI (needs a Windows runner with WiX): `./gradlew :desktop:packageMsi`; CI is `.github/workflows/windows.yml`
+
 Mac app (Xcode required). The Xcode project is generated from `project.yml` and not committed. From the repo root:
 
 - Generate: `brew install xcodegen && xcodegen generate` (rerun after adding or removing files)
