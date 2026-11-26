@@ -1,0 +1,146 @@
+name: Release Mac
+
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-15
+    env:
+      SPARKLE_ED_PRIVATE_KEY: ${{ secrets.SPARKLE_ED_PRIVATE_KEY }}
+      SPARKLE_PUBLIC_KEY: ${{ vars.SPARKLE_PUBLIC_KEY }}
+      HAS_DEVELOPER_ID: ${{ secrets.MAC_CERT_P12 != '' && secrets.APPLE_ID != '' && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check Sparkle secrets
+        run: |
+          if [ -z "$SPARKLE_ED_PRIVATE_KEY" ]; then
+            echo "::error::Secret SPARKLE_ED_PRIVATE_KEY is missing. See docs/release-mac.md (one-time setup)."
+            exit 1
+          fi
+          if [ -z "$SPARKLE_PUBLIC_KEY" ]; then
+            echo "::error::Repository variable SPARKLE_PUBLIC_KEY is missing. See docs/release-mac.md."
+            exit 1
+          fi
+
+      - name: Select Xcode 16.4 if present
+        run: if [ -d /Applications/Xcode_16.4.app ]; then sudo xcode-select -s /Applications/Xcode_16.4.app; fi
+
+      - name: Read version
+        id: ver
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Releasing $VERSION"
+
+      - name: Install XcodeGen
+        run: brew install xcodegen
+
+      - name: Generate project
+        run: xcodegen generate
+
+      # TODO(Developer ID): enable once the secrets MAC_CERT_P12 and MAC_CERT_PASSWORD exist.
+      # Imports the certificate into a temporary keychain. Skipped when absent (ad-hoc signing).
+      - name: Import Developer ID certificate
+        if: env.HAS_DEVELOPER_ID == 'true'
+        env:
+          MAC_CERT_P12: ${{ secrets.MAC_CERT_P12 }}
+          MAC_CERT_PASSWORD: ${{ secrets.MAC_CERT_PASSWORD }}
+        run: |
+          KC="$RUNNER_TEMP/build.keychain-db"
+          KCPASS="$(uuidgen)"
+          echo "$MAC_CERT_P12" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security create-keychain -p "$KCPASS" "$KC"
+          security set-keychain-settings -lut 21600 "$KC"
+          security unlock-keychain -p "$KCPASS" "$KC"
+          security import "$RUNNER_TEMP/cert.p12" -P "$MAC_CERT_PASSWORD" -A -t cert -f pkcs12 -k "$KC"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KCPASS" "$KC"
+          security list-keychains -d user -s "$KC" login.keychain-db
+          IDENTITY="$(security find-identity -v -p codesigning "$KC" | grep 'Developer ID Application' | head -1 | sed -E 's/.*"(.*)".*/\1/')"
+          echo "SIGN_IDENTITY=$IDENTITY" >> "$GITHUB_ENV"
+
+      - name: Build app
+        run: |
+          set -euo pipefail
+          IDENTITY="${SIGN_IDENTITY:--}"
+          EXTRA=()
+          if [ "$IDENTITY" != "-" ]; then
+            EXTRA+=(ENABLE_HARDENED_RUNTIME=YES OTHER_CODE_SIGN_FLAGS=--timestamp "DEVELOPMENT_TEAM=${{ secrets.APPLE_TEAM_ID }}")
+          fi
+          xcodebuild -scheme Ufuq -configuration Release -destination 'platform=macOS' \
+            -derivedDataPath build \
+            MARKETING_VERSION="${{ steps.ver.outputs.version }}" \
+            CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
+            SPARKLE_PUBLIC_KEY="$SPARKLE_PUBLIC_KEY" \
+            CODE_SIGN_IDENTITY="$IDENTITY" \
+            "${EXTRA[@]}" \
+            build
+          test -d build/Build/Products/Release/Ufuq.app
+
+      # TODO(Developer ID): notarize and staple. Skipped when the secrets are absent.
+      - name: Notarize
+        if: env.HAS_DEVELOPER_ID == 'true'
+        env:
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_APP_PASSWORD: ${{ secrets.APPLE_APP_PASSWORD }}
+        run: |
+          set -euo pipefail
+          APP=build/Build/Products/Release/Ufuq.app
+          ditto -c -k --keepParent "$APP" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" \
+            --apple-id "$APPLE_ID" --team-id "$APPLE_TEAM_ID" --password "$APPLE_APP_PASSWORD" --wait
+          xcrun stapler staple "$APP"
+
+      - name: Package zip and DMG
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          APP=build/Build/Products/Release/Ufuq.app
+          mkdir -p dist/appcast-input
+          ditto -c -k --keepParent "$APP" "dist/appcast-input/Ufuq-$V.zip"
+          mkdir dmg-root
+          cp -R "$APP" dmg-root/
+          ln -s /Applications dmg-root/Applications
+          hdiutil create -volname "Ufuq $V" -srcfolder dmg-root -ov -format UDZO "dist/Ufuq-$V.dmg"
+
+      - name: Download Sparkle tools
+        run: |
+          set -euo pipefail
+          RESOLVED="$(find Ufuq.xcodeproj -name Package.resolved | head -1)"
+          SV="$(python3 -c 'import json,sys; d=json.load(open(sys.argv[1])); print(next(p["state"]["version"] for p in d["pins"] if p["identity"].lower()=="sparkle"))' "$RESOLVED")"
+          echo "Sparkle $SV"
+          mkdir sparkle-tools
+          curl -fsSL -o sparkle-tools/sparkle.tar.xz "https://github.com/sparkle-project/Sparkle/releases/download/$SV/Sparkle-$SV.tar.xz"
+          tar -xf sparkle-tools/sparkle.tar.xz -C sparkle-tools
+          ls sparkle-tools/bin
+
+      - name: Generate appcast
+        run: |
+          set -euo pipefail
+          V="${{ steps.ver.outputs.version }}"
+          KEYFILE="$RUNNER_TEMP/sparkle_ed_key"
+          printf '%s' "$SPARKLE_ED_PRIVATE_KEY" > "$KEYFILE"
+          sparkle-tools/bin/generate_appcast \
+            --ed-key-file "$KEYFILE" \
+            --download-url-prefix "https://github.com/hystericmoon/ufuq/releases/download/v$V/" \
+            dist/appcast-input
+          rm -f "$KEYFILE"
+          cp dist/appcast-input/appcast.xml dist/appcast.xml
+          cp "dist/appcast-input/Ufuq-$V.zip" dist/
+          cat dist/appcast.xml
+
+      - name: Upload to GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.ver.outputs.version }}
+          files: |
+            dist/Ufuq-${{ steps.ver.outputs.version }}.zip
+            dist/Ufuq-${{ steps.ver.outputs.version }}.dmg
+            dist/appcast.xml

@@ -16,6 +16,10 @@ enum AppSettings {
         UserDefaults.standard.bool(forKey: syncKey)
     }
 
+    /// Sparkle keeps its own automatic-check preference; this only names the feed host
+    /// shown in the privacy line in Settings.
+    static let updateDisclosure = "Ufuq contacts GitHub to check for new versions."
+
     /// Jakarta, the default until the prayer settings arrive.
     static let defaultLocation = PrayerLocation(
         name: "Jakarta", latitude: -6.2088, longitude: 106.8456,

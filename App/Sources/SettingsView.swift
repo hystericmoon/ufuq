@@ -21,6 +21,8 @@ struct SettingsView: View {
     @AppStorage(AppSettings.hoverKey) private var hoverToOpen = false
     @AppStorage(AppSettings.syncKey) private var shareWithPhone = false
 
+    @ObservedObject private var updater = UpdaterController.shared
+
     var body: some View {
         Form {
             Toggle("Open the panel when the pointer enters the notch", isOn: $hoverToOpen)
@@ -32,6 +34,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             Text("The hotkey ⌥Space always opens the panel.")
                 .foregroundStyle(.secondary)
+            UpdateSettingsSection(updater: updater)
         }
         .formStyle(.grouped)
         .frame(width: 420)

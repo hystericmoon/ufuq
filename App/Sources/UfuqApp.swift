@@ -4,6 +4,7 @@ import UfuqCore
 @main
 struct UfuqApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+    @StateObject private var updater = UpdaterController.shared
 
     var body: some Scene {
         MenuBarExtra("Ufuq", systemImage: "moon.stars") {
@@ -13,6 +14,7 @@ struct UfuqApp: App {
             LaunchAtLoginToggle()
             PairPhoneButton()
             SettingsLink { Text("Settings…") }
+            CheckForUpdatesButton(updater: updater)
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
         }
