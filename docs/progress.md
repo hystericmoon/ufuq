@@ -2,9 +2,44 @@
 
 Last updated: 2026-11-26
 
+## Status (2026-11-26, overnight)
+
+All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux, macOS and Android. Nothing has run on a real device yet.
+
+| Platform | Built | Verified by | You still need to check |
+|---|---|---|---|
+| Mac (phases 1–4 + sync server) | Core, prayer, usage parsers, notch shell, LAN sync server + pairing QR | macOS CI (build, app tests, snapshots) | List under "Check on the Mac" below; then "Pair phone…" with the Android app |
+| Android (A1–A4, A6, A7) | Kotlin core, island overlay + expanded design, Live Update chip, QS tile, media page, prayer silence / mosques, Ramadan, travel, Mac pairing + AI page + agent peeks, other apps (beta) | Robolectric tests, lint, screenshots in `android/app/src/test/screenshots` | Sideload the debug APK (CI artifact `ufuq-debug-apk`); see "Check on Android" |
+| Windows (W1, W2, W3 config) | Compose Desktop island, Win+Alt+Space, tray, local Claude/Codex usage, MSI config | `:desktop:test` headless + screenshots; MSI built on windows-latest CI | See "Check on Windows" |
+| Wear OS | skipped by owner | | |
+
+### Check on Android (debug APK, ~20 min)
+1. Install, open, pick Jakarta; Today screen times match Adwam.
+2. Live Update chip in the status bar / lock screen (Android 16); QS tile shows the next prayer.
+3. Settings → island overlay → grant "Display over other apps"; pill sits at the camera cutout; tap → expanded island; swipe pages; TalkBack reads each page as one item.
+4. Media: play something, grant notification access, seek and pause from page C.
+5. Prayer silence: grant DND access, test with a 5-min setting; add a mosque.
+6. Pair with the Mac (QR or paste code) once the Mac app runs.
+
+### Check on Windows (~15 min)
+1. Install the MSI (CI artifact; unsigned, SmartScreen will warn).
+2. Pill at top centre; Win+Alt+Space opens, Esc returns focus; no taskbar/Alt+Tab entry.
+3. Tray menu, launch at login.
+4. **NVDA/Narrator reads the island** — biggest risk (Compose Desktop via Java Access Bridge).
+5. AI page reads your real `%USERPROFILE%\.claude` and `.codex`.
+
+### Known issues to decide or fix
+- Desktop Claude % uses **made-up token budgets** (30M / 5 h, 300M / week, editable in Settings) and is labelled "estimated". Proposal: show tokens used, no %, until the live limit source is verified (Phase 5).
+- Slider hides the trailing text (reset time, media position) when it would straddle the handle; it stays in the TalkBack/Narrator description. Needs a design decision (move it outside the track?).
+- Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
+- Sync auth header can be replayed within its 5-min window on the same Wi-Fi (read-only data). Add a nonce cache.
+- Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
+- Ramadan: Adwam has no Imsak (owner decision 19 Nov); Android shows "Sahur" at Subuh. Add a Kemenag Imsak offset only if you want it.
+- Code-signing: Windows needs a certificate; Mac needs Developer ID + notarization (Phase 9).
+
 ## Next up
 
-**Phase 4 — Notch shell: code done, Mac check pending.** Built and tested on GitHub's macOS runner (`.github/workflows/mac.yml`: 23 app tests green, snapshots uploaded as the `snapshots` artifact). Never run on a real Mac yet.
+**Phase 4 — Notch shell: code done, Mac check pending.** Built and tested on GitHub's macOS runner (`.github/workflows/mac.yml`). Never run on a real Mac yet.
 
 Check on the Mac (about 15 min), then fix what fails:
 1. `brew install xcodegen && xcodegen generate && open Ufuq.xcodeproj`, run.
@@ -54,6 +89,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - To verify on a Mac: Claude fields `type`, `timestamp`, `requestId`, `message.id`, `message.usage.*`; block rule vs real resets; Codex path, `payload.type == "token_count"`, `rate_limits.primary/secondary.used_percent`, `window_minutes`, `resets_in_seconds`/`resets_at`; Claude live-limit endpoint (only a fake exists); token budgets for the estimate.
 
 ## History
+
+- 2026-11-26 (night): Android A1–A4, A6, A7 and Windows W1–W2 built in cloud with parallel agents; Mac sync server; Wear OS skipped. CI green on all three platforms; device checks pending.
 
 - 2026-11-26: Phase 4 code written in cloud and verified on the macOS CI runner (build + 23 tests + snapshots); real-Mac check pending.
 
