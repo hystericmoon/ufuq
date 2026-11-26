@@ -17,7 +17,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 ## Non-goals
 
 - No Mac App Store build (sandbox blocks reading `~/.claude*` and `~/.codex`).
-- No Windows or Linux version.
+- No Linux version. (Windows and Android were added 2026-11-26; see `docs/plan.md`.)
 - No cloud backend or account system; everything runs locally.
 - Not a full clipboard manager or file manager: 10 clipboard items, a simple shelf.
 

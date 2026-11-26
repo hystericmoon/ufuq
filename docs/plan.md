@@ -33,3 +33,11 @@ A4. **Prayer extras.** Prayer silence (DND for N min after adhan; geofenced save
 A5. **Wear OS.** `:wear` module: tile + complication (next prayer, worst AI %), haptic at adhan.
 A6. **Mac → phone sync.** AI usage page (B) and agent status ("needs input", "done") on the phone. Transport (decided 2026-11-26): local network first — the Mac app serves usage and agent events on the LAN (Bonjour/NSD discovery), paired once by QR code with a shared key, encrypted; no backend. Later, opt-in: a push relay the user hosts (e.g. self-hosted ntfy) for away-from-desk agent alerts.
 A7. **Other apps' live activities (opt-in, beta).** Rides/deliveries from ongoing notifications in the island; shares the notification-listener permission with A3; nothing stored or sent.
+
+## Windows track
+
+Decided 2026-11-26. Kotlin + Compose Multiplatform Desktop in `android/` as a `:desktop` module, sharing `:core` and the island UI with Android (two codebases total: Swift for Mac, Kotlin for Android + Windows). Starts after Android A2.
+
+W1. **Desktop shell.** Floating pill top-centre (no notch), collapsed / peek / expanded from the shared island UI; hotkey Win+Alt+Space (Alt+Space is the window menu); Esc closes and returns focus; tray icon; launch at login; Narrator labels.
+W2. **Local AI usage.** Port the Claude and Codex parsers to Kotlin (Swift tests as spec) and read `%USERPROFILE%\.claude*` and `.codex` directly; no sync needed.
+W3. **Release.** MSI/MSIX via a Windows CI runner, signed; auto-update.
