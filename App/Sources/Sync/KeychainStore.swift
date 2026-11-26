@@ -1,5 +1,6 @@
 import Foundation
 import Security
+import UfuqCore
 
 /// The pairing key, kept in the login keychain as a generic password.
 enum KeychainStore {
