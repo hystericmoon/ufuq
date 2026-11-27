@@ -28,7 +28,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 - **Expanded** (640 pt wide): pill tabs (Prayer, AI usage, Media, Shelf, …). Opened by hover (optional) or the global hotkey (default ⌥Space).
 - Every state returns to collapsed: peek → 6 s or Esc; expanded → mouse leaves or Esc.
 - Wing priority: active alert > prayer under 10 min > AI at 80% or more > agent task running > Now Playing > other.
-- Non-notch displays: the same states in a floating pill 8 pt below the menu bar.
+- Non-notch displays: the same states, hanging from the top edge of the screen like a notch: centred over the middle of the menu bar, collapsed 300 pt wide and as tall as the menu bar (at least 24 pt).
 - Full-screen apps: hidden by default; peeks still show (toggle).
 
 ## Modules

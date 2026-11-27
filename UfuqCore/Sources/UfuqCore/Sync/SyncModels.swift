@@ -12,6 +12,10 @@ public enum SyncProtocol {
     public static let maxClockSkew: TimeInterval = 5 * 60
     public static let longPollTimeout: TimeInterval = 30
     public static let authHeader = "X-Ufuq-Auth"
+    /// Optional short name of the phone (e.g. "Samsung SM-S928B"), shown on the Mac after pairing.
+    public static let clientHeader = "X-Ufuq-Client"
+    /// Longer client names are cut to this many characters.
+    public static let maxClientNameLength = 64
     public static let bonjourType = "_ufuq._tcp"
     /// Plaintext prefix of the request token; followed by the client's Unix time in seconds.
     public static let authPrefix = "ufuq-sync-auth:"

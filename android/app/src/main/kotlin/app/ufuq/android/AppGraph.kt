@@ -1,6 +1,8 @@
 package app.ufuq.android
 
 import android.content.Context
+import android.os.Build
+import app.ufuq.core.sync.SyncProtocol
 import app.ufuq.android.activities.ActivitiesListenerAdapter
 import app.ufuq.android.activities.AndroidActivityStrings
 import app.ufuq.android.activities.OtherAppsModule
@@ -71,6 +73,7 @@ class AppGraph(val context: Context) {
         scope = CoroutineScope(SupervisorJob() + Dispatchers.Default),
         strings = syncStrings,
         locator = NsdMacLocator(context),
+        clientName = SyncProtocol.phoneName(Build.MANUFACTURER, Build.MODEL),
         online = {
             val cm = context.getSystemService(ConnectivityManager::class.java)
             cm == null || cm.activeNetwork != null

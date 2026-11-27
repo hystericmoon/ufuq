@@ -34,8 +34,10 @@ class SyncController(
     private val scope: CoroutineScope,
     private val strings: SyncStrings,
     private val locator: MacLocator = MacLocator { it },
+    /** This phone's name, sent to the Mac so it can show which phone is paired. */
+    clientName: String? = null,
     private val clientFactory: (PairingPayload) -> SyncClient = { p ->
-        HttpSyncClient(p, AesGcmSealer(p.keyBytes), p.host, transport = SocketTransport())
+        HttpSyncClient(p, AesGcmSealer(p.keyBytes), p.host, transport = SocketTransport(), clientName = clientName)
     },
     private val clock: Clock = Clock.systemUTC(),
     private val online: () -> Boolean = { true },

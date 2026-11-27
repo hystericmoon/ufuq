@@ -47,7 +47,7 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 ### Known issues to decide or fix
 - Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
 - Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
-- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. Check on the Mac: after a Sparkle update, does the Keychain ask again for the sync key (ad-hoc signatures change each build)? If so, move the key out of the Keychain.
+- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. The Keychain asked again after each update (owner, v0.1.1), so the sync key now lives in `~/Library/Application Support/Ufuq/sync-key` (0600); the old Keychain item is moved once and deleted.
 - Windows code-signing certificate: optional, removes the SmartScreen warning.
 
 ## Next up
@@ -58,7 +58,7 @@ Check on the Mac (about 15 min), then fix what fails:
 1. `brew install xcodegen && xcodegen generate && open Ufuq.xcodeproj`, run.
 2. Panel sits over the notch, above the menu bar; left wing shows the real next prayer.
 3. ⌥Space opens it, VoiceOver focus lands inside, Tab reaches the tabs with a visible ring, Esc closes and returns focus to the previous app.
-4. External display: floating pill 8 pt below the menu bar.
+4. External display: the island hangs from the top edge, centred over the menu bar, as tall as the menu bar (changed 27 Nov after the owner's v0.1.1 check; was 8 pt below it).
 5. Reduce Motion cross-fade; Increase Contrast border; hover toggle; launch at login (may refuse on an unsigned debug build).
 6. Compare the `snapshots` artifact PNGs with `refs/` and the design canvas.
 

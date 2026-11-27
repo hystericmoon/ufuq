@@ -71,7 +71,7 @@ final class SyncSealerTests: XCTestCase {
     }
 
     func testPairingPayloadKeyMatchesSealerKeyLength() throws {
-        let key = try XCTUnwrap(KeychainStore.randomKey())
+        let key = try XCTUnwrap(SyncKeyStore.randomKey())
         XCTAssertEqual(key.count, PairingPayload.keyLength)
         XCTAssertNoThrow(try CryptoKitSealer(keyData: key))
     }
