@@ -42,6 +42,17 @@ enum AIUsageRows {
             if let future {
                 a11y += ", resets in \(PrayerFormat.spoken(future.timeIntervalSince(now)))"
             }
+            if let weekly = line.weeklyTokens, weekly > 0 {
+                var weekParts = ["7d \(TokenFormat.compact(weekly))"]
+                if let weeklyCost = line.weeklyEstimatedCostUSD, weeklyCost > 0 {
+                    weekParts.append(ClaudeCost.formatUSD(weeklyCost))
+                }
+                row.secondaryDetail = weekParts.joined(separator: " · ")
+                a11y += ", 7-day total \(TokenFormat.spoken(weekly))"
+                if let weeklyCost = line.weeklyEstimatedCostUSD, weeklyCost > 0 {
+                    a11y += ", estimated cost \(ClaudeCost.spokenUSD(weeklyCost))"
+                }
+            }
             row.accessibilityValue = a11y
         case .limits(let readings):
             guard let worst = UsageSummary.worst(of: readings),
@@ -58,9 +69,18 @@ enum AIUsageRows {
             var detail = "\(window) \(percent)%" + (worst.isEstimated ? " est." : "")
             if let reset { detail += " · resets in \(duration(reset.timeIntervalSince(now)))" }
             row.detail = detail
-            row.accessibilityValue = "\(percent) percent of the \(window.lowercased()) limit used"
+            var a11y = "\(percent) percent of the \(window.lowercased()) limit used"
                 + (worst.isEstimated ? ", estimated" : "")
                 + (reset.map { ", resets in \(PrayerFormat.spoken($0.timeIntervalSince(now)))" } ?? "")
+            if let other = readings
+                .filter({ $0.kind != worst.kind })
+                .max(by: { $0.snapshot.fraction < $1.snapshot.fraction }) {
+                let otherPercent = Int((min(max(other.snapshot.fraction, 0), 1) * 100).rounded(.down))
+                let otherWindow = windowName(other.kind)
+                row.secondaryDetail = "\(otherWindow) \(otherPercent)%" + (other.isEstimated ? " est." : "")
+                a11y += ", \(otherWindow.lowercased()) \(otherPercent) percent"
+            }
+            row.accessibilityValue = a11y
         case .unavailable:
             row.isUnavailable = true
             row.detail = "Unavailable"

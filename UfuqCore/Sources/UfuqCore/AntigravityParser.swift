@@ -8,12 +8,14 @@ public struct AntigravityUsageReport: Equatable, Sendable {
     public var activeCount: Int
     public var recentCount: Int
     public var resetsAt: Date?
+    public var weeklyTokens: Int
 
-    public init(tokens: Int, activeCount: Int, recentCount: Int, resetsAt: Date? = nil) {
+    public init(tokens: Int, activeCount: Int, recentCount: Int, resetsAt: Date? = nil, weeklyTokens: Int = 0) {
         self.tokens = tokens
         self.activeCount = activeCount
         self.recentCount = recentCount
         self.resetsAt = resetsAt
+        self.weeklyTokens = weeklyTokens
     }
 }
 
@@ -23,6 +25,7 @@ public struct AntigravityUsageReport: Equatable, Sendable {
 /// returns `.unavailable` instead of throwing or crashing.
 public enum AntigravityParser {
     public static let windowLength: TimeInterval = 5 * 3600
+    public static let weekLength: TimeInterval = 7 * 24 * 3600
 
     public static func defaultConfigDir(home: String = NSHomeDirectory()) -> String {
         URL(fileURLWithPath: home).appendingPathComponent(".gemini/antigravity").path
@@ -50,6 +53,7 @@ public enum AntigravityParser {
             SELECT conversation_id, status, last_modified_time
             FROM conversation_summaries
             WHERE COALESCE(killed, 0) = 0
+            ORDER BY last_modified_time DESC
             """
         var stmt: OpaquePointer?
         guard sqlite3_prepare_v2(db, sql, -1, &stmt, nil) == SQLITE_OK, let stmt else {
@@ -57,10 +61,12 @@ public enum AntigravityParser {
         }
         defer { sqlite3_finalize(stmt) }
 
-        let cutoff = now.addingTimeInterval(-windowLength)
+        let cutoff5h = now.addingTimeInterval(-windowLength)
+        let cutoff7d = now.addingTimeInterval(-weekLength)
         var activeCount = 0
-        var recentIDs: [String] = []
-        var earliestRecent: Date?
+        var recent5hCount = 0
+        var recent7d: [(id: String, in5h: Bool)] = []
+        var earliestRecent5h: Date?
 
         while sqlite3_step(stmt) == SQLITE_ROW {
             guard let idC = sqlite3_column_text(stmt, 0) else { continue }
@@ -69,27 +75,39 @@ public enum AntigravityParser {
             if status == "CASCADE_RUN_STATUS_RUNNING" {
                 activeCount += 1
             }
-            if let modDate = columnDate(stmt, index: 2), modDate >= cutoff {
-                recentIDs.append(convID)
-                if earliestRecent == nil || modDate < earliestRecent! {
-                    earliestRecent = modDate
+            if let modDate = columnDate(stmt, index: 2), modDate >= cutoff7d {
+                let in5h = modDate >= cutoff5h
+                if in5h {
+                    recent5hCount += 1
+                    if earliestRecent5h == nil || modDate < earliestRecent5h! {
+                        earliestRecent5h = modDate
+                    }
+                }
+                if recent7d.count < 200 {
+                    recent7d.append((id: convID, in5h: in5h))
                 }
             }
         }
 
         let convDir = URL(fileURLWithPath: configDir).appendingPathComponent("conversations")
-        var totalTokens = 0
-        for convID in recentIDs {
-            let convPath = convDir.appendingPathComponent("\(convID).db").path
-            totalTokens = saturatingAdd(totalTokens, readConversationTokens(at: convPath))
+        var tokens5h = 0
+        var weeklyTokens = 0
+        for item in recent7d {
+            let convPath = convDir.appendingPathComponent("\(item.id).db").path
+            let convTokens = readConversationTokens(at: convPath)
+            weeklyTokens = saturatingAdd(weeklyTokens, convTokens)
+            if item.in5h {
+                tokens5h = saturatingAdd(tokens5h, convTokens)
+            }
         }
 
-        let resetsAt = earliestRecent?.addingTimeInterval(windowLength)
+        let resetsAt = earliestRecent5h?.addingTimeInterval(windowLength)
         return .available(AntigravityUsageReport(
-            tokens: totalTokens,
+            tokens: tokens5h,
             activeCount: activeCount,
-            recentCount: recentIDs.count,
-            resetsAt: resetsAt
+            recentCount: recent5hCount,
+            resetsAt: resetsAt,
+            weeklyTokens: weeklyTokens
         ))
         #else
         return .unavailable(reason: "Antigravity reader requires macOS SQLite")

@@ -104,4 +104,107 @@ final class AIUpgradeTests: XCTestCase {
         }
         #endif
     }
+
+    func testClaudeWeeklyTokensAndCostInAIUsageModule() async throws {
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ufuq-claude-weekly-\(UUID().uuidString)")
+        let proj = tmp.appendingPathComponent("projects/demo")
+        try FileManager.default.createDirectory(at: proj, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let now = Date(timeIntervalSince1970: 1_700_600_000)
+        let iso = ISO8601DateFormatter()
+        let in5h = iso.string(from: now.addingTimeInterval(-30 * 60))       // 30 min ago (in 5h + 7d)
+        let in7d = iso.string(from: now.addingTimeInterval(-2 * 24 * 3600)) // 2 days ago (only in 7d)
+        let old = iso.string(from: now.addingTimeInterval(-9 * 24 * 3600))  // 9 days ago (excluded)
+
+        let jsonl = """
+        {"type":"assistant","timestamp":"\(in5h)","requestId":"r1","message":{"id":"m1","model":"claude-sonnet-4-5-20250929","usage":{"input_tokens":1000000,"output_tokens":0}}}
+        {"type":"assistant","timestamp":"\(in7d)","requestId":"r2","message":{"id":"m2","model":"claude-sonnet-4-5-20250929","usage":{"input_tokens":2000000,"output_tokens":0}}}
+        {"type":"assistant","timestamp":"\(old)","requestId":"r3","message":{"id":"m3","model":"claude-sonnet-4-5-20250929","usage":{"input_tokens":5000000,"output_tokens":0}}}
+        """
+        try jsonl.data(using: .utf8)!.write(to: proj.appendingPathComponent("session.jsonl"))
+
+        let mod = AIUsageModule(claudeDirs: [tmp.path], codexSessionsDir: nil)
+        try await mod.refresh()
+        let lines = mod.lines(at: now)
+        XCTAssertEqual(lines.count, 1)
+        if case .tokens(let count, _) = lines[0].value {
+            XCTAssertEqual(count, 1_000_000)
+        } else {
+            XCTFail("Expected token count for Claude")
+        }
+        XCTAssertEqual(lines[0].weeklyTokens, 3_000_000)
+        XCTAssertEqual(lines[0].weeklyEstimatedCostUSD ?? 0, 9.0, accuracy: 0.001)
+    }
+
+    #if canImport(SQLite3)
+    func testAntigravitySeparates5HourAndWeeklyTokens() throws {
+        let tmp = FileManager.default.temporaryDirectory
+            .appendingPathComponent("ufuq-ag-weekly-\(UUID().uuidString)")
+        let convDir = tmp.appendingPathComponent("conversations")
+        try FileManager.default.createDirectory(at: convDir, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: tmp) }
+
+        let now = Date(timeIntervalSince1970: 1_700_600_000)
+        let recentTs = Int64(now.addingTimeInterval(-3600).timeIntervalSince1970)        // 1h ago
+        let weekTs = Int64(now.addingTimeInterval(-2 * 24 * 3600).timeIntervalSince1970) // 2d ago
+        let oldTs = Int64(now.addingTimeInterval(-10 * 24 * 3600).timeIntervalSince1970) // 10d ago
+
+        let summaryPath = tmp.appendingPathComponent("conversation_summaries.db").path
+        var db: OpaquePointer?
+        XCTAssertEqual(sqlite3_open(summaryPath, &db), SQLITE_OK)
+        let createSQL = "CREATE TABLE conversation_summaries (conversation_id TEXT, status TEXT, last_modified_time INTEGER, killed INTEGER);"
+        XCTAssertEqual(sqlite3_exec(db, createSQL, nil, nil, nil), SQLITE_OK)
+        let insertSQL = """
+            INSERT INTO conversation_summaries VALUES
+            ('c-5h', 'CASCADE_RUN_STATUS_IDLE', \(recentTs), 0),
+            ('c-7d', 'CASCADE_RUN_STATUS_IDLE', \(weekTs), 0),
+            ('c-old', 'CASCADE_RUN_STATUS_IDLE', \(oldTs), 0);
+            """
+        XCTAssertEqual(sqlite3_exec(db, insertSQL, nil, nil, nil), SQLITE_OK)
+        sqlite3_close(db)
+
+        // Helper blob: f1.f4.f1 = 1500 tokens
+        func writeConv(_ id: String, tokens: UInt64) throws {
+            var f4 = Data([0x08])
+            var v = tokens
+            while true {
+                let b = UInt8(v & 0x7F)
+                v >>= 7
+                if v == 0 { f4.append(b); break }
+                f4.append(b | 0x80)
+            }
+            var f1 = Data([0x22, UInt8(f4.count)])
+            f1.append(f4)
+            var blob = Data([0x0a, UInt8(f1.count)])
+            blob.append(f1)
+
+            var cdb: OpaquePointer?
+            let cpath = convDir.appendingPathComponent("\(id).db").path
+            XCTAssertEqual(sqlite3_open(cpath, &cdb), SQLITE_OK)
+            XCTAssertEqual(sqlite3_exec(cdb, "CREATE TABLE gen_metadata (data BLOB);", nil, nil, nil), SQLITE_OK)
+            var stmt: OpaquePointer?
+            XCTAssertEqual(sqlite3_prepare_v2(cdb, "INSERT INTO gen_metadata VALUES (?);", -1, &stmt, nil), SQLITE_OK)
+            blob.withUnsafeBytes { raw in
+                _ = sqlite3_bind_blob(stmt, 1, raw.baseAddress, Int32(blob.count), nil)
+                XCTAssertEqual(sqlite3_step(stmt), SQLITE_DONE)
+            }
+            sqlite3_finalize(stmt)
+            sqlite3_close(cdb)
+        }
+
+        try writeConv("c-5h", tokens: 1500)
+        try writeConv("c-7d", tokens: 3000)
+        try writeConv("c-old", tokens: 9000)
+
+        let result = AntigravityParser.parse(configDir: tmp.path, now: now)
+        guard case .available(let report) = result else {
+            return XCTFail("Expected available Antigravity report")
+        }
+        XCTAssertEqual(report.tokens, 1500)
+        XCTAssertEqual(report.weeklyTokens, 4500)
+        XCTAssertEqual(report.recentCount, 1)
+    }
+    #endif
 }
