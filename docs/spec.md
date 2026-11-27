@@ -12,7 +12,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 | Bundle ID | `app.ufuq.mac` (placeholder until the domain is confirmed) |
 | Platform | macOS 14+, Apple Silicon and Intel |
 | Stack | Swift, SwiftUI, AppKit `NSPanel` |
-| Distribution | Notarized DMG + Sparkle; not sandboxed |
+| Distribution | Ad-hoc signed DMG + Sparkle (no Apple Developer account); not sandboxed |
 
 ## Non-goals
 
@@ -23,7 +23,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 
 ## Notch states
 
-- **Collapsed** (300×32 pt): two wings beside the camera. Left = prayer, right = AI. A third activity rotates every 8 s.
+- **Collapsed** (300×32 pt; on notch screens `max(300, notch + 2×90)`, ≈368 pt): two wings beside the camera. Left = prayer, right = AI. A third activity rotates every 8 s.
 - **Peek** (352×92 pt): one alert at a time, auto-dismisses after 6 s, hover holds it. 95% limits and adhan jump the queue.
 - **Expanded** (640 pt wide): pill tabs (Prayer, AI usage, Media, Shelf, …). Opened by hover (optional) or the global hotkey (default ⌥Space).
 - Every state returns to collapsed: peek → 6 s or Esc; expanded → mouse leaves or Esc.

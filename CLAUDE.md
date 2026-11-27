@@ -8,7 +8,7 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 
 - **Swift + SwiftUI, AppKit `NSPanel` for the notch window.** SwiftUI alone can't place a borderless panel above the menu bar.
 - **macOS 14+, Apple Silicon and Intel.** Same floor as the leading notch apps; keeps modern SwiftUI APIs available.
-- **Not sandboxed; notarized DMG + Sparkle; no Mac App Store.** The AI usage module must read `~/.claude*` and `~/.codex`, which the sandbox blocks.
+- **Not sandboxed; ad-hoc signed DMG + Sparkle; no Mac App Store, no Apple Developer account (owner, 27 Nov 2026).** The AI usage module must read `~/.claude*` and `~/.codex`, which the sandbox blocks. Never plan work that needs Developer ID or notarization.
 - **Logic lives in the `UfuqCore` Swift package (Foundation only); the Mac app imports it.** Work starts in Linux cloud sessions with no Xcode, and keeping logic UI-free lets `swift test` run anywhere.
 - **Every module implements `UfuqModule` and is loaded by `ModuleRegistry`.** Several data sources are undocumented (Claude limits, Codex logs, Antigravity, MediaRemote); one breaking must show "unavailable", never crash the app.
 - **Collapsed AI indicator = one ring per provider + worst % as text.** Chosen on the design canvas: all providers visible without opening the panel.
@@ -17,6 +17,10 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 - **Prayer: local calculation, Kemenag method by default.** Works offline; primary user is in Jakarta. Port the logic from Adwam (hystericmoon/muslimdaily).
 - **Hotkey always opens the panel; hover is optional.** Keyboard and VoiceOver users must never depend on the pointer.
 - **Antigravity is an isolated plugin labelled "Beta source".** No public API; its source is the most fragile.
+
+## Working with the owner
+
+- If you can do it yourself (merge, run workflows, fix CI, publish), do it; never hand the owner a step you can run. Only device checks, local keys and decisions are theirs.
 
 ## Commands
 

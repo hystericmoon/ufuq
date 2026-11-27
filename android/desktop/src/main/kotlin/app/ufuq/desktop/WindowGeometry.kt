@@ -1,13 +1,13 @@
 package app.ufuq.desktop
 
-/** Window sizes in dp (spec: collapsed pill 300x32, peek 352x92; the expanded island is wider than the phone's 104 dp strip to fit page dots). */
+/** Window sizes in dp (spec: collapsed pill 300x32, peek 352x92; the expanded island is wider than the phone's 116 dp strip to fit page dots). */
 object IslandSizes {
     const val COLLAPSED_WIDTH = 300
     const val COLLAPSED_HEIGHT = 32
     const val PEEK_WIDTH = 352
     const val PEEK_HEIGHT = 92
     const val EXPANDED_WIDTH = 420
-    const val EXPANDED_HEIGHT = 112
+    const val EXPANDED_HEIGHT = 124
 
     fun of(kind: NotchState.Kind): Pair<Int, Int> = when (kind) {
         NotchState.Kind.COLLAPSED -> COLLAPSED_WIDTH to COLLAPSED_HEIGHT

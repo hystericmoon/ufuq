@@ -11,7 +11,7 @@ import kotlin.math.ceil
 
 // TODO: duplicated from :app (app.ufuq.android.island); extract to a KMP :island-ui module later.
 // Differences: media page hidden on desktop, one AI page per account, the prayer button opens
-// Settings (no adhan audio on desktop yet), "estimated" labels, a proportional slider.
+// Settings (no adhan audio on desktop yet), Claude shown as tokens used (no %), a proportional slider.
 
 enum class IslandIcon { SUN, BELL, REFRESH, SETTINGS, PLAY, PAUSE }
 
@@ -27,7 +27,11 @@ interface IslandStrings {
     val noUsageTitle: String
     val noUsageHint: String
     val noUsageDescription: String
-    val estimated: String
+    /** "Resets in 1:12", the caption under a usage slider. */
+    fun resetsIn(time: String): String
+
+    /** "4.2M tokens" for a label. */
+    fun tokens(compact: String): String
     val expand: String
     val close: String
     val dismiss: String
@@ -41,13 +45,17 @@ interface IslandStrings {
     /** "82 percent" for the screen reader. */
     fun percentSpoken(value: Int): String
     fun prayerDescription(name: String, spoken: String, percent: Int): String
-    fun usageDescription(provider: String, window: String?, percent: Int, estimated: Boolean, resetsSpoken: String?): String
+    fun usageDescription(provider: String, window: String?, percent: Int, resetsSpoken: String?): String
+
+    /** "Claude 5-hour session, 4.2 million tokens used, resets in 3 hours" for the screen reader. */
+    fun tokenDescription(provider: String, window: String?, tokensSpoken: String, resetsSpoken: String?): String
 }
 
 /**
  * One slider: [fraction] 0..1 puts the handle at fraction x the full width, [label] and [secondary]
  * sit inside the track, [trailing] is a second secondary text at the end and [endIcon] a small icon.
  * The amber and red [level] always come with the percent in [stateText] and [description].
+ * [meter] false draws a plain track with no fill or handle: a count with no known limit.
  */
 data class SliderModel(
     val fraction: Float,
@@ -60,6 +68,7 @@ data class SliderModel(
     val description: String,
     /** Its spoken value, e.g. "62 percent". */
     val stateText: String,
+    val meter: Boolean = true,
 )
 
 data class IslandPageModel(
@@ -78,9 +87,14 @@ data class AiUsageSample(
     val resetsIn: Duration? = null,
     /** "5h", "week", or a model group; null when unknown. */
     val window: String? = null,
-    /** Computed locally from token counts against an assumed budget, not read from the provider. */
-    val estimated: Boolean = false,
-)
+    /**
+     * Tokens used in the window, for a source whose limit is unknown (Claude until its live limit is
+     * verified). When set, [fraction] is meaningless: no %, no amber/red, no alerts.
+     */
+    val tokens: Long? = null,
+) {
+    val isTokenCount: Boolean get() = tokens != null
+}
 
 object IslandPages {
     fun all(
@@ -122,6 +136,27 @@ object IslandPages {
             )
         }
         return samples.mapIndexed { index, sample ->
+            val label = listOfNotNull(sample.provider, sample.window).joinToString(" ")
+            val resetsSpoken = sample.resetsIn?.let { PrayerFormat.spoken(it) }
+            val tokens = sample.tokens
+            if (tokens != null) {
+                return@mapIndexed IslandPageModel(
+                    id = IslandPageId.AI_USAGE,
+                    key = "ai.$index.${sample.provider}",
+                    slider = SliderModel(
+                        fraction = 0f,
+                        label = label,
+                        secondary = s.tokens(TokenFormat.compact(tokens)),
+                        trailing = sample.resetsIn?.let { s.resetsIn(ResetTime.hoursMinutes(it)) },
+                        description = s.tokenDescription(sample.provider, sample.window, TokenFormat.spoken(tokens), resetsSpoken),
+                        stateText = TokenFormat.spoken(tokens),
+                        meter = false,
+                    ),
+                    buttonIcon = IslandIcon.REFRESH,
+                    buttonLabel = s.refreshUsage,
+                    buttonAction = ButtonAction.REFRESH,
+                )
+            }
             val fraction = sample.fraction.coerceIn(0.0, 1.0)
             val percent = (fraction * 100).toInt()
             IslandPageModel(
@@ -129,17 +164,51 @@ object IslandPages {
                 key = "ai.$index.${sample.provider}",
                 slider = SliderModel(
                     fraction = fraction.toFloat(),
-                    label = listOfNotNull(sample.provider, sample.window).joinToString(" "),
-                    secondary = if (sample.estimated) "${s.percent(percent)} ${s.estimated}" else s.percent(percent),
-                    trailing = sample.resetsIn?.let { ResetTime.hoursMinutes(it) },
+                    label = label,
+                    secondary = s.percent(percent),
+                    trailing = sample.resetsIn?.let { s.resetsIn(ResetTime.hoursMinutes(it)) },
                     level = thresholds.level(fraction),
-                    description = s.usageDescription(sample.provider, sample.window, percent, sample.estimated, sample.resetsIn?.let { PrayerFormat.spoken(it) }),
+                    description = s.usageDescription(sample.provider, sample.window, percent, resetsSpoken),
                     stateText = s.percentSpoken(percent),
                 ),
                 buttonIcon = IslandIcon.REFRESH,
                 buttonLabel = s.refreshUsage,
                 buttonAction = ButtonAction.REFRESH,
             )
+        }
+    }
+}
+
+/** Token counts: "4.2M" on screen, "4.2 million tokens" for the screen reader. */
+object TokenFormat {
+    private fun scaled(n: Long): Pair<String, Int> {
+        val v = n.coerceAtLeast(0)
+        return when {
+            v >= 1_000_000_000 -> one(v / 1e9) to 3
+            v >= 1_000_000 -> one(v / 1e6) to 2
+            v >= 1_000 -> one(v / 1e3) to 1
+            else -> v.toString() to 0
+        }
+    }
+
+    /** One decimal below 100 ("4.2", "12.5"), none from 100 ("250"); a trailing ".0" is dropped. */
+    private fun one(x: Double): String {
+        val text = if (x < 100) java.lang.String.format(java.util.Locale.ROOT, "%.1f", x) else java.lang.String.format(java.util.Locale.ROOT, "%.0f", x)
+        return text.removeSuffix(".0")
+    }
+
+    fun compact(n: Long): String {
+        val (num, scale) = scaled(n)
+        return num + when (scale) { 3 -> "B"; 2 -> "M"; 1 -> "K"; else -> "" }
+    }
+
+    fun spoken(n: Long): String {
+        val (num, scale) = scaled(n)
+        return when (scale) {
+            3 -> "$num billion tokens"
+            2 -> "$num million tokens"
+            1 -> "$num thousand tokens"
+            else -> if (num == "1") "1 token" else "$num tokens"
         }
     }
 }

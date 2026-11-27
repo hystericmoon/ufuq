@@ -9,6 +9,7 @@ import app.ufuq.core.UsageWindowKind
 import app.ufuq.core.UsageWindowReading
 import app.ufuq.desktop.island.AiUsageSample
 import app.ufuq.desktop.island.IslandStrings
+import app.ufuq.desktop.island.TokenFormat
 import java.time.Duration
 import java.time.Instant
 
@@ -30,7 +31,6 @@ object UsageMapper {
             fraction = worst.snapshot.fraction.coerceIn(0.0, 1.0),
             resetsIn = worst.snapshot.resetsAt?.let { Duration.between(now, it) }?.takeIf { !it.isNegative && !it.isZero },
             window = windowLabel(worst.kind),
-            estimated = worst.isEstimated,
         )
     }
 
@@ -51,9 +51,24 @@ object UsageMapper {
         return if (name.isEmpty()) "Claude" else "Claude $name"
     }
 
-    /** The collapsed pill's right wing: the worst sample as "Claude 82%". Null when there is none. */
+    /**
+     * The collapsed pill's right wing: the worst limit as "Codex 82%". With only token counts
+     * (Claude), the largest as "Claude 4.2M", with no fraction so it never turns amber or red.
+     * Null when there is nothing.
+     */
     fun activity(samples: List<AiUsageSample>, strings: IslandStrings): LiveActivity? {
-        val worst = samples.maxByOrNull { it.fraction } ?: return null
+        val worst = samples.filterNot { it.isTokenCount }.maxByOrNull { it.fraction }
+        if (worst == null) {
+            val top = samples.filter { it.isTokenCount }.maxByOrNull { it.tokens ?: 0 } ?: return null
+            val tokens = top.tokens ?: 0
+            return LiveActivity(
+                id = "ai.usage",
+                moduleId = "ai",
+                source = ActivitySource.AI_USAGE,
+                text = "${top.provider.substringBefore(' ')} ${TokenFormat.compact(tokens)}",
+                accessibilityLabel = strings.tokenDescription(top.provider, top.window, TokenFormat.spoken(tokens), null),
+            )
+        }
         val percent = (worst.fraction * 100).toInt()
         val name = worst.provider.substringBefore(' ')
         return LiveActivity(
@@ -61,7 +76,7 @@ object UsageMapper {
             moduleId = "ai",
             source = ActivitySource.AI_USAGE,
             text = "$name ${strings.percent(percent)}",
-            accessibilityLabel = strings.usageDescription(worst.provider, worst.window, percent, worst.estimated, null),
+            accessibilityLabel = strings.usageDescription(worst.provider, worst.window, percent, null),
             usageFraction = worst.fraction,
         )
     }

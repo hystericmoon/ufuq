@@ -45,12 +45,10 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 5. AI page reads your real `%USERPROFILE%\.claude` and `.codex`.
 
 ### Known issues to decide or fix
-- Desktop Claude % uses **made-up token budgets** (30M / 5 h, 300M / week, editable in Settings) and is labelled "estimated". Proposal: show tokens used, no %, until the live limit source is verified (Phase 5).
-- Slider hides the trailing text (reset time, media position) when it would straddle the handle; it stays in the TalkBack/Narrator description. Needs a design decision (move it outside the track?).
 - Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
 - Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
-- Ramadan: Adwam has no Imsak (owner decision 19 Nov); Android shows "Sahur" at Subuh. Add a Kemenag Imsak offset only if you want it.
-- Code-signing: Windows needs a certificate; Mac needs Developer ID + notarization (Phase 9).
+- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. Check on the Mac: after a Sparkle update, does the Keychain ask again for the sync key (ad-hoc signatures change each build)? If so, move the key out of the Keychain.
+- Windows code-signing certificate: optional, removes the SmartScreen warning.
 
 ## Next up
 
@@ -64,7 +62,7 @@ Check on the Mac (about 15 min), then fix what fails:
 5. Reduce Motion cross-fade; Increase Contrast border; hover toggle; launch at login (may refuse on an unsigned debug build).
 6. Compare the `snapshots` artifact PNGs with `refs/` and the design canvas.
 
-Deviation to judge: collapsed width on notch screens is `max(300, notch + 2×90)` (≈368 pt on a 14" MBP), because 300 leaves ~56 pt per wing, too narrow for "Ashar 15:12". The spec says 300.
+Collapsed width on notch screens is `max(300, notch + 2×90)` (≈368 pt on a 14" MBP) so "Ashar 15:12" fits a wing; kept by owner decision 27 Nov.
 
 Then Phase 5 (Prayer + AI UI) on the Mac.
 
@@ -102,6 +100,14 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - `ClaudeLogParser` (`<config>/projects/**/*.jsonl`, dedupe by message id + request id, 5-hour blocks and rolling 7 days), `CodexParser` (latest `token_count` rate-limit snapshot), `ClaudeLimitSource` protocol + estimate fallback (`isEstimated`), `UsageSummary.worst`.
 - Hardened after review: saturating token sums, streaming per file with a 256 MB tail cap, partial last line ignored, BOM, deep nesting, epoch timestamps, tilde dirs, future-dated snapshots.
 - To verify on a Mac: Claude fields `type`, `timestamp`, `requestId`, `message.id`, `message.usage.*`; block rule vs real resets; Codex path, `payload.type == "token_count"`, `rate_limits.primary/secondary.used_percent`, `window_minutes`, `resets_in_seconds`/`resets_at`; Claude live-limit endpoint (only a fake exists); token budgets for the estimate.
+
+## Decisions (27 Nov 2026, owner took every recommendation)
+
+- Claude shows **tokens used in the 5-hour block, no %** until its live limit is verified (Phase 5). Done on Windows (no budgets setting, no amber/red, no alerts, plain track); the Mac AI page must follow it.
+- The slider's trailing text (reset time, media length) sits **on a caption line under the track**, right-aligned to its end; AI resets read "Resets in 1:12". Android island 104 → 116 dp, Windows 112 → 124 dp.
+- Mac collapsed width stays ≈368 pt (not the spec's 300).
+- Ramadan keeps "Sahur" at Subuh; no Imsak.
+- No Apple Developer account: the Mac app stays ad-hoc signed.
 
 ## History
 

@@ -14,7 +14,7 @@ class WindowGeometryTest {
 
     @Test fun peekAndExpandedAreCentredToo() {
         assertEquals(WindowPlacement(784, 8, 352, 92), WindowGeometry.place(fullHd, NotchState.Kind.PEEK))
-        assertEquals(WindowPlacement(750, 8, 420, 112), WindowGeometry.place(fullHd, NotchState.Kind.EXPANDED))
+        assertEquals(WindowPlacement(750, 8, 420, 124), WindowGeometry.place(fullHd, NotchState.Kind.EXPANDED))
     }
 
     @Test fun aTopTaskbarPushesItDown() {

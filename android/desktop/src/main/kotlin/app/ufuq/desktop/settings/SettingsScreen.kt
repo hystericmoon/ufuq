@@ -135,16 +135,6 @@ fun SettingsScreen(
                     ) { Text("Add") }
                 }
 
-                SectionTitle("Estimated usage budgets")
-                Text(
-                    "Used only when Claude's real limits cannot be read: tokens counted in the logs against these numbers, shown as \"estimated\".",
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    BudgetField("5-hour window (tokens)", settings.sessionBudgetTokens, Modifier.weight(1f)) { onChange(settings.copy(sessionBudgetTokens = it)) }
-                    BudgetField("Week (tokens)", settings.weeklyBudgetTokens, Modifier.weight(1f)) { onChange(settings.copy(weeklyBudgetTokens = it)) }
-                }
-
                 HorizontalDivider(Modifier.padding(top = 12.dp))
                 SectionTitle("General")
                 SwitchRow(
@@ -177,19 +167,4 @@ fun SettingsScreen(
             }
         }
     }
-}
-
-@Composable
-private fun BudgetField(label: String, value: Long, modifier: Modifier, onValue: (Long) -> Unit) {
-    var text by remember(value) { mutableStateOf(value.toString()) }
-    OutlinedTextField(
-        value = text,
-        onValueChange = { t ->
-            text = t.filter(Char::isDigit)
-            text.toLongOrNull()?.takeIf { it > 0 }?.let(onValue)
-        },
-        label = { Text(label) },
-        singleLine = true,
-        modifier = modifier,
-    )
 }

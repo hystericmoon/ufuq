@@ -130,7 +130,7 @@ class IslandModelTest {
         assertEquals(UsageLevel.CRITICAL, level(0.95).level)
         val s = IslandPages.aiUsage(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72)), TestStrings).slider
         assertEquals("82%", s.secondary)
-        assertEquals("1:12", s.trailing)
+        assertEquals("Resets in 1:12", s.trailing)
         assertEquals("82 percent", s.stateText) // never colour alone
         assertTrue("82 percent" in s.description && "resets in 1 hour 12 minutes" in s.description)
     }

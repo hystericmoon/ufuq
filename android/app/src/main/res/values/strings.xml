@@ -46,6 +46,7 @@
     <string name="island_percent">%1$d%%</string>
     <string name="island_percent_spoken">%1$d percent</string>
     <string name="island_prayer_description">%1$s in %2$s, %3$d percent of the time since the previous prayer</string>
+    <string name="island_resets_in">Resets in %1$s</string>
     <string name="island_usage_description">%1$s, %2$d percent of the limit used</string>
     <string name="island_usage_description_resets">%1$s, %2$d percent of the limit used, resets in %3$s</string>
 

@@ -19,7 +19,7 @@ class IslandControllerTest {
     private var now = noon
     private val log = mutableListOf<String>()
     private var settingsOpened = 0
-    private var samples = listOf(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72), "5h", estimated = true))
+    private var samples = listOf(AiUsageSample("Codex", 0.82, Duration.ofMinutes(72), "5h"))
 
     private fun controller() = IslandController(
         initial = DesktopSettings(),
@@ -37,7 +37,7 @@ class IslandControllerTest {
         assertEquals(NotchState.Collapsed, s.mode)
         val pill = assertNotNull(s.pill)
         assertTrue(pill.left.startsWith("Ashar "), pill.left)
-        assertEquals("Claude 82%", pill.right)
+        assertEquals("Codex 82%", pill.right)
         assertTrue(pill.description.contains("Ashar in 3 hours"), pill.description)
     }
 
@@ -108,13 +108,13 @@ class IslandControllerTest {
     }
 
     @Test fun crossingEightyPercentQueuesAPeek() = runBlocking {
-        samples = listOf(AiUsageSample("Claude", 0.5, Duration.ofHours(1), "5h", true))
+        samples = listOf(AiUsageSample("Codex", 0.5, Duration.ofHours(1), "5h"))
         val c = controller()
         c.refreshUsage()
         assertEquals(NotchState.Collapsed, c.state.value.mode)
-        samples = listOf(AiUsageSample("Claude", 0.83, Duration.ofHours(1), "5h", true))
+        samples = listOf(AiUsageSample("Codex", 0.83, Duration.ofHours(1), "5h"))
         c.refreshUsage()
-        assertEquals("Claude 5h at 83%", (c.state.value.mode as NotchState.Peek).event.title)
+        assertEquals("Codex 5h at 83%", (c.state.value.mode as NotchState.Peek).event.title)
     }
 
     @Test fun aFailingUsageSourceLeavesTheEmptyPage() = runBlocking {

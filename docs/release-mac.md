@@ -30,8 +30,11 @@ The appcast lists only the version just built.
 
 ## Signing and Gatekeeper
 
-Without Developer ID secrets the app is ad-hoc signed. Updates install through Sparkle (the EdDSA
-signature is what Sparkle checks), but a first download from the DMG or zip may show a Gatekeeper
-warning (right-click, Open). To remove it, add Developer ID and notarization. The workflow already
-has marked TODO steps that run only when these secrets exist: `MAC_CERT_P12` (base64 .p12),
-`MAC_CERT_PASSWORD`, `APPLE_ID`, `APPLE_TEAM_ID`, `APPLE_APP_PASSWORD`.
+Ufuq is ad-hoc signed by decision: no Apple Developer account (owner, 27 Nov 2026). Updates install
+through Sparkle (the EdDSA signature is what Sparkle checks, and Sparkle-installed updates are not
+quarantined), so only the first install meets Gatekeeper. On macOS 15+ right-click → Open no longer
+bypasses it: open the app once, then System Settings → Privacy & Security → "Open Anyway". Or from
+Terminal: `xattr -dr com.apple.quarantine /Applications/Ufuq.app`.
+
+The workflow keeps inert Developer ID / notarization steps that run only if `MAC_CERT_P12` etc. exist.
+They are not planned.

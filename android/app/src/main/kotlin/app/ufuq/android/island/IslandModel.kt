@@ -46,6 +46,9 @@ interface IslandStrings {
     fun percentSpoken(value: Int): String
     fun prayerDescription(name: String, spoken: String, percent: Int): String
     fun usageDescription(provider: String, percent: Int, resetsSpoken: String?): String
+
+    /** "Resets in 1:12", the caption under a usage slider. */
+    fun resetsIn(time: String): String
 }
 
 /**
@@ -136,7 +139,7 @@ object IslandPages {
                 fraction = fraction.toFloat(),
                 label = sample.provider,
                 secondary = s.percent(percent),
-                trailing = sample.resetsIn?.let { ResetTime.hoursMinutes(it) },
+                trailing = sample.resetsIn?.let { s.resetsIn(ResetTime.hoursMinutes(it)) },
                 level = thresholds.level(fraction),
                 description = s.usageDescription(sample.provider, percent, sample.resetsIn?.let { PrayerFormat.spoken(it) }),
                 stateText = s.percentSpoken(percent),

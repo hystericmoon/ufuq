@@ -47,7 +47,7 @@ class SyncMapperTest {
         assertEquals(0.82f, p.slider.fraction)
         assertEquals("Claude", p.slider.label)
         assertEquals("82%", p.slider.secondary)
-        assertEquals("1:12", p.slider.trailing)
+        assertEquals("Resets in 1:12", p.slider.trailing)
         assertEquals(UsageLevel.WARNING, p.slider.level)
         assertEquals(ButtonAction.REFRESH, p.buttonAction)
         assertTrue("82 percent" in p.slider.description)
