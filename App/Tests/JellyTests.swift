@@ -135,4 +135,12 @@ final class JellyTests: XCTestCase {
         XCTAssertGreaterThan(padded.width, plain.width)
         XCTAssertGreaterThan(NotchGeometry.paddedWindowFrame(for: .collapsed, metrics: metrics, neck: true).height, padded.height)
     }
+
+    func testSwipeSkewClampsAndRespectsReduceMotion() {
+        XCTAssertEqual(Jelly.swipeSkew(deltaX: 0, reduceMotion: false), 0, accuracy: 0.0001)
+        XCTAssertEqual(Jelly.swipeSkew(deltaX: 40, reduceMotion: false), 2, accuracy: 0.0001)
+        XCTAssertEqual(Jelly.swipeSkew(deltaX: 200, reduceMotion: false), Jelly.maxSkew, accuracy: 0.0001)
+        XCTAssertEqual(Jelly.swipeSkew(deltaX: -200, reduceMotion: false), -Jelly.maxSkew, accuracy: 0.0001)
+        XCTAssertEqual(Jelly.swipeSkew(deltaX: 80, reduceMotion: true), 0, accuracy: 0.0001)
+    }
 }

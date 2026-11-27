@@ -162,4 +162,20 @@ final class ActivityArbiterTests: XCTestCase {
         XCTAssertEqual(arbiter.layout(for: all, at: t0 + 2).rotating?.id, "g")
         XCTAssertEqual(arbiter.layout(for: all, at: t0 + 4).rotating?.id, "m")
     }
+
+    func testAdvanceRotationAdvancesImmediatelyAndRespectsAlerts() {
+        var arbiter = ActivityArbiter()
+        let all = [act("p", .prayer), act("ai", .aiUsage), act("g", .agent), act("m", .nowPlaying)]
+        XCTAssertNil(arbiter.layout(for: all, at: t0).rotating)
+        arbiter.advanceRotation()
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 1).rotating?.id, "g")
+        arbiter.advanceRotation()
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 2).rotating?.id, "m")
+
+        // Pinned alert stays pinned even if advanceRotation() is called.
+        let withAlert = all + [act("bat", .other, alert: true)]
+        XCTAssertEqual(arbiter.layout(for: withAlert, at: t0 + 3).rotating?.id, "bat")
+        arbiter.advanceRotation()
+        XCTAssertEqual(arbiter.layout(for: withAlert, at: t0 + 4).rotating?.id, "bat")
+    }
 }

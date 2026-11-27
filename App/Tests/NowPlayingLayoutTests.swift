@@ -49,4 +49,18 @@ final class NowPlayingLayoutTests: XCTestCase {
         XCTAssertEqual(NowPlayingFormat.playPauseLabel(track(playing: true)), "Pause, Bertaut by Nadin Amizah")
         XCTAssertEqual(NowPlayingFormat.playPauseLabel(track(playing: false)), "Play, Bertaut by Nadin Amizah")
     }
+
+    func testFocusedTileKeyCommands() {
+        var withPosition = track(playing: true)
+        withPosition.elapsed = 30
+        withPosition.duration = 120
+        XCTAssertEqual(NowPlayingFormat.command(for: .space, track: withPosition, at: now), .playPause)
+        XCTAssertEqual(NowPlayingFormat.command(for: .left, track: withPosition, at: now), .seek(to: 20))
+        XCTAssertEqual(NowPlayingFormat.command(for: .right, track: withPosition, at: now), .seek(to: 40))
+
+        let withoutPosition = track(playing: false)
+        XCTAssertEqual(NowPlayingFormat.command(for: .space, track: withoutPosition, at: now), .playPause)
+        XCTAssertNil(NowPlayingFormat.command(for: .left, track: withoutPosition, at: now))
+        XCTAssertNil(NowPlayingFormat.command(for: .right, track: withoutPosition, at: now))
+    }
 }

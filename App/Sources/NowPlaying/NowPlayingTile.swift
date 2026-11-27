@@ -24,6 +24,27 @@ enum NowPlayingFormat {
         if let duration = track.duration { target = min(target, duration) }
         return target
     }
+
+    enum KeyInput {
+        case space
+        case left
+        case right
+    }
+
+    /// Maps a focused-tile key press to a media command, or `nil` when the key should fall
+    /// through (e.g. arrow keys when the track has no position).
+    static func command(for key: KeyInput, track: NowPlaying, at now: Date, seekStep: TimeInterval = 10) -> NowPlayingCommand? {
+        switch key {
+        case .space:
+            return .playPause
+        case .left:
+            guard track.position(at: now) != nil else { return nil }
+            return .seek(to: seekTarget(track, by: -seekStep, at: now))
+        case .right:
+            guard track.position(at: now) != nil else { return nil }
+            return .seek(to: seekTarget(track, by: seekStep, at: now))
+        }
+    }
 }
 
 /// Decodes artwork once per payload; the tile redraws every second.

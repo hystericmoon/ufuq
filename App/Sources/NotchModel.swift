@@ -89,6 +89,8 @@ final class NotchModel: ObservableObject {
 
     /// Pointer over the body. Writer: motion layer (NotchController hover tracking).
     @Published var pointer = JellyPointer()
+    /// Horizontal swipe shear on the collapsed body, degrees. Writer: NotchController scroll tracking.
+    @Published var swipeSkew: CGFloat = 0
     /// A file drag near the top edge, nil otherwise. Writer: File Tray. Reader: motion (the neck).
     @Published var fileDrag: FileDragState?
     /// Bumped once per accepted drop. Writer: File Tray. Reader: motion (the swallow bulge).

@@ -9,12 +9,16 @@ final class NotchHostingView: NSHostingView<NotchRootView> {
     var onMouseEntered: (() -> Void)?
     var onMouseExited: (() -> Void)?
     var onPointer: ((JellyPointer) -> Void)?
+    var onSwipeSkew: ((CGFloat) -> Void)?
+    var onSwipeCollapsed: ((Int) -> Void)?
     /// The black body's size; set by the controller. Zero means the whole view.
     var bodySize: CGSize = .zero
     private var tracking: NSTrackingArea?
     private var inside = false
     private var pressed = false
     private var lastX: CGFloat = 0
+    private var swipeDeltaX: CGFloat = 0
+    private var swipingHorizontally = false
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
@@ -58,6 +62,40 @@ final class NotchHostingView: NSHostingView<NotchRootView> {
         pressed = false
         publish()
         super.mouseUp(with: event)
+    }
+
+    override func scrollWheel(with event: NSEvent) {
+        guard inside, event.hasPreciseScrollingDeltas, event.momentumPhase == [] else {
+            super.scrollWheel(with: event)
+            return
+        }
+        let reduceMotion = NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+        switch event.phase {
+        case .began:
+            swipeDeltaX = 0
+            swipingHorizontally = abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY)
+        case .changed:
+            if !swipingHorizontally && swipeDeltaX == 0 {
+                swipingHorizontally = abs(event.scrollingDeltaX) > abs(event.scrollingDeltaY)
+            }
+            guard swipingHorizontally else {
+                super.scrollWheel(with: event)
+                return
+            }
+            swipeDeltaX += event.scrollingDeltaX
+            onSwipeSkew?(Jelly.swipeSkew(deltaX: swipeDeltaX, reduceMotion: reduceMotion))
+        case .ended, .cancelled:
+            let total = swipeDeltaX
+            let wasHorizontal = swipingHorizontally
+            swipeDeltaX = 0
+            swipingHorizontally = false
+            onSwipeSkew?(0)
+            if wasHorizontal, event.phase == .ended, abs(total) >= Jelly.swipeTriggerDistance {
+                onSwipeCollapsed?(total > 0 ? 1 : -1)
+            }
+        default:
+            break
+        }
     }
 
     /// Window coordinates start bottom-left; the body hangs from the top, centered.
@@ -241,6 +279,17 @@ final class NotchController: NSObject {
             machine.setPeek(queue.current)
             announceIfNew()
             applyState(restoreFocus: false)
+        }
+    }
+
+    private func handleCollapsedSwipe(direction: Int) {
+        guard !machine.isExpanded else { return }
+        if let nowPlaying = registry.module(id: "nowPlaying") as? NowPlayingModule,
+           nowPlaying.nowPlaying?.isPlaying == true {
+            NowPlayingControl.send(direction > 0 ? .next : .previous)
+        } else {
+            arbiter.advanceRotation()
+            tick()
         }
     }
 
@@ -536,6 +585,14 @@ final class NotchController: NSObject {
         island.hostingView.onPointer = { [weak island] pointer in
             guard let island, island.model.pointer != pointer else { return }
             island.model.pointer = pointer
+        }
+        island.hostingView.onSwipeSkew = { [weak island] skew in
+            guard let island else { return }
+            let resolved = island.model.state.kind == .collapsed ? skew : 0
+            if island.model.swipeSkew != resolved { island.model.swipeSkew = resolved }
+        }
+        island.hostingView.onSwipeCollapsed = { [weak self] direction in
+            self?.handleCollapsedSwipe(direction: direction)
         }
         // A file drag near the notch needs room below the body for the neck.
         island.model.$fileDrag

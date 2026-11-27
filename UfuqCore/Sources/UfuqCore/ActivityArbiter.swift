@@ -88,6 +88,13 @@ public struct ActivityArbiter {
             .map(\.element)
     }
 
+    /// Advances the rotating right-wing slot immediately on the next `layout(for:at:)` call.
+    /// Pinned alerts still take precedence until cleared.
+    public mutating func advanceRotation() {
+        guard rotatingID != nil else { return }
+        shownSince = .distantPast
+    }
+
     /// Computes the layout for `now`. Call on every tick; it advances the rotation when due.
     public mutating func layout(for activities: [LiveActivity], at now: Date) -> WingLayout {
         var pool = ranked(activities, at: now)
