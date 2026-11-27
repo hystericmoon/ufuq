@@ -22,6 +22,11 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 
 - If you can do it yourself (merge, run workflows, fix CI, publish), do it; never hand the owner a step you can run. Only device checks, local keys and decisions are theirs.
 
+## Delegation (owner, 27 Nov 2026)
+
+- Always hand lighter work to cheaper sub-agents: `model: "haiku"` for mechanical jobs (renames, find-and-replace, formatting, log or CI-output digging, summaries, searches); `model: "sonnet"` for specified implementation and UI work from a written brief, screenshot re-records, docs.
+- Keep design decisions, architecture, bugs of unknown cause and final review in the main session.
+
 ## Commands
 
 Core package (Linux or Mac), from `UfuqCore/`:
