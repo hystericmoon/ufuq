@@ -6,7 +6,7 @@ paths:
 # UI rules
 
 - The notch is always black (#000000) in light and dark mode. Use the tokens in `docs/spec.md` (Visual tokens); no other colors without updating that table.
-- SF Pro (system font) only. Collapsed text 13/600, titles 26/700, countdown 44/600. Numbers that change use `.monospacedDigit()`.
+- SF Pro (system font) only. Collapsed text 13/600, titles 26/700, countdown 44/600; open-panel tiles add 11/600 label, 12/600 value, 11/400 caption (spec "Visual tokens"). Numbers that change use `.monospacedDigit()`.
 - Spacing in steps of 4; notch corner radius 14 collapsed, 22 peek, 28 expanded.
 - Text contrast on black: primary #FFFFFF, secondary #A1A1A6, muted #8E8E93. Nothing darker for text (WCAG AA).
 - Color never carries meaning alone: rings and bars always show a % or label.

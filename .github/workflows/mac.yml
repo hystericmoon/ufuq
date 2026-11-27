@@ -10,8 +10,12 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - name: Select Xcode 16.4 if present
-        run: if [ -d /Applications/Xcode_16.4.app ]; then sudo xcode-select -s /Applications/Xcode_16.4.app; fi
+      # Xcode 26 builds Liquid Glass (macOS 26 SDK); the app still runs on macOS 14+.
+      - name: Select Xcode 26 if present, else 16.4
+        run: |
+          X=$(ls -d /Applications/Xcode_26*.app 2>/dev/null | grep -vi beta | sort -V | tail -1)
+          if [ -z "$X" ] && [ -d /Applications/Xcode_16.4.app ]; then X=/Applications/Xcode_16.4.app; fi
+          if [ -n "$X" ]; then sudo xcode-select -s "$X"; fi
       - name: Show toolchain
         run: xcodebuild -version
       - name: Install XcodeGen

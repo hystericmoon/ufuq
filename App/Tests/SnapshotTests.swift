@@ -41,25 +41,46 @@ final class SnapshotTests: XCTestCase {
         try render(PeekView(event: event, topInset: 32), size: CGSize(width: 352, height: 92), name: "peek-critical")
     }
 
-    func testExpandedPrayer() throws {
-        let snapshot = PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation)
-        let view = ExpandedView(
-            snapshot: snapshot, now: fixedNow, topInset: 32,
-            selectedTab: .constant(.prayer), focusToken: 0)
-        try render(view, size: CGSize(width: 640, height: 360), name: "expanded-prayer")
+    /// Design canvas option A with every tile this build has: Prayer, AI (four accounts), Battery.
+    func testExpandedBentoAllTiles() throws {
+        try renderBento(name: "expanded-bento-all", content: BentoContent(
+            snapshot: jakarta, now: fixedNow, ai: Self.aiRows,
+            battery: BatteryStatus(percent: 82, isCharging: true, isPluggedIn: true)))
     }
 
-    func testExpandedAIEmptyState() throws {
-        let view = ExpandedView(
-            snapshot: nil, now: fixedNow, topInset: 32,
-            selectedTab: .constant(.ai), focusToken: 0)
-        try render(view, size: CGSize(width: 640, height: 360), name: "expanded-ai")
+    /// What ships until the usage readers are wired: AI empty state, no battery (desktop Mac).
+    func testExpandedBentoPrayerOnly() throws {
+        try renderBento(name: "expanded-bento-empty-ai", content: BentoContent(snapshot: jakarta, now: fixedNow))
     }
 
-    private func render<V: View>(_ view: V, size: CGSize, name: String) throws {
+    func testExpandedBentoUnavailable() throws {
+        try renderBento(name: "expanded-bento-unavailable", content: BentoContent(
+            snapshot: nil, now: fixedNow,
+            battery: BatteryStatus(percent: 8, isCharging: false, isPluggedIn: false)))
+    }
+
+    private var jakarta: PrayerSnapshot? { PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation) }
+
+    private static let aiRows = [
+        AIUsageRow(id: "c1", provider: .claude, name: "Claude · Work", fraction: 0.62, detail: "Week 41% · resets 2 h 10 min"),
+        AIUsageRow(id: "c2", provider: .claude, name: "Claude · Personal", fraction: 0.18, detail: "In use by Claude Code"),
+        AIUsageRow(id: "cx", provider: .codex, name: "Codex", fraction: 0.84, detail: "High · limit in ~38 min"),
+        AIUsageRow(id: "ag", provider: .antigravity, name: "Antigravity", fraction: 0.23, detail: "Pro models", isBetaSource: true),
+    ]
+
+    /// Solid surface: ImageRenderer cannot draw glass or materials, and the layout is what is checked.
+    private func renderBento(name: String, content: BentoContent) throws {
+        let size = BentoLayout.size(smallTiles: content.smallTiles.count, stripHeight: 32)
+        let view = ExpandedView(
+            content: content, layout: wings, centerGap: 188, stripHeight: 32,
+            focusedTile: .constant(.prayer), focusToken: 0, surface: .solid)
+        try render(view, size: size, name: name, backdrop: Color(hex: 0x33445A))
+    }
+
+    private func render<V: View>(_ view: V, size: CGSize, name: String, backdrop: Color = .black) throws {
         let content = view
             .frame(width: size.width, height: size.height, alignment: .top)
-            .background(Color.black)
+            .background(backdrop)
             .environment(\.colorScheme, .dark)
         let renderer = ImageRenderer(content: content)
         renderer.scale = 2

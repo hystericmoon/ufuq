@@ -19,12 +19,13 @@ struct NotchRootView: View {
                 UnevenRoundedRectangle(
                     topLeadingRadius: 0, bottomLeadingRadius: radius,
                     bottomTrailingRadius: radius, topTrailingRadius: 0)
-                    .fill(Tokens.notchBg))
+                    // The open panel draws its own black strip and glass body.
+                    .fill(kind == .expanded ? Color.clear : Tokens.notchBg))
             .overlay(
                 UnevenRoundedRectangle(
                     topLeadingRadius: 0, bottomLeadingRadius: radius,
                     bottomTrailingRadius: radius, topTrailingRadius: 0)
-                    .stroke(Tokens.textMuted, lineWidth: contrast == .increased ? 1 : 0))
+                    .stroke(Tokens.textMuted, lineWidth: contrast == .increased && kind != .expanded ? 1 : 0))
             .animation(reduceMotion ? nil : .spring(response: 0.38, dampingFraction: 0.82), value: kind)
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
             .ignoresSafeArea()
@@ -43,10 +44,11 @@ struct NotchRootView: View {
                 .transition(.opacity)
         case .expanded:
             ExpandedView(
-                snapshot: model.snapshot,
-                now: model.now,
-                topInset: model.topInset,
-                selectedTab: $model.selectedTab,
+                content: model.content,
+                layout: model.layout,
+                centerGap: model.centerGap,
+                stripHeight: model.stripHeight,
+                focusedTile: $model.focusedTile,
                 focusToken: model.focusToken,
                 onEscape: model.onEscape)
                 .transition(.opacity)

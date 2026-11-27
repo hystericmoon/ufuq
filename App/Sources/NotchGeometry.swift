@@ -20,7 +20,6 @@ enum NotchGeometry {
     /// `minWingWidth` beside the camera housing (300 pt alone leaves ~56 pt per wing).
     static let collapsedSize = CGSize(width: 300, height: 32)
     static let peekSize = CGSize(width: 352, height: 92)
-    static let expandedSize = CGSize(width: 640, height: 360)
     static let minWingWidth: CGFloat = 90
     /// Smallest collapsed height on a screen without a notch (also used when the menu bar is
     /// auto-hidden and reports 0).
@@ -52,7 +51,14 @@ enum NotchGeometry {
         max(minMenuBarHeight, m.frame.maxY - m.visibleFrame.maxY)
     }
 
-    static func size(for kind: NotchState.Kind, metrics m: ScreenMetrics) -> CGSize {
+    /// Height of the black strip on top of the open panel: the camera housing on a notch screen,
+    /// at least the collapsed height elsewhere, so the wings stay where they were.
+    static func stripHeight(_ m: ScreenMetrics) -> CGFloat {
+        max(collapsedSize.height, m.hasNotch ? m.safeAreaTop : menuBarHeight(m))
+    }
+
+    /// `smallTiles`: how many small bento tiles are live (they set the open panel's width).
+    static func size(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0) -> CGSize {
         let notch = notchWidth(m)
         switch kind {
         case .collapsed:
@@ -65,14 +71,14 @@ enum NotchGeometry {
         case .peek:
             return CGSize(width: max(peekSize.width, notch), height: peekSize.height)
         case .expanded:
-            return expandedSize
+            return BentoLayout.size(smallTiles: smallTiles, stripHeight: stripHeight(m))
         }
     }
 
     /// Window frame for a state: always flush with the top edge of the screen. Notch screen:
     /// centered on the notch. Other screens: centered, overlapping the middle of the menu bar.
-    static func windowFrame(for kind: NotchState.Kind, metrics m: ScreenMetrics) -> CGRect {
-        let size = size(for: kind, metrics: m)
+    static func windowFrame(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0) -> CGRect {
+        let size = size(for: kind, metrics: m, smallTiles: smallTiles)
         let midX = notchRect(m)?.midX ?? m.frame.midX
         return CGRect(
             x: midX - size.width / 2,
