@@ -2,21 +2,21 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27, 15:15 WIB)
+## Resume here (2026-11-27, 16:00 WIB)
 
-Released: v0.1.0 to v0.1.3 and **v0.2.0** (27 Nov: DMG + zip + appcast, MSI, APK; https://github.com/hystericmoon/ufuq/releases/tag/v0.2.0).
-Bento snapshots checked; a truncated prayer time ("Maghrib 17:…") was fixed before merge. Tags cannot be pushed from
-cloud sessions: to release, bump `VERSION` + `project.yml` `MARKETING_VERSION`, merge, then run `release-mac.yml`,
-`release-windows.yml`, `release-android.yml` by hand (workflow_dispatch on `main`); they create the `v<VERSION>` release.
+Released: v0.1.0 to v0.1.3 and v0.2.0 (https://github.com/hystericmoon/ufuq/releases/tag/v0.2.0). Release steps: bump `VERSION` + `project.yml` `MARKETING_VERSION`, merge, then run `release-mac.yml`, `release-windows.yml`, `release-android.yml` by hand (workflow_dispatch on `main`); tags cannot be pushed from cloud sessions.
+Phase 5 (Mac AI tile) merged in PR #9, not released yet. `AIUsageModule` in UfuqCore reads every Claude account (`~/.claude`, `~/.claude-*`, `CLAUDE_CONFIG_DIR`) as tokens in the current 5-hour block (no %, no amber/red, no alerts; owner decision 27 Nov), and Codex only when `~/.codex/sessions` exists. Owner does not use Codex (27 Nov): no Codex row, and Phase 5's "Codex shows numbers" done-when is dropped.
+Claude JSONL fields verified on real Claude Code logs (27 Nov): `type`, `timestamp`, `requestId`, `message.id`, `message.usage.*`; ~45% of assistant lines repeat a (message id, request id) pair with identical usage, deduped once. No limit data is in the logs.
+Next: (1) owner on the Mac: AI tile numbers vs `/usage` for each account; collapsed wing "Claude 4.2M"; (2) release 0.3.0 with Phase 5 once the owner agrees; (3) follow-up: the module re-parses every log each minute; skip files older than the 7-day window (needs mtime in `FileSource`); (4) then Phase 6 (agent status).
 
-0.2.0 (PR #7) carries:
+0.2.0 (released 27 Nov) carried:
 - Mac open panel = **bento, design canvas option A** (owner pick 27 Nov, https://claude.ai/artifact/PpqkyeEQu7EhFj8gxvRD1j): black strip with the wings at the notch; Prayer (216 pt) and AI (248 pt) tall tiles; small tiles 144×112 in columns of two (Battery only so far, IOKit). Sized to live tiles (496 pt, 648 with battery). Liquid Glass on macOS 26, dark material on 14–15, solid under Reduce Transparency / Increase Contrast. Tabs removed; Tab/←→ move between tiles. CI and release build with Xcode 26 (26.3 on macos-15). AI tile shows "No usage yet" until the usage readers are wired (Phase 5).
 - Android: Home is the settings (no Today screen). Next-prayer status card, then Island & notification / Mac / Prayer / About cards; location, method, reminder, silence, other apps and Mac open sub-screens (back stack).
 - CLAUDE.md: delegate lighter work to Haiku/Sonnet sub-agents (owner, 27 Nov).
 
 Next:
 1. Owner checks on 0.2.0: Mac panel on macOS 26 (glass over a light wallpaper: is text readable?) and on 14–15; Tab/arrows/Esc; Android Home, sub-screens, Back, permission round-trips.
-2. Phase 5 on the Mac: wire Claude/Codex usage into the AI tile (needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac). Then more small tiles (agents, media) as their modules land.
+2. Phase 5: see Resume here.
 
 Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 
@@ -71,7 +71,7 @@ Then Phase 5 (Prayer + AI UI) on the Mac.
 
 Open items from the cloud phases:
 - Phase 2: the Kemenag check covers 21 cities but only 7 Jakarta days (the plan asked for 30). It is within 1 minute everywhere. To close it, add a full Jakarta month from bimasislam.kemenag.go.id to `Tests/UfuqCoreTests/Fixtures/kemenag_official.tsv` (never hand-typed).
-- Phase 3: every log field name is an assumption. Verify on real files in Phase 5 (list in "Done in Phase 3").
+- Phase 3: Claude log fields verified on real files (27 Nov). Codex fields stay unverified (owner has no Codex).
 
 First prompt to type (Mac session):
 
@@ -116,6 +116,7 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 
 ## History
 
+- 2026-11-27 (afternoon): v0.2.0 released (Mac bento, Android settings home). Phase 5 Mac AI tile merged (PR #9).
 - 2026-11-27 (afternoon): 0.1.3: one Android notification, live-only island rows, place names. Mac revamp waits on a reference design.
 
 - 2026-11-27 (afternoon): v0.1.2 released: Android and Windows open island option C, pill countdown, Mac sync key file, menu-bar island on external screens, paired-phone line.
