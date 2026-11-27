@@ -25,6 +25,7 @@ object TestStrings : IslandStrings {
     override fun percentSpoken(value: Int) = "$value percent"
     override fun prayerDescription(name: String, spoken: String, percent: Int) =
         "$name in $spoken, $percent percent of the time since the previous prayer"
+    override fun resetsIn(time: String) = "Resets in $time"
     override fun usageDescription(provider: String, percent: Int, resetsSpoken: String?) =
         "$provider, $percent percent of the limit used" + (resetsSpoken?.let { ", resets in $it" } ?: "")
 }

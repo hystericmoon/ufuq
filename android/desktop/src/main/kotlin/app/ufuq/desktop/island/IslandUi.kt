@@ -129,7 +129,7 @@ private class SliceShape(private val startDp: Float, private val endDp: Float) :
         Outline.Rectangle(Rect(startDp * density.density, 0f, (endDp * density.density).coerceAtLeast(startDp * density.density), size.height))
 }
 
-/** The label row that overlays the whole track: name and secondary at the start, trailing text and icon at the end. */
+/** The label row that overlays the whole track: name and secondary at the start, the icon at the end. */
 @Composable
 private fun TrackLabels(model: SliderModel, primary: Color, secondary: Color, modifier: Modifier = Modifier) {
     Row(modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -145,10 +145,6 @@ private fun TrackLabels(model: SliderModel, primary: Color, secondary: Color, mo
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        model.trailing?.let {
-            Spacer(Modifier.width(8.dp))
-            Text(it, color = secondary, fontFamily = IslandFont, fontSize = 14.sp, maxLines = 1, style = Tabular.copy(color = secondary))
-        }
         model.endIcon?.let {
             Spacer(Modifier.width(8.dp))
             Icon(IslandIcons.of(it), contentDescription = null, tint = secondary, modifier = Modifier.size(18.dp))
@@ -171,9 +167,15 @@ fun IslandSlider(model: SliderModel, modifier: Modifier = Modifier, pageHint: St
             .clearAndSetSemantics {
                 contentDescription = model.description
                 stateDescription = listOfNotNull(model.stateText, pageHint).joinToString(", ")
-                progressBarRangeInfo = ProgressBarRangeInfo(model.fraction.coerceIn(0f, 1f), 0f..1f)
+                if (model.meter) progressBarRangeInfo = ProgressBarRangeInfo(model.fraction.coerceIn(0f, 1f), 0f..1f)
             },
     ) {
+        if (!model.meter) {
+            // A count with no known limit: a plain track, no fill and no handle to read as a level.
+            Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(IslandColors.Track))
+            TrackLabels(model, IslandColors.Ink, IslandColors.Ink2, Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp))
+            return@BoxWithConstraints
+        }
         val total = maxWidth.value
         val g = SliderGeometry.of(model.fraction, total)
         val activeShape = RoundedCornerShape(topStart = 12.dp, topEnd = 4.dp, bottomEnd = 4.dp, bottomStart = 12.dp)
@@ -194,6 +196,26 @@ fun IslandSlider(model: SliderModel, modifier: Modifier = Modifier, pageHint: St
             TrackLabels(model, IslandColors.Ink, IslandColors.Ink2, Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp).clip(SliceShape(g.inactiveStart, total)))
         }
     }
+}
+
+/**
+ * The trailing text (reset time) on its own line under the track, ending where the track ends, so
+ * the handle never covers it. Always 16 dp tall, empty or not, so pages line up. Hidden from the
+ * screen reader: the slider's description already says it.
+ */
+@Composable
+fun SliderCaption(text: String?, modifier: Modifier = Modifier) {
+    Text(
+        text.orEmpty(),
+        modifier.fillMaxWidth().height(16.dp).clearAndSetSemantics { },
+        color = IslandColors.Ink2,
+        fontFamily = IslandFont,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        maxLines = 1,
+        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+        style = Tabular.copy(color = IslandColors.Ink2),
+    )
 }
 
 /** The round 48 dp tonal button inside a 54 dp box that leaves room for the focus ring; its label is its only accessible text. */
@@ -293,13 +315,13 @@ fun ExpandedIsland(
         ) { i ->
             val page = pages.getOrNull(i)
             if (page != null) {
-                Row(
-                    Modifier.fillMaxSize().padding(start = 22.dp, end = 14.dp, bottom = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    IslandSlider(page.slider, Modifier.weight(1f), pageHint = strings.pageOf(i + 1, pages.size))
-                    IslandButton(page.buttonIcon, page.buttonLabel, onClick = { onAction(page.buttonAction) })
+                // Slider row at the top, its trailing text on a caption line that ends under the track.
+                Column(Modifier.fillMaxSize().padding(start = 22.dp, end = 14.dp, top = 16.dp)) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        IslandSlider(page.slider, Modifier.weight(1f), pageHint = strings.pageOf(i + 1, pages.size))
+                        IslandButton(page.buttonIcon, page.buttonLabel, onClick = { onAction(page.buttonAction) })
+                    }
+                    SliderCaption(page.slider.trailing, Modifier.padding(top = 2.dp, end = 54.dp + 12.dp))
                 }
             }
         }

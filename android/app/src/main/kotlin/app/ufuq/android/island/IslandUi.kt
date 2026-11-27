@@ -219,8 +219,8 @@ fun IslandSlider(
         // The end icon stays only when it fits wholly inside the inactive track.
         val iconFits = model.endIcon != null && inactiveStart <= total - LABEL_INSET_DP - ICON_DP - 6f
         val rawSecondary = dragFraction?.let { f -> seek?.let { MediaFormat.clock((f * it.durationMs).toLong()) } } ?: model.secondary
-        // A secondary text or the end text that would straddle the handle is left out of the row (it
-        // stays in the TalkBack description) instead of being cut in half.
+        // A secondary text that would straddle the handle is left out of the row (it stays in the
+        // TalkBack description) instead of being cut in half. The trailing text sits below the track.
         val measurer = rememberTextMeasurer()
         val density = LocalDensity.current.density
         val style = androidx.compose.ui.text.TextStyle(fontFamily = IslandFont, fontSize = 14.sp, fontWeight = FontWeight.Medium, fontFeatureSettings = "tnum")
@@ -228,19 +228,15 @@ fun IslandSlider(
         val zoneStart = activeWidth
         val zoneEnd = inactiveStart
         fun straddles(from: Float, to: Float) = to > zoneStart && from < zoneEnd
-        val iconBlock = if (iconFits) 8f + ICON_DP else 0f
-        val trailingText = model.trailing
-        val trailingTo = total - LABEL_INSET_DP - iconBlock
-        val showTrailing = trailingText == null || !straddles(trailingTo - widthDp(trailingText), trailingTo)
         val labelEnd = LABEL_INSET_DP + widthDp(model.label)
         val secondary = rawSecondary?.takeIf { !straddles(labelEnd, labelEnd + widthDp(" $it")) }
         // One label across the row, drawn once per segment in the ink that is readable there.
         val onTone = IslandColors.onTone(model.level)
         Box(Modifier.fillMaxWidth().height(44.dp).clipSpan(0f, activeWidth)) {
-            SliderLabel(model, secondary, onTone, onTone, iconFits, IslandColors.Icon, showTrailing)
+            SliderLabel(model, secondary, onTone, onTone, iconFits, IslandColors.Icon)
         }
         Box(Modifier.fillMaxWidth().height(44.dp).clipSpan(inactiveStart, total)) {
-            SliderLabel(model, secondary, IslandColors.Ink, IslandColors.Ink2, iconFits, IslandColors.Icon, showTrailing)
+            SliderLabel(model, secondary, IslandColors.Ink, IslandColors.Ink2, iconFits, IslandColors.Icon)
         }
     }
 }
@@ -256,7 +252,7 @@ private fun Modifier.clipSpan(startDp: Float, endDp: Float): Modifier = drawWith
 }
 
 @Composable
-private fun SliderLabel(model: SliderModel, secondary: String?, ink: Color, ink2: Color, showIcon: Boolean, iconTint: Color, showTrailing: Boolean = true) {
+private fun SliderLabel(model: SliderModel, secondary: String?, ink: Color, ink2: Color, showIcon: Boolean, iconTint: Color) {
     Row(Modifier.fillMaxWidth().height(44.dp).padding(horizontal = LABEL_INSET_DP.dp), verticalAlignment = Alignment.CenterVertically) {
         // The label ellipsizes at large font scales; the full text stays in the description.
         Text(
@@ -272,10 +268,6 @@ private fun SliderLabel(model: SliderModel, secondary: String?, ink: Color, ink2
             lineHeight = 17.sp,
             overflow = TextOverflow.Ellipsis,
         )
-        model.trailing?.takeIf { showTrailing }?.let {
-            Spacer(Modifier.width(8.dp))
-            Text(it, color = ink2, fontFamily = IslandFont, fontSize = 14.sp, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
-        }
         if (showIcon) {
             model.endIcon?.let {
                 Spacer(Modifier.width(8.dp))
@@ -283,6 +275,26 @@ private fun SliderLabel(model: SliderModel, secondary: String?, ink: Color, ink2
             }
         }
     }
+}
+
+/**
+ * The trailing text (reset time, media length) on its own line under the track, ending where the
+ * track ends, so the handle never covers it. Always 16 dp tall, empty or not, so pages line up.
+ * Hidden from TalkBack: the slider's description already says it.
+ */
+@Composable
+fun SliderCaption(text: String?, modifier: Modifier = Modifier) {
+    Text(
+        text.orEmpty(),
+        modifier.fillMaxWidth().height(16.dp).clearAndSetSemantics { },
+        color = IslandColors.Ink2,
+        fontFamily = IslandFont,
+        fontSize = 12.sp,
+        lineHeight = 16.sp,
+        maxLines = 1,
+        textAlign = androidx.compose.ui.text.style.TextAlign.End,
+        style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"),
+    )
 }
 
 /** The round 48 dp tonal button; its label is its only accessible text. */
@@ -301,7 +313,7 @@ fun IslandButton(icon: IslandIcon, label: String, onClick: () -> Unit, modifier:
     }
 }
 
-/** The expanded island: black, 104 dp tall, radius 32; pages swipe horizontally. */
+/** The expanded island: black, 116 dp tall, radius 32; pages swipe horizontally. */
 @Composable
 fun ExpandedIsland(
     pages: List<IslandPageModel>,
@@ -320,7 +332,7 @@ fun ExpandedIsland(
     Box(
         modifier
             .fillMaxWidth()
-            .height(104.dp)
+            .height(116.dp)
             .clip(RoundedCornerShape(32.dp))
             .background(IslandColors.Black)
             // A swipe up closes it; TalkBack users get the same as a custom action.
@@ -336,13 +348,13 @@ fun ExpandedIsland(
         HorizontalPager(pager, Modifier.fillMaxSize()) { index ->
             val page = pages[index]
             val hint = stringResource(R.string.island_page_of, index + 1, pages.size)
-            Row(
-                Modifier.fillMaxSize().padding(start = 22.dp, end = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                IslandSlider(page.slider, Modifier.weight(1f), pageHint = hint, onSeek = { interact(); onSeek(it) })
-                IslandButton(page.buttonIcon, page.buttonLabel, onClick = { interact(); onAction(page.buttonAction) })
+            // Slider row at the top, its trailing text on a caption line that ends under the track.
+            Column(Modifier.fillMaxSize().padding(start = 22.dp, end = 18.dp, top = 16.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                    IslandSlider(page.slider, Modifier.weight(1f), pageHint = hint, onSeek = { interact(); onSeek(it) })
+                    IslandButton(page.buttonIcon, page.buttonLabel, onClick = { interact(); onAction(page.buttonAction) })
+                }
+                SliderCaption(page.slider.trailing, Modifier.padding(top = 4.dp, end = 48.dp + 16.dp))
             }
         }
         if (pages.size > 1) {

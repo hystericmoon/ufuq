@@ -16,12 +16,6 @@ data class DesktopSettings(
     val launchAtLogin: Boolean = false,
     /** null follows Windows "Animation effects"; true or false is the user's choice. */
     val reduceMotion: Boolean? = null,
-    /**
-     * Tokens assumed to fill a Claude 5-hour window and a week, for the "estimated" fallback.
-     * Plan dependent and unverified: they are a placeholder the user tunes in Settings.
-     */
-    val sessionBudgetTokens: Long = DEFAULT_SESSION_BUDGET,
-    val weeklyBudgetTokens: Long = DEFAULT_WEEKLY_BUDGET,
     /** Ask GitHub once a day for a new version. */
     val autoCheckUpdates: Boolean = true,
     /** Also offer pre-releases. */
@@ -34,8 +28,6 @@ data class DesktopSettings(
     val calculation: CalculationSettings get() = CalculationSettings(method = method)
 
     companion object {
-        const val DEFAULT_SESSION_BUDGET = 30_000_000L
-        const val DEFAULT_WEEKLY_BUDGET = 300_000_000L
         val METHODS = listOf(CalcMethod.KEMENAG, CalcMethod.MWL, CalcMethod.UMM_AL_QURA)
     }
 }
@@ -91,8 +83,6 @@ class SettingsStore(private val file: File) {
             setProperty("method", s.method.name)
             setProperty("launchAtLogin", s.launchAtLogin.toString())
             s.reduceMotion?.let { setProperty("reduceMotion", it.toString()) }
-            setProperty("sessionBudget", s.sessionBudgetTokens.toString())
-            setProperty("weeklyBudget", s.weeklyBudgetTokens.toString())
             setProperty("autoCheckUpdates", s.autoCheckUpdates.toString())
             setProperty("betaUpdates", s.betaUpdates.toString())
             setProperty("lastUpdateCheck", s.lastUpdateCheck.toString())
@@ -109,8 +99,6 @@ class SettingsStore(private val file: File) {
                 claudeDirs = (0 until count).mapNotNull { p.getProperty("claudeDirs.$it")?.takeIf(String::isNotBlank) },
                 launchAtLogin = p.getProperty("launchAtLogin")?.toBooleanStrictOrNull() ?: d.launchAtLogin,
                 reduceMotion = p.getProperty("reduceMotion")?.toBooleanStrictOrNull(),
-                sessionBudgetTokens = p.getProperty("sessionBudget")?.toLongOrNull()?.takeIf { it > 0 } ?: d.sessionBudgetTokens,
-                weeklyBudgetTokens = p.getProperty("weeklyBudget")?.toLongOrNull()?.takeIf { it > 0 } ?: d.weeklyBudgetTokens,
                 autoCheckUpdates = p.getProperty("autoCheckUpdates")?.toBooleanStrictOrNull() ?: d.autoCheckUpdates,
                 betaUpdates = p.getProperty("betaUpdates")?.toBooleanStrictOrNull() ?: d.betaUpdates,
                 lastUpdateCheck = p.getProperty("lastUpdateCheck")?.toLongOrNull()?.takeIf { it >= 0 } ?: d.lastUpdateCheck,

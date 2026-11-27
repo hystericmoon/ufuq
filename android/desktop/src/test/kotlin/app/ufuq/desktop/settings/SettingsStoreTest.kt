@@ -32,7 +32,7 @@ class SettingsStoreTest {
         val dir = kotlin.io.path.createTempDirectory("ufuq-settings").toFile()
         try {
             val store = SettingsStore(File(dir, "nested/settings.properties"))
-            val s = DesktopSettings("Makassar", CalcMethod.MWL, listOf("C:\\Users\\me\\.claude", "D:\\work\\.claude-work"), true, true, 1234, 5678, false, true, 99L)
+            val s = DesktopSettings("Makassar", CalcMethod.MWL, listOf("C:\\Users\\me\\.claude", "D:\\work\\.claude-work"), true, true, false, true, 99L)
             store.save(s)
             assertEquals(s, store.load())
         } finally {

@@ -56,7 +56,8 @@ class IslandUiTest {
     private val prayerProgress = PrayerProgress("Ashar", now.minus(Duration.ofMinutes(118)), now.plus(Duration.ofMinutes(72)), now)
     private val prayerPage = IslandPages.prayer(prayerProgress, s)
     private fun aiPages(vararg samples: AiUsageSample) = IslandPages.aiUsage(samples.toList(), s)
-    private val claude82 = AiUsageSample("Claude", 0.82, Duration.ofMinutes(72), "5h", estimated = true)
+    private val codex82 = AiUsageSample("Codex", 0.82, Duration.ofMinutes(72), "5h")
+    private val claudeTokens = AiUsageSample("Claude", 0.0, Duration.ofHours(3), "5h", tokens = 4_213_000)
 
     private val outDir = File(System.getProperty("ufuq.screenshotDir") ?: "build/screenshots").also { it.mkdirs() }
 
@@ -106,7 +107,7 @@ class IslandUiTest {
 
     @Test fun expandedPrayerPage() = shot(
         "03-expanded-prayer", ex.first, ex.second,
-        content = expanded(listOf(prayerPage) + aiPages(claude82)),
+        content = expanded(listOf(prayerPage) + aiPages(codex82)),
         check = {
             // The sentence Narrator reads for the slider.
             val node = onNodeWithContentDescription("Ashar in 1 hour 12 minutes, 62 percent of the time since the previous prayer")
@@ -115,11 +116,11 @@ class IslandUiTest {
         },
     )
 
-    @Test fun expandedUsageAmberEstimated() = shot(
+    @Test fun expandedUsageAmber() = shot(
         "04-expanded-ai-amber", ex.first, ex.second,
-        content = expanded(listOf(prayerPage) + aiPages(claude82), start = 1),
+        content = expanded(listOf(prayerPage) + aiPages(codex82), start = 1),
         check = {
-            onNodeWithContentDescription("Claude 5-hour session, 82 percent used, estimated, resets in 1 hour 12 minutes").assertExists()
+            onNodeWithContentDescription("Codex 5-hour session, 82 percent used, resets in 1 hour 12 minutes").assertExists()
         },
     )
 
@@ -129,9 +130,20 @@ class IslandUiTest {
     )
 
     @Test fun expandedUsageLowAndFull() {
-        shot("06-expanded-ai-low", ex.first, ex.second, content = expanded(aiPages(AiUsageSample("Claude work", 0.03, Duration.ofHours(4), "week", true))))
-        shot("07-expanded-ai-full", ex.first, ex.second, content = expanded(aiPages(AiUsageSample("Claude", 1.0, null, "5h", true))))
+        shot("06-expanded-ai-low", ex.first, ex.second, content = expanded(aiPages(AiUsageSample("Codex work", 0.03, Duration.ofHours(4), "week"))))
+        shot("07-expanded-ai-full", ex.first, ex.second, content = expanded(aiPages(AiUsageSample("Codex", 1.0, null, "5h"))))
     }
+
+    @Test fun expandedClaudeTokens() = shot(
+        "09-expanded-ai-claude-tokens", ex.first, ex.second,
+        content = expanded(listOf(prayerPage) + aiPages(claudeTokens, codex82), start = 1),
+        check = {
+            // A count with no known limit: no %, no progress range for Narrator to read as a level.
+            val node = onNodeWithContentDescription("Claude 5-hour session, 4.2 million tokens used, resets in 3 hours")
+            node.assertExists()
+            assertEquals(null, node.fetchSemanticsNode().config.getOrElseNullable(androidx.compose.ui.semantics.SemanticsProperties.ProgressBarRangeInfo) { null })
+        },
+    )
 
     @Test fun expandedEmptyUsage() = shot(
         "08-expanded-ai-empty", ex.first, ex.second,
@@ -141,7 +153,7 @@ class IslandUiTest {
 
     @Test fun reduceMotionStillRenders() = shot(
         "09-expanded-reduce-motion", ex.first, ex.second, reduceMotion = true,
-        content = expanded(listOf(prayerPage) + aiPages(claude82)),
+        content = expanded(listOf(prayerPage) + aiPages(codex82)),
     )
 
     @Test fun arrowKeysAndDotsSwitchPagesAndEscCloses() {
@@ -151,7 +163,7 @@ class IslandUiTest {
             setContent {
                 var p by remember { mutableIntStateOf(0) }
                 page = p
-                ExpandedIsland(listOf(prayerPage) + aiPages(claude82), p, s, onPage = { p = it }, onAction = {}, onClose = { closed++ })
+                ExpandedIsland(listOf(prayerPage) + aiPages(codex82), p, s, onPage = { p = it }, onAction = {}, onClose = { closed++ })
             }
             waitForIdle()
             onRoot().performKeyInput { pressKey(Key.DirectionRight) }
@@ -174,7 +186,7 @@ class IslandUiTest {
     @Test fun buttonIsLabelledAndClickable() {
         var action: ButtonAction? = null
         runDesktopComposeUiTest(420, 112) {
-            setContent { ExpandedIsland(aiPages(claude82), 0, s, onPage = {}, onAction = { action = it }, onClose = {}) }
+            setContent { ExpandedIsland(aiPages(codex82), 0, s, onPage = {}, onAction = { action = it }, onClose = {}) }
             waitForIdle()
             onNodeWithContentDescription("Refresh usage").performClick()
         }

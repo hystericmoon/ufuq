@@ -8,6 +8,7 @@ import app.ufuq.core.UsageWindowReading
 import app.ufuq.core.usage.InMemoryFileSource
 import app.ufuq.desktop.island.AiUsageSample
 import app.ufuq.desktop.island.EnglishIslandStrings
+import app.ufuq.desktop.island.TokenFormat
 import app.ufuq.desktop.settings.DesktopSettings
 import kotlinx.coroutines.runBlocking
 import java.nio.file.Files
@@ -36,25 +37,29 @@ class UsageMapperTest {
         ),
     )
 
-    @Test fun claudeFromParserOutputIsEstimatedAndHasAResetTime() = runBlocking {
-        val settings = DesktopSettings(claudeDirs = listOf("/u/.claude"), sessionBudgetTokens = 30_000_000, weeklyBudgetTokens = 300_000_000)
-        val accounts = UsageRepository(files, "/u/.codex/sessions").readAccounts(settings, now)
-        val claude = UsageMapper.samples(accounts.filter { it.provider == UsageProvider.CLAUDE }, now).single()
+    @Test fun claudeIsATokenCountWithAResetTime() {
+        val claude = UsageRepository(files, "/u/.codex/sessions").claudeSamples(DesktopSettings(claudeDirs = listOf("/u/.claude")), now).single()
         assertEquals("Claude", claude.provider)
         assertEquals("5h", claude.window)
-        assertEquals(0.3, claude.fraction, 1e-9) // 9M of 30M in the 10:00-15:00 block
-        assertTrue(claude.estimated)
+        assertEquals(9_000_000L, claude.tokens) // the 10:00-15:00 block
+        assertTrue(claude.isTokenCount)
         assertEquals(Duration.ofHours(3), claude.resetsIn)
     }
 
-    @Test fun codexRateLimitsAreRealNotEstimated() = runBlocking {
-        val accounts = UsageRepository(files, "/u/.codex/sessions").readAccounts(DesktopSettings(claudeDirs = listOf("/u/.claude")), now)
-        val codex = UsageMapper.samples(accounts.filter { it.provider == UsageProvider.CODEX }, now)
+    @Test fun claudeBetweenBlocksIsZeroWithNoReset() {
+        val later = Instant.parse("2026-11-26T16:00:00Z")
+        val claude = UsageRepository(files, "/u/.codex/sessions").claudeSamples(DesktopSettings(claudeDirs = listOf("/u/.claude")), later).single()
+        assertEquals(0L, claude.tokens)
+        assertNull(claude.resetsIn)
+    }
+
+    @Test fun codexRateLimitsArePercentages() = runBlocking {
+        val codex = UsageMapper.samples(listOf(UsageRepository(files, "/u/.codex/sessions").readCodex(now)), now)
         // The worst of the two windows is the 5h one at 12.5%.
         assertEquals(1, codex.size)
         assertEquals("Codex", codex[0].provider)
         assertEquals(0.125, codex[0].fraction, 1e-9)
-        assertEquals(false, codex[0].estimated)
+        assertEquals(false, codex[0].isTokenCount)
         assertEquals(Duration.ofSeconds(400), codex[0].resetsIn) // captured 11:50 + 1000 s = 12:06:40
     }
 
@@ -76,7 +81,7 @@ class UsageMapperTest {
             val log = dir.resolve("projects/p").also { Files.createDirectories(it) }.resolve("a.jsonl")
             Files.writeString(log, claudeLine("2026-11-26T10:20:00.000Z", "1", 15_000_000))
             val samples = UsageRepository(codexSessionsDir = dir.resolve("no-codex").toString()).load(DesktopSettings(claudeDirs = listOf(dir.toString())), now)
-            assertEquals(0.5, samples.first { it.estimated }.fraction, 1e-9)
+            assertEquals(15_000_000L, samples.first { it.isTokenCount }.tokens)
         } finally {
             dir.toFile().deleteRecursively()
         }
@@ -85,7 +90,7 @@ class UsageMapperTest {
     @Test fun worstWindowWinsAndPastResetsAreDropped() {
         val readings = listOf(
             UsageWindowReading(UsageWindowKind.Session5h, UsageSnapshot(0.4, now, now.minusSeconds(5))),
-            UsageWindowReading(UsageWindowKind.Weekly, UsageSnapshot(0.9, now, now.plusSeconds(3600)), isEstimated = true),
+            UsageWindowReading(UsageWindowKind.Weekly, UsageSnapshot(0.9, now, now.plusSeconds(3600))),
         )
         val s = UsageMapper.samples(listOf(AccountReadings("Claude", UsageProvider.CLAUDE, UsageResult.Available(readings))), now).single()
         assertEquals("week", s.window)
@@ -114,7 +119,7 @@ class UsageMapperTest {
 
     @Test fun pillActivityShowsTheWorstAccountAndKeepsTheFractionForTheArbiter() {
         val a = UsageMapper.activity(
-            listOf(AiUsageSample("Claude", 0.3, window = "5h", estimated = true), AiUsageSample("Codex work", 0.82, window = "5h")),
+            listOf(AiUsageSample("Claude", 0.0, window = "5h", tokens = 990_000_000), AiUsageSample("Codex work", 0.82, window = "5h")),
             EnglishIslandStrings,
         )
         assertNotNull(a)
@@ -122,5 +127,24 @@ class UsageMapperTest {
         assertEquals(0.82, a.usageFraction)
         assertEquals("Codex work 5-hour session, 82 percent used", a.accessibilityLabel)
         assertNull(UsageMapper.activity(emptyList(), EnglishIslandStrings))
+    }
+
+    @Test fun pillWithOnlyTokenCountsShowsTokensAndNoFraction() {
+        val a = assertNotNull(UsageMapper.activity(listOf(AiUsageSample("Claude work", 0.0, window = "5h", tokens = 4_213_000)), EnglishIslandStrings))
+        assertEquals("Claude 4.2M", a.text)
+        assertNull(a.usageFraction)
+        assertEquals("Claude work 5-hour session, 4.2 million tokens used", a.accessibilityLabel)
+    }
+
+    @Test fun tokenFormat() {
+        assertEquals("0", TokenFormat.compact(0))
+        assertEquals("999", TokenFormat.compact(999))
+        assertEquals("1K", TokenFormat.compact(1_000))
+        assertEquals("4.2M", TokenFormat.compact(4_213_000))
+        assertEquals("12.5M", TokenFormat.compact(12_500_000))
+        assertEquals("250M", TokenFormat.compact(250_000_000))
+        assertEquals("1.1B", TokenFormat.compact(1_100_000_000))
+        assertEquals("4.2 million tokens", TokenFormat.spoken(4_213_000))
+        assertEquals("1 token", TokenFormat.spoken(1))
     }
 }
