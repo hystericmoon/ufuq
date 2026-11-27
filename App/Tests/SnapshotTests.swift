@@ -171,13 +171,15 @@ final class SnapshotTests: XCTestCase {
         return (module, module.builds(at: now))
     }
 
-    func testCollapsedCIFailed() async throws {
+    /// A running build outranks the failed one in the wing.
+    func testCollapsedCIRunning() async throws {
         let (module, builds) = try await githubBuilds()
         XCTAssertFalse(builds.isEmpty)
         let activity = try XCTUnwrap(try module.collapsedActivity(at: fixedNow))
+        XCTAssertEqual(activity.text, "CI running")
         var layout = wings
         layout.rotating = activity
-        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-ci-failed")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-ci-running")
     }
 
     func testExpandedBentoActions() async throws {
