@@ -171,6 +171,7 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 
 ## History
 
+- 2026-11-28: v0.5.0 released (Phase 8 Calendar/Meetings/Transform + Phase 9 Utilities, Make It Yours, Onboarding, AppIcon, Website, Sparkle + DMG).
 - 2026-11-28: Phase 9 implemented: `TimerModule` (timer/Pomodoro), `SystemStatsReader` (CPU/RAM/net), `StayAwakeController`, `DownloadsModule`, `AudioAccessoryModule` (AirPods/Bluetooth connect & battery), `SpeechTranscriber` (on-device Voice Transcribe + Tray audio), Make It Yours (5 accents, 3 glass styles, 3 notch shapes), `OnboardingView`, `AppIcon.appiconset`, and `website/`.
 - 2026-11-27 (night): v0.4.0 released (PR #22 + Mac/Windows/Android workflows; carries PRs #18–#20: cached Claude logs, black-jelly motion, File Tray, Now Playing).
 - 2026-11-27 (afternoon): v0.2.0 released (Mac bento, Android settings home). Phase 5 Mac AI tile merged (PR #9).
