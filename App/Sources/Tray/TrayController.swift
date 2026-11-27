@@ -212,15 +212,15 @@ final class TrayController: ObservableObject {
 
     /// Runs a planned command off the main thread; the result joins the tray, a failure shows in the row.
     private func run(_ command: TrayCommand) {
-        Task.detached { [weak self] in
-            let failure = TrayController.execute(command)
-            await MainActor.run {
-                guard let self else { return }
-                if let failure {
-                    self.fail(failure)
-                } else {
-                    self.add(urls: [URL(fileURLWithPath: command.output)])
-                }
+        Task { [weak self] in
+            let failure = await Task.detached(priority: .userInitiated) {
+                TrayController.execute(command)
+            }.value
+            guard let self else { return }
+            if let failure {
+                self.fail(failure)
+            } else {
+                self.add(urls: [URL(fileURLWithPath: command.output)])
             }
         }
     }

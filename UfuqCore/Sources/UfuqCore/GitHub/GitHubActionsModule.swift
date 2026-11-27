@@ -78,16 +78,25 @@ public final class GitHubActionsModule: UfuqModule {
         return result
     }
 
+    private func startPolling() -> Bool {
+        lock.lock()
+        defer { lock.unlock() }
+        if isPolling { return false }
+        isPolling = true
+        return true
+    }
+
+    private func finishPolling() {
+        lock.lock()
+        isPolling = false
+        lock.unlock()
+    }
+
     // MARK: - Refresh (one poll)
 
     public func refresh() async throws {
-        let started: Bool = { lock.lock(); defer { lock.unlock() }
-            if isPolling { return false }
-            isPolling = true
-            return true
-        }()
-        guard started else { return }
-        defer { lock.lock(); isPolling = false; lock.unlock() }
+        guard startPolling() else { return }
+        defer { finishPolling() }
         let time = now()
         guard let token = tokenSource.token() else {
             withLock { s in

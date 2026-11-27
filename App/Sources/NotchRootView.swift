@@ -101,18 +101,21 @@ struct NotchRootView: View {
         let height = shown.height * touch.scaleY
         var bulge: CGFloat = 0
         var lean = touch.lean
+        var skew: CGFloat = 0
         if !reduceMotion {
             width *= 1 + Jelly.swallowBulge * swallowAmount
             bulge = swallowAmount * min(10, max(4, Jelly.swallowBulge * height))
             lean += jiggle
+            if kind == .collapsed { skew = model.swipeSkew }
         }
-        let shape = JellyShape(width: width, height: height, bottomRadius: radius, lean: lean, bulge: bulge)
+        let shape = JellyShape(width: width, height: height, bottomRadius: radius, lean: lean, skew: skew, bulge: bulge)
         return shape
             // The open panel draws its own black strip and glass body.
             .fill(kind == .expanded ? Color.clear : Tokens.notchBg)
             .overlay(
                 shape.stroke(Tokens.textMuted, lineWidth: contrast == .increased && kind != .expanded ? 1 : 0))
             .animation(reduceMotion ? nil : Jelly.touch, value: model.pointer)
+            .animation(reduceMotion ? nil : Jelly.touch, value: model.swipeSkew)
             .allowsHitTesting(false)
             .accessibilityHidden(true)
     }
@@ -228,7 +231,11 @@ struct NotchRootView: View {
             return
         }
         if let drag {
-            if !neckGoo { neckGoo = true; neckLen = 0 }
+            if !neckGoo {
+                neckGoo = true
+                neckLen = 0
+                neckX = drag.x
+            }
             let length = Jelly.neckLength(distance: drag.distance)
             neckTask = Task { @MainActor in
                 if neckLen == 0 { try? await Task.sleep(nanoseconds: 20_000_000) }

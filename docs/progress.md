@@ -1,21 +1,28 @@
 # Progress
 
-Last updated: 2026-11-27, 21:30 WIB
+Last updated: 2026-11-27, 21:47 WIB
 
-## Resume here (2026-11-27, 21:30 WIB)
+## Resume here (2026-11-27, 21:47 WIB)
+
+**Phase 7 gaps fixed & verified on real Mac (macOS 27.2.1)** (on branch `fix/phase7-gaps`, PR pending merge):
+- Horizontal trackpad swipe on collapsed body drives `JellyShape.skew` (±4°) and skips track (when playing) or rotates the right-wing activity (`ActivityArbiter.advanceRotation()`).
+- Drag neck in `JellyGoo` now flares from the body's bottom edge and snaps `neckX` on entry instead of emerging from top centre.
+- `ExpandedView` now routes `Space` (play/pause) and `←`/`→` (seek ±10 s when track has position, else tile navigation) directly when the Now Playing tile has focus.
+- Fixed Swift 6 concurrency warnings in `TrayController.swift` (`run(_:)`) and `GitHubActionsModule.swift` (`refresh()`).
+- Verified `MediaRemoteAdapter.framework` + `/usr/bin/perl` (`test` & `get` exit 0 on macOS 27.2.1) and `send.m` raw `MRCommand` ints (`2`/`4`/`5`).
+- Verified locally: `UfuqCore` **273/273** tests (0 warnings), Mac app **83/83** tests, `ufuq-hook` exit 0.
 
 **v0.4.0 released** (https://github.com/hystericmoon/ufuq/releases/tag/v0.4.0; PR #22 + `release-mac.yml`, `release-windows.yml`, `release-android.yml` all green). Assets live: `Ufuq-0.4.0.dmg`, `Ufuq-0.4.0.zip`, `appcast.xml`, `Ufuq-0.4.0.msi`, `Ufuq-0.4.0.msi.sig`, `ufuq-0.4.0.apk`.
 
 Carries PRs #18–#20:
 - PR #18: AI module caches parsed Claude logs per file (`ClaudeLogCache`, key = path + mtime + size).
 - PR #19: `docs/motion.md` (black-jelly motion spec), `docs/decisions/jelly.html` (Jelly Lab prototype; https://claude.ai/artifact/FjzQsQfYdx6UeSHqMFjMNS), `docs/decisions/phase7.html`, plan/spec/CLAUDE.md updated for Droppy parity, and UfuqCore Phase 7 (`NowPlaying/`, `Tray/`; 272 tests).
-- PR #20: Phase 7 on the Mac (`App/Sources/Motion/` with `JellyTokens.swift`, `App/Sources/Tray/`, `App/Sources/NowPlaying/` with bundled mediaremote-adapter v0.9.1 + Spotify AppleScript fallback). Mac CI: 81 app tests, 0 failures. Risks to check on real Mac: 12 pt notch wobble margin swallowing clicks; perl loading the ad-hoc-signed adapter framework.
+- PR #20: Phase 7 on the Mac (`App/Sources/Motion/` with `JellyTokens.swift`, `App/Sources/Tray/`, `App/Sources/NowPlaying/` with bundled mediaremote-adapter v0.9.1 + Spotify AppleScript fallback).
 
 Next, in order:
-1. Owner checks on the Mac (0.4.0): jelly feel (hover lean, press squash, peek bud, drag neck, swallow, Reduce Motion), file drag to the top edge, shake for the floating tray, tray actions (zip, convert, rename, AirDrop), ⌥⇧T, the Services item, Now Playing with Spotify and a browser tab, the Settings source row, plus the still-open 0.3.0 checks in (1)/(4)/(5) of the older list below.
-2. Owner tunes springs in the Jelly Lab, then "Copy values"; put the numbers into `docs/motion.md` and `App/Sources/Motion/JellyTokens.swift`.
-3. Phase 7 known gaps: no swipe gesture drives `skew` yet; the drag neck is a bud from the top centre, not from the body's bottom edge; Space/←→ on the Now Playing tile only fire when an inner button has focus (needs a focus change in `ExpandedView`); tray reorder and Quick Look skipped; one Swift 6 warning at `App/Sources/Tray/TrayController.swift:218` (captured `self` in `Task.detached`); adapter `send` command ids (2/4/5) come from MediaRemote convention, not the adapter README.
-4. Phase 7b (HUDs + clipboard spike on the owner's Mac), then Phases 8–9 per `docs/plan.md`.
+1. Owner visual/hands-on checks on the Mac: jelly feel (hover lean, press squash, peek bud, drag neck, swipe skew, swallow, Reduce Motion), file drag to top edge, shake for floating tray, tray actions, ⌥⇧T, Services item, Now Playing with Spotify/browser, Settings source row, plus open 0.3.0 checks (AI tile vs `/usage`, Claude Code hooks, GitHub Actions tile/peek, shared right wing 8 s turns).
+2. Owner tunes springs in Jelly Lab (`docs/decisions/jelly.html`), then "Copy values" → update `docs/motion.md` and `App/Sources/Motion/JellyTokens.swift`.
+3. Phase 7b (HUDs + clipboard spike on the owner's Mac), then Phases 8–9 per `docs/plan.md`. (Tray reorder & Quick Look remain deferred.)
 
 Older notes (before the handover):
 

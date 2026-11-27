@@ -71,6 +71,9 @@ enum Jelly {
     static let maxLean: CGFloat = 6
     /// Shear for a horizontal swipe, in degrees.
     static let maxSkew: CGFloat = 4
+    /// Horizontal drag/scroll distance (pt) that maps to `maxSkew` and triggers a swipe.
+    static let swipeSkewScale: CGFloat = 20
+    static let swipeTriggerDistance: CGFloat = 30
     /// The critical-peek jiggle, in points; played once.
     static let jiggle: CGFloat = 3
 
@@ -119,5 +122,11 @@ enum Jelly {
         guard pointer.hovering else { return (1, 1, 0) }
         let unit = min(1, max(-1, pointer.x / max(width / 2, 1)))
         return (hoverSwell, 1, unit * maxLean)
+    }
+
+    /// Shear angle (degrees) for a horizontal swipe delta. Identity under Reduce Motion.
+    static func swipeSkew(deltaX: CGFloat, reduceMotion: Bool) -> CGFloat {
+        guard !reduceMotion else { return 0 }
+        return min(maxSkew, max(-maxSkew, deltaX / swipeSkewScale))
     }
 }

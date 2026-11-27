@@ -155,8 +155,15 @@ struct JellyGoo: View, Animatable {
                     let reach = max(0, width / 2 - 24)
                     let x = rect.midX + min(reach, max(-reach, neckX))
                     let tip = height + neckLength
+                    // Flared root anchored at the body's bottom edge so the metaball merges out of
+                    // the body rather than floating as a straight pin.
+                    let rootWidth: CGFloat = 28
                     layer.fill(
-                        Path(roundedRect: CGRect(x: x - 7, y: height - 10, width: 14, height: neckLength + 10),
+                        Path(roundedRect: CGRect(x: x - rootWidth / 2, y: height - 8, width: rootWidth, height: 14),
+                             cornerRadius: 7),
+                        with: black)
+                    layer.fill(
+                        Path(roundedRect: CGRect(x: x - 7, y: height - 4, width: 14, height: neckLength + 4),
                              cornerRadius: 7),
                         with: black)
                     layer.fill(

@@ -127,7 +127,22 @@ struct ExpandedView: View {
             .contentShape(shape)
             .modifier(TileFocus(
                 enabled: focusable, id: id, keyFocus: $keyFocus, voiceOverFocus: $voiceOverFocus,
-                move: { move(from: id, by: $0) }))
+                onSpace: {
+                    guard id == .nowPlaying, let track = self.content.nowPlaying,
+                          let command = NowPlayingFormat.command(for: .space, track: track, at: self.content.now)
+                    else { return .ignored }
+                    NowPlayingControl.send(command)
+                    return .handled
+                },
+                onArrow: { delta in
+                    if id == .nowPlaying, let track = self.content.nowPlaying,
+                       let command = NowPlayingFormat.command(
+                           for: delta < 0 ? .left : .right, track: track, at: self.content.now) {
+                        NowPlayingControl.send(command)
+                        return .handled
+                    }
+                    return move(from: id, by: delta)
+                }))
     }
 
     private func requestFocus() {
@@ -149,13 +164,14 @@ struct ExpandedView: View {
     }
 }
 
-/// Keyboard and VoiceOver focus for one tile; ←/→ move to the neighbour.
+/// Keyboard and VoiceOver focus for one tile; ←/→ move to the neighbour (or seek Now Playing).
 private struct TileFocus: ViewModifier {
     let enabled: Bool
     let id: BentoTileID
     var keyFocus: FocusState<BentoTileID?>.Binding
     var voiceOverFocus: AccessibilityFocusState<BentoTileID?>.Binding
-    let move: (Int) -> KeyPress.Result
+    let onSpace: () -> KeyPress.Result
+    let onArrow: (Int) -> KeyPress.Result
 
     func body(content: Content) -> some View {
         if enabled {
@@ -164,8 +180,9 @@ private struct TileFocus: ViewModifier {
                 .focusEffectDisabled()
                 .focused(keyFocus, equals: id)
                 .accessibilityFocused(voiceOverFocus, equals: id)
-                .onKeyPress(.rightArrow) { move(1) }
-                .onKeyPress(.leftArrow) { move(-1) }
+                .onKeyPress(.space) { onSpace() }
+                .onKeyPress(.rightArrow) { onArrow(1) }
+                .onKeyPress(.leftArrow) { onArrow(-1) }
         } else {
             content
         }
