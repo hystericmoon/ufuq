@@ -39,6 +39,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let agentModule = AgentStatusModule(
             directory: AgentStateStore.resolveDirectory(environment: ProcessInfo.processInfo.environment))
         try? registry.register(agentModule)
+        let autoStore = AutoRepoStore(sessions: { agentModule.sessions(at: Date()) })
+        GitHubSupport.autoStore = autoStore
+        try? registry.register(GitHubActionsModule(
+            tokenSource: GitHubSupport.tokenSource(),
+            makeClient: GitHubSupport.makeClient,
+            autoRepos: { autoStore.repos() },
+            manualRepos: { GitHubSupport.manualRepos }))
         SyncService.shared.contentProvider = {
             SyncSnapshotContent(agents: agentModule.syncAgents(at: Date()))
         }

@@ -92,6 +92,8 @@ struct ExpandedView: View {
             if let battery = content.battery { BatteryTile(status: battery) }
         case .agents:
             AgentsTile(sessions: content.agents, now: content.now)
+        case .actions:
+            ActionsTile(builds: content.actions, now: content.now)
         case .prayer, .ai:
             EmptyView()
         }
@@ -550,5 +552,103 @@ private struct AgentRow: View {
         .buttonStyle(.plain)
         .disabled(session.appBundleID == nil)
         .accessibilityLabel(label)
+    }
+}
+
+// MARK: - Actions
+
+/// Words, glyphs and spoken labels for the Actions tile.
+enum ActionsTileFormat {
+    static func stateWord(_ build: GitHubBuild, now: Date) -> String {
+        switch build.state {
+        case .failed: return "Failed"
+        case .passed: return "Passed"
+        case .running:
+            let seconds = Int(now.timeIntervalSince(build.startedAt ?? build.updatedAt))
+            if seconds < 60 { return "Running <1m" }
+            let minutes = seconds / 60
+            return minutes < 60 ? "Running \(minutes)m" : "Running \(minutes / 60)h \(minutes % 60)m"
+        }
+    }
+
+    static func symbol(_ build: GitHubBuild) -> String {
+        switch build.state {
+        case .failed: return "xmark.circle.fill"
+        case .passed: return "checkmark.circle.fill"
+        case .running: return "clock"
+        }
+    }
+
+    static func spokenState(_ build: GitHubBuild) -> String {
+        switch build.state {
+        case .failed: return "failed"
+        case .passed: return "passed"
+        case .running: return "running"
+        }
+    }
+
+    static func label(_ build: GitHubBuild) -> String {
+        ([build.repoName, build.branch].compactMap { $0 } + [spokenState(build), "opens in browser"])
+            .joined(separator: ", ")
+    }
+
+    static func open(_ build: GitHubBuild) {
+        guard let url = URL(string: build.url) else { return }
+        NSWorkspace.shared.open(url)
+    }
+}
+
+struct ActionsTile: View {
+    let builds: [GitHubBuild]
+    let now: Date
+
+    private static let maxRows = 2
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TileLabel(
+                title: "Actions",
+                trailing: builds.count > Self.maxRows ? "+\(builds.count - Self.maxRows) more" : nil)
+            ForEach(builds.prefix(Self.maxRows)) { build in
+                ActionsRow(build: build, now: now)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("GitHub Actions")
+    }
+}
+
+private struct ActionsRow: View {
+    let build: GitHubBuild
+    let now: Date
+
+    var body: some View {
+        Button {
+            ActionsTileFormat.open(build)
+        } label: {
+            HStack(spacing: 4) {
+                Text(build.repoName)
+                    .font(Tokens.Typography.value)
+                    .foregroundStyle(Tokens.textPrimary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                HStack(spacing: 2) {
+                    Image(systemName: ActionsTileFormat.symbol(build))
+                        .imageScale(.small)
+                        .accessibilityHidden(true)
+                    Text(ActionsTileFormat.stateWord(build, now: now))
+                        .monospacedDigit()
+                        .lineLimit(1)
+                }
+                .font(Tokens.Typography.caption)
+                .foregroundStyle(build.state == .failed ? Tokens.stateCritical : Tokens.textSecondary)
+                .fixedSize()
+            }
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(ActionsTileFormat.label(build))
     }
 }
