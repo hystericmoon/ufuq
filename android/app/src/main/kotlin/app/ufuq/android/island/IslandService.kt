@@ -22,6 +22,9 @@ import android.view.accessibility.AccessibilityManager
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -215,7 +218,9 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                         else -> IslandMode.Collapsed
                     }
                     val open = mode != IslandMode.Collapsed
-                    Box(if (open) Modifier.fillMaxWidth().padding(start = 12.dp, end = 12.dp, top = 8.dp) else Modifier) {
+                    // The open card sits under the status bar (option C); a peek keeps hugging the top edge.
+                    val top = if (mode == IslandMode.Expanded) maxOf(WindowInsets.statusBars.asPaddingValues().calculateTopPadding(), (placement.topDp + placement.heightDp).dp) + 6.dp else 8.dp
+                    Box(if (open) Modifier.fillMaxWidth().padding(start = 10.dp, end = 10.dp, top = top) else Modifier) {
                         IslandContent(
                             mode = mode,
                             pill = pill,

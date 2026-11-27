@@ -14,7 +14,6 @@
     <string name="island_close">Close island</string>
     <string name="island_expand">Expand island</string>
     <string name="island_dismiss">Dismiss</string>
-    <string name="island_page_of">Page %1$d of %2$d</string>
     <string name="island_mute_adhan">Mute adhan</string>
     <string name="island_unmute_adhan">Unmute adhan</string>
     <string name="island_open_app">Open Ufuq</string>
@@ -22,6 +21,7 @@
     <string name="island_pair_title">Pair with your Mac</string>
     <string name="island_pair_hint">AI usage</string>
     <string name="island_pair_description">AI usage. Pair with your Mac to see your limits here.</string>
+    <string name="island_media_title">Media</string>
     <string name="island_media_empty">Play something to control it here</string>
     <string name="island_media_empty_description">Media. Play something to control it here.</string>
     <string name="island_allow_access">Allow access</string>

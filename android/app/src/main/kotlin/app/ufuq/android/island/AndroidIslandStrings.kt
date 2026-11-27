@@ -12,6 +12,7 @@ class AndroidIslandStrings(private val context: Context) : IslandStrings {
     override val pairTitle get() = context.getString(R.string.island_pair_title)
     override val pairHint get() = context.getString(R.string.island_pair_hint)
     override val pairDescription get() = context.getString(R.string.island_pair_description)
+    override val mediaTitle get() = context.getString(R.string.island_media_title)
     override val mediaEmpty get() = context.getString(R.string.island_media_empty)
     override val mediaEmptyDescription get() = context.getString(R.string.island_media_empty_description)
     override val allowAccess get() = context.getString(R.string.island_allow_access)

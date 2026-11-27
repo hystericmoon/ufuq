@@ -28,6 +28,7 @@ interface IslandStrings {
     val pairTitle: String
     val pairHint: String
     val pairDescription: String
+    val mediaTitle: String
     val mediaEmpty: String
     val mediaEmptyDescription: String
     val allowAccess: String
@@ -83,6 +84,8 @@ data class IslandPageModel(
     val buttonIcon: IslandIcon,
     val buttonLabel: String,
     val buttonAction: ButtonAction,
+    /** False for a message row (no data yet): the island shows the message and no progress line. */
+    val showBar: Boolean = true,
 )
 
 /** The AI usage that page B shows. The data arrives with the Mac sync (phase A6). */
@@ -129,6 +132,7 @@ object IslandPages {
                 buttonIcon = IslandIcon.PHONE,
                 buttonLabel = s.openApp,
                 buttonAction = ButtonAction.OPEN_APP,
+                showBar = false,
             )
         }
         val fraction = sample.fraction.coerceIn(0.0, 1.0)
@@ -158,10 +162,11 @@ object IslandPages {
         if (state == null) {
             return IslandPageModel(
                 id = IslandPageId.MEDIA,
-                slider = SliderModel(0f, s.mediaEmpty, description = s.mediaEmptyDescription, stateText = ""),
+                slider = SliderModel(0f, s.mediaEmpty, s.mediaTitle, description = s.mediaEmptyDescription, stateText = ""),
                 buttonIcon = IslandIcon.PHONE,
                 buttonLabel = if (accessGranted) s.openApp else s.allowAccess,
                 buttonAction = if (accessGranted) ButtonAction.OPEN_APP else ButtonAction.ALLOW_MEDIA_ACCESS,
+                showBar = false,
             )
         }
         val position = state.positionAt(elapsedNowMs)

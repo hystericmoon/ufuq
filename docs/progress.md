@@ -2,21 +2,21 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27 11:30 WIB)
+## Resume here (2026-11-27 afternoon WIB)
 
-Released: v0.1.0 and v0.1.1 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
+Released: v0.1.0, v0.1.1, v0.1.2 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
 pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
 bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release. (The `v0.1.0` tag
 points at the kickoff commit; harmless.)
 
-Open: **PR #4 → 0.1.2** (branch `claude/ufuqcore-phase-1-setup-php4yz`). In it:
-- Android pill: countdown only, 24–30 dp, centred on the camera hole (owner feedback on 0.1.1).
-- Mac: sync key moved from Keychain to `~/Library/Application Support/Ufuq/sync-key` (ad-hoc signature made every update prompt); island on non-notch screens sits in the menu bar (flush top, menu-bar height); pairing window and Settings show "Paired with <phone> · seen …" (phone sends `X-Ufuq-Client`); "Forget phone…" confirms, announces, cross-fades the new QR.
-- The Mac Swift in PR #4 was written without a compiler; check the macOS CI result on `f7fe540` first and fix anything red.
+0.1.2 (PR #4) carries:
+- Android open island = **option C** (owner pick, 27 Nov): one black card under the status bar, one row per module (heading, large value, 4 dp progress line, 40 dp action in a 48 dp target), no pages. Rows without data show their message, no line. Media seek drags on the line; TalkBack reads each row as one node with progress (and the seek action), then its button. `IslandSlider`/pager removed. Windows island unchanged (still pages).
+- Android pill: countdown only, 24–30 dp, centred on the camera hole.
+- Mac: sync key in `~/Library/Application Support/Ufuq/sync-key` (not Keychain); island on non-notch screens sits in the menu bar; "Paired with <phone> · seen …"; "Forget phone…" confirms. macOS CI green.
 
 Next:
-1. **Waiting on the owner: pick A, B or C** for the Android open island. Mockups: https://claude.ai/artifact/XeQ2Hkhqj2U2s9cDEMFAvq (recommended C: one card, a row per module, no pages). Build it in `android/app/.../island/IslandUi.kt` (`ExpandedIsland`), re-record screenshots, then bump to 0.1.2, merge PR #4, run the three release workflows.
-2. Owner checks on 0.1.2: last Keychain prompt during migration (click Allow), external-monitor island in the menu bar, paired-phone line, Forget phone.
+1. Owner checks on 0.1.2: Android open island (all three rows, swipe up closes, TalkBack order); last Keychain prompt during migration (click Allow), external-monitor island in the menu bar, paired-phone line, Forget phone.
+2. Decide whether Windows follows option C (shared `:island-ui` module would make it free).
 3. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
 
 Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
@@ -116,6 +116,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - Pairing QR is now a `ufuq://pair#<base64url JSON>` link: the phone camera opens Ufuq with the code filled in; the user still taps Pair. Bare JSON still parses.
 
 ## History
+
+- 2026-11-27 (afternoon): v0.1.2 released: Android open island option C, pill countdown, Mac sync key file, menu-bar island on external screens, paired-phone line.
 
 - 2026-11-27 (morning): v0.1.1 released (Mac every-display island, faster Settings, pairing link; Windows tokens; reset caption). Owner tested 0.1.1; feedback fixes in PR #4. CI: Robolectric runtimes now resolved by Gradle, tests run offline.
 
