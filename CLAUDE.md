@@ -24,8 +24,11 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 
 ## Delegation (owner, 27 Nov 2026)
 
-- Always hand lighter work to cheaper sub-agents: `model: "haiku"` for mechanical jobs (renames, find-and-replace, formatting, log or CI-output digging, summaries, searches); `model: "sonnet"` for specified implementation and UI work from a written brief, screenshot re-records, docs.
-- Keep design decisions, architecture, bugs of unknown cause and final review in the main session.
+- The main session is an orchestrator (owner, 27 Nov): it plans, writes briefs, decides, reviews diffs and snapshots, merges and reports. Doing the work itself is the exception, not the default.
+- `model: "haiku"`: anything that gathers facts. Reading or surveying code to write a brief, inspecting data or log files, CI-output digging, searches, summaries, renames, find-and-replace, formatting.
+- `model: "sonnet"`: anything that produces changes from a written brief. Implementation, UI work, tests, docs and the progress tracker, screenshot re-records.
+- The main session does only design decisions, architecture, the diagnosis of bugs of unknown cause (with Haiku fetching the evidence), final review, and fixes of a few lines found during review.
+- Run independent sub-agents in parallel. Each brief states the goal, the files, the decided design, how to verify, and a short report format.
 
 ## Commands
 
