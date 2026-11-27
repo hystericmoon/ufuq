@@ -50,6 +50,9 @@ interface IslandStrings {
 
     /** "Resets in 1:12", the caption under a usage slider. */
     fun resetsIn(time: String): String
+
+    /** "Then Maghrib 17:58 · Isya 19:12", under the prayer row; [list] is already joined. */
+    fun then(list: String): String
 }
 
 /**
@@ -86,6 +89,8 @@ data class IslandPageModel(
     val buttonAction: ButtonAction,
     /** False for a message row (no data yet): the island shows the message and no progress line. */
     val showBar: Boolean = true,
+    /** A small line under the progress line ("Then Maghrib 17:58 · Isya 19:12"); also in the description. */
+    val footnote: String? = null,
 )
 
 /** The AI usage that page B shows. The data arrives with the Mac sync (phase A6). */
@@ -107,21 +112,44 @@ object IslandPages {
         media(mediaState, mediaAccess, strings, elapsedNowMs),
     )
 
-    /** Page A: track = time since the previous prayer, label = next prayer + countdown, button = mute adhan. */
-    fun prayer(progress: PrayerProgress, muted: Boolean, s: IslandStrings): IslandPageModel = IslandPageModel(
-        id = IslandPageId.PRAYER,
-        slider = SliderModel(
-            fraction = progress.fraction,
-            label = progress.name,
-            secondary = progress.countdown,
-            endIcon = IslandIcon.SUN,
-            description = s.prayerDescription(progress.name, PrayerFormat.spoken(progress.remaining), progress.percent),
-            stateText = s.percentSpoken(progress.percent),
-        ),
-        buttonIcon = if (muted) IslandIcon.BELL_OFF else IslandIcon.BELL,
-        buttonLabel = if (muted) s.unmuteAdhan else s.muteAdhan,
-        buttonAction = ButtonAction.TOGGLE_MUTE,
-    )
+    /**
+     * The prayer row: heading "Ashar · 15:08 · Bogor", value = countdown, line = time since the
+     * previous prayer, footnote = the rest of today, button = mute adhan.
+     */
+    fun prayer(progress: PrayerProgress, muted: Boolean, s: IslandStrings): IslandPageModel {
+        val zone = progress.zone
+        val trailing = listOfNotNull(zone?.let { PrayerFormat.clock(progress.next, it) }, progress.location.ifBlank { null })
+            .joinToString(" · ").ifBlank { null }
+        val footnote = zone?.let { z ->
+            progress.later.takeIf { it.isNotEmpty() }?.joinToString(" · ") { (name, time) -> "$name ${PrayerFormat.clock(time, z)}" }?.let(s::then)
+        }
+        val description = s.prayerDescription(progress.name, PrayerFormat.spoken(progress.remaining), progress.percent)
+        return IslandPageModel(
+            id = IslandPageId.PRAYER,
+            slider = SliderModel(
+                fraction = progress.fraction,
+                label = progress.name,
+                secondary = progress.countdown,
+                trailing = trailing,
+                endIcon = IslandIcon.SUN,
+                description = footnote?.let { "$description. $it" } ?: description,
+                stateText = s.percentSpoken(progress.percent),
+            ),
+            buttonIcon = if (muted) IslandIcon.BELL_OFF else IslandIcon.BELL,
+            buttonLabel = if (muted) s.unmuteAdhan else s.muteAdhan,
+            buttonAction = ButtonAction.TOGGLE_MUTE,
+            footnote = footnote,
+        )
+    }
+
+    /**
+     * Only rows with something to show (owner, 27 Nov): media while a session exists, AI once a
+     * Mac is paired (its connecting and offline states stay, they are news to a paired user).
+     * Pairing lives in the app. If nothing is left (no location yet), everything shows.
+     */
+    fun visible(pages: List<IslandPageModel>, unpaired: Boolean): List<IslandPageModel> =
+        pages.filterNot { (it.id == IslandPageId.MEDIA && !it.showBar) || (it.id == IslandPageId.AI_USAGE && unpaired) }
+            .ifEmpty { pages }
 
     /** Page B: a usage slider (amber from 80%, red from 95%), or the pairing empty state when there is no data. */
     fun aiUsage(sample: AiUsageSample?, s: IslandStrings, thresholds: UsageThresholds = UsageThresholds.DEFAULT): IslandPageModel {

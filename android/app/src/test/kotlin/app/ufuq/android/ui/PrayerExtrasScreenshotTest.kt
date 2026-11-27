@@ -88,14 +88,14 @@ class PrayerExtrasScreenshotTest {
 
     @Test fun liveUpdateIftar() {
         val content = LiveUpdateContent(PrayerProgress("Iftar", subuh, maghrib, subuh.plusSeconds(9 * 3600), "Jakarta"), zone)
-        assertEquals("Iftar 17:58", content.title)
+        assertEquals("Iftar at 17:58", content.title)
         capture("liveupdate-a4-ramadan-iftar") { Box(Modifier.width(360.dp).padding(12.dp)) { RamadanLiveCard(content) } }
     }
 
     @Test fun liveUpdateImsak() {
         val yesterdayMaghrib = Instant.parse("2026-02-25T10:58:00Z")
         val content = LiveUpdateContent(PrayerProgress("Sahur", yesterdayMaghrib, subuh, subuh.minusSeconds(45 * 60), "Jakarta"), zone)
-        assertEquals("Sahur 04:21", content.title)
+        assertEquals("Sahur at 04:21", content.title)
         capture("liveupdate-a4-ramadan-imsak") { Box(Modifier.width(360.dp).padding(12.dp)) { RamadanLiveCard(content) } }
     }
 }

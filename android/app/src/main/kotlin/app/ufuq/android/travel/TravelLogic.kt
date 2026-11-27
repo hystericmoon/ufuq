@@ -15,6 +15,7 @@ data class TravelUpdate(val name: String, val latitude: Double, val longitude: D
 object TravelLogic {
     const val THRESHOLD_KM = 25.0
     const val NEAREST_CITY_KM = 50.0
+    const val SAME_CITY_KM = 10.0
 
     fun distanceKm(lat1: Double, lon1: Double, lat2: Double, lon2: Double): Double {
         val r = 6371.0088
@@ -29,6 +30,16 @@ object TravelLogic {
         cities.map { it to distanceKm(latitude, longitude, it.latitude, it.longitude) }
             .filter { it.second <= NEAREST_CITY_KM }
             .minByOrNull { it.second }?.first?.name ?: fallback
+
+    /** "Jakarta" within [SAME_CITY_KM] of a listed city, "Near Jakarta" within [NEAREST_CITY_KM], else [fallback]. */
+    fun placeName(latitude: Double, longitude: Double, cities: List<PrayerLocation>, fallback: String): String {
+        val (city, km) = cities.map { it to distanceKm(latitude, longitude, it.latitude, it.longitude) }.minByOrNull { it.second } ?: return fallback
+        return when {
+            km <= SAME_CITY_KM -> city.name
+            km <= NEAREST_CITY_KM -> "Near ${city.name}"
+            else -> fallback
+        }
+    }
 
     /** An update when following is on and the fix is at least [THRESHOLD_KM] from the current place. */
     fun plan(settings: AppSettings, latitude: Double, longitude: Double, cities: List<PrayerLocation>, fallback: String): TravelUpdate? {

@@ -66,6 +66,6 @@ class RamadanLiveStrategy(private val yesterday: (Instant) -> PrayerSnapshot?) :
             now, snapshot, settings.ramadanManual,
             yesterdayMaghrib = { yesterday(now.minus(Duration.ofDays(1)))?.time(PrayerTimeSlot.MAGHRIB) },
         ) ?: return null
-        return PrayerProgress(phase.kind.label, phase.previous, phase.next, now, snapshot.locationName)
+        return PrayerProgress(phase.kind.label, phase.previous, phase.next, now, snapshot.locationName, snapshot.zone)
     }
 }

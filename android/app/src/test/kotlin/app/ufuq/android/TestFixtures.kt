@@ -27,6 +27,7 @@ object TestStrings : IslandStrings {
     override fun prayerDescription(name: String, spoken: String, percent: Int) =
         "$name in $spoken, $percent percent of the time since the previous prayer"
     override fun resetsIn(time: String) = "Resets in $time"
+    override fun then(list: String) = "Then $list"
     override fun usageDescription(provider: String, percent: Int, resetsSpoken: String?) =
         "$provider, $percent percent of the limit used" + (resetsSpoken?.let { ", resets in $it" } ?: "")
 }
@@ -38,6 +39,12 @@ object Fixtures {
 
     /** "Ashar 1:12". */
     val oneHourTwelve = PrayerProgress("Ashar", dzuhur, ashar, ashar.minus(Duration.ofMinutes(72)), "Jakarta")
+
+    /** The same moment with the time zone and the rest of today, as the island gets it on a phone. */
+    val oneHourTwelveFull = oneHourTwelve.copy(
+        zone = java.time.ZoneId.of("Asia/Jakarta"),
+        later = listOf("Maghrib" to Instant.parse("2026-11-26T10:58:00Z"), "Isya" to Instant.parse("2026-11-26T12:12:00Z")),
+    )
 
     /** "Ashar 04:32". */
     val underTen = PrayerProgress("Ashar", dzuhur, ashar, ashar.minus(Duration.ofMinutes(4)).minusSeconds(32), "Jakarta")

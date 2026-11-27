@@ -16,12 +16,35 @@ import app.ufuq.core.prayer.PrayerFormat
 import java.time.Duration
 import java.time.ZoneId
 
-/** What the Live Update chip shows. */
-data class LiveUpdateContent(val progress: PrayerProgress, val zone: ZoneId) {
+/**
+ * What the next-prayer notification says. With [ticking] (the island service is running and
+ * reposts it every minute) the title counts down in words: "Ashar in 2 h 3 min", text
+ * "15:08 · Bogor". Without it nothing updates between prayer boundaries, so it says only what
+ * stays true: "Ashar at 15:08", text "Bogor". No progress bar and no system chronometer (owner,
+ * 27 Nov: the chronometer ran into the title on One UI).
+ */
+data class LiveUpdateContent(val progress: PrayerProgress, val zone: ZoneId, val ticking: Boolean = false) {
+    private val clock: String get() = PrayerFormat.clock(progress.next, zone)
+
     /** "Ashar 15:12": short enough for the status-bar chip, and still right until the next boundary. */
-    val chipText: String get() = "${progress.name} ${PrayerFormat.clock(progress.next, zone)}"
-    val title: String get() = "${progress.name} ${PrayerFormat.clock(progress.next, zone)}"
-    val text: String get() = progress.location
+    val chipText: String get() = "${progress.name} $clock"
+    val title: String get() = if (ticking) "${progress.name} in ${inWords(progress.remaining)}" else "${progress.name} at $clock"
+    val text: String get() = if (ticking) listOf(clock, progress.location).filter { it.isNotBlank() }.joinToString(" · ") else progress.location
+
+    companion object {
+        /** "2 h 3 min", "45 min", "1 min"; minutes round up, so it never claims more time has passed than has. */
+        fun inWords(remaining: Duration): String {
+            val minutes = (remaining.seconds + 59).coerceAtLeast(0) / 60
+            val h = minutes / 60
+            val m = minutes % 60
+            return when {
+                minutes < 1 -> "less than a minute"
+                h == 0L -> "$m min"
+                m == 0L -> "$h h"
+                else -> "$h h $m min"
+            }
+        }
+    }
 }
 
 /**
@@ -54,19 +77,14 @@ object LiveUpdate {
     )
 
     /** API 26..35: a normal ongoing notification; the compat setters for promotion are no-ops here. */
-    private fun buildCompat(context: Context, c: LiveUpdateContent): Notification {
-        val p = c.progress
-        return NotificationCompat.Builder(context, CHANNEL)
+    private fun buildCompat(context: Context, c: LiveUpdateContent): Notification =
+        NotificationCompat.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(ContextCompat.getColor(context, R.color.notification_accent))
             .setContentTitle(c.title)
             .setContentText(c.text)
             .setContentIntent(openIntent(context))
-            .setWhen(p.next.toEpochMilli())
-            .setShowWhen(true)
-            .setUsesChronometer(true)
-            .setChronometerCountDown(true)
-            .setProgress(PROGRESS_MAX, (p.fraction * PROGRESS_MAX).toInt(), false)
+            .setShowWhen(false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setSilent(true)
@@ -75,37 +93,24 @@ object LiveUpdate {
             .setRequestPromotedOngoing(true)
             .setShortCriticalText(c.chipText)
             .build()
-    }
 
-    /** Android 16+: platform builder, so the real ProgressStyle (previous prayer to next) is used. */
+    /** Android 16+: the platform builder, so the Live Update chip setters are reachable. */
     @androidx.annotation.RequiresApi(36)
     @android.annotation.SuppressLint("NewApi") // setRequestPromotedOngoing is 36.1; guarded below
     private fun buildPromoted(context: Context, c: LiveUpdateContent): Notification {
-        val p = c.progress
-        val total = Duration.between(p.previous, p.next).seconds.toInt().coerceAtLeast(1)
-        val elapsed = Duration.between(p.previous, p.now).seconds.toInt().coerceIn(0, total)
-        val accent = ContextCompat.getColor(context, R.color.notification_accent)
-        val style = Notification.ProgressStyle()
-            .setStyledByProgress(false)
-            .addProgressSegment(Notification.ProgressStyle.Segment(total).setColor(accent))
-            .setProgress(elapsed)
         val builder = Notification.Builder(context, CHANNEL)
             .setSmallIcon(R.drawable.ic_notification)
-            .setColor(accent)
+            .setColor(ContextCompat.getColor(context, R.color.notification_accent))
             .setContentTitle(c.title)
             .setContentText(c.text)
             .setContentIntent(openIntent(context))
-            .setWhen(p.next.toEpochMilli())
-            .setShowWhen(true)
-            .setUsesChronometer(true)
-            .setChronometerCountDown(true)
+            .setShowWhen(false)
             .setOngoing(true)
             .setOnlyAlertOnce(true)
             .setVisibility(Notification.VISIBILITY_PUBLIC)
             .setCategory(Notification.CATEGORY_PROGRESS)
-            .setStyle(style)
         // The chip setters arrived in Android 16 QPR (API 36.1); on 36.0 they are missing, and the
-        // notification is then simply the ongoing ProgressStyle one.
+        // notification is then simply an ongoing one.
         try {
             builder.setShortCriticalText(c.chipText).setRequestPromotedOngoing(true)
         } catch (_: NoSuchMethodError) {
@@ -113,5 +118,16 @@ object LiveUpdate {
         return builder.build()
     }
 
-    private const val PROGRESS_MAX = 1000
+    /** Shown by the island service when there is no prayer to show (no location yet). */
+    fun fallback(context: Context): Notification =
+        NotificationCompat.Builder(context, CHANNEL)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(ContextCompat.getColor(context, R.color.notification_accent))
+            .setContentTitle(context.getString(R.string.island_notification_title))
+            .setContentText(context.getString(R.string.island_notification_text))
+            .setContentIntent(openIntent(context))
+            .setOngoing(true)
+            .setSilent(true)
+            .setCategory(NotificationCompat.CATEGORY_SERVICE)
+            .build()
 }

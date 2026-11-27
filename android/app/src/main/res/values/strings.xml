@@ -6,7 +6,6 @@
     <string name="tile_description">%1$s in %2$s</string>
     <string name="channel_live_update">Next prayer</string>
     <string name="channel_live_update_description">A quiet, always-visible countdown to the next prayer.</string>
-    <string name="channel_island">Island</string>
     <string name="island_notification_title">Ufuq island is on</string>
     <string name="island_notification_text">Showing the next prayer over other apps. Turn it off in Settings.</string>
 
@@ -47,6 +46,7 @@
     <string name="island_percent_spoken">%1$d percent</string>
     <string name="island_prayer_description">%1$s in %2$s, %3$d percent of the time since the previous prayer</string>
     <string name="island_resets_in">Resets in %1$s</string>
+    <string name="island_then">Then %1$s</string>
     <string name="island_usage_description">%1$s, %2$d percent of the limit used</string>
     <string name="island_usage_description_resets">%1$s, %2$d percent of the limit used, resets in %3$s</string>
 
@@ -62,7 +62,7 @@
     <string name="back">Back</string>
     <string name="settings_surfaces">Where prayer shows</string>
     <string name="settings_live_update">Live Update chip</string>
-    <string name="settings_live_update_hint">Countdown in the status bar and on the lock screen. Works with TalkBack.</string>
+    <string name="settings_live_update_hint">Next prayer in the status bar and on the lock screen. Works with TalkBack. It stays on while the island is on, because Android needs it to keep the island running.</string>
     <string name="settings_overlay">Island overlay</string>
     <string name="settings_overlay_hint">A small island at the camera, over other apps.</string>
     <string name="settings_overlay_hint_needs_permission">Needs permission to display over other apps. Off by default.</string>
