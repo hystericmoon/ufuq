@@ -150,10 +150,10 @@ class IslandModelTest {
 
     // --- pill ---
 
-    @Test fun pillShowsPrayerLeftAndCountdownRightWhenThereIsNoAi() {
+    @Test fun pillShowsOnlyTheCountdownWhenThereIsNoAi() {
         val pill = assertNotNull(PillMapper.from(WingLayout(left = prayerActivity()), now))
-        assertEquals("Ashar 15:12", pill.left)
-        assertEquals("1:12", pill.right)
+        assertEquals("1:12", pill.left) // countdown only (owner, 27 Nov)
+        assertEquals("", pill.right)
         assertEquals(UsageLevel.NORMAL, pill.rightLevel)
         assertEquals("Ashar in 1 hour 12 minutes", pill.description)
     }
@@ -180,5 +180,15 @@ class IslandModelTest {
         assertEquals(0, IslandGeometry.gapDp(null, 3f))
         assertEquals(0, IslandGeometry.gapDp(0, 3f))
         assertEquals(46, IslandGeometry.gapDp(102, 3f)) // 34 dp + 2 x 6
+    }
+
+    @Test fun pillHugsTheCameraHole() {
+        // An 18 dp hole from 12 dp to 30 dp (3x density): 26 dp pill centred on its middle (21 dp).
+        assertEquals(IslandGeometry.Placement(topDp = 8, heightDp = 26), IslandGeometry.placement(36, 90, 3f))
+        // Tiny or huge holes clamp to 24..30 dp.
+        assertEquals(24, IslandGeometry.placement(30, 45, 3f).heightDp)
+        assertEquals(30, IslandGeometry.placement(0, 120, 3f).heightDp)
+        // No cutout: 26 dp, 4 dp from the top.
+        assertEquals(IslandGeometry.Placement(4, 26), IslandGeometry.placement(null, null, 3f))
     }
 }

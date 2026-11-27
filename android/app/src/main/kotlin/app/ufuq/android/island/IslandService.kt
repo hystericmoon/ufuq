@@ -82,6 +82,7 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private var peek by mutableStateOf<PeekEvent?>(null)
     private var expanded by mutableStateOf(false)
     private var gapDp = 0
+    private var placement = IslandGeometry.Placement(IslandGeometry.PILL_PADDING_DP, IslandGeometry.DEFAULT_PILL_DP)
     private var startedAt: Instant = Instant.now()
     private var lastPeekId: String? = null
     private var muted = false
@@ -199,6 +200,8 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private fun addOverlay() {
         val wm = getSystemService(WindowManager::class.java)
         gapDp = IslandGeometry.gapDp(cutoutWidthPx(wm), resources.displayMetrics.density)
+        val hole = cutoutRect(wm)
+        placement = IslandGeometry.placement(hole?.top, hole?.bottom, resources.displayMetrics.density)
         val composeView = ComposeView(this).apply {
             setViewTreeLifecycleOwner(this@IslandService)
             setViewTreeSavedStateRegistryOwner(this@IslandService)
@@ -225,6 +228,7 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
                             onPeekHold = { graph.peeks.setHovering(it, Instant.now()) },
                             onInteract = ::armCollapse,
                             onSeek = ::onSeek,
+                            placement = placement,
                         )
                     }
                 }
@@ -272,6 +276,10 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         view = null
         runCatching { getSystemService(WindowManager::class.java).removeView(v) }
     }
+
+    /** The camera cutout at the top edge; null before Android 11 or without one. */
+    private fun cutoutRect(wm: WindowManager): android.graphics.Rect? =
+        if (Build.VERSION.SDK_INT < 30) null else wm.currentWindowMetrics.windowInsets.displayCutout?.boundingRectTop?.takeIf { !it.isEmpty }
 
     /** Width of the camera cutout; null before Android 11 (the pill then keeps a default gap) or without one. */
     private fun cutoutWidthPx(wm: WindowManager): Int? =

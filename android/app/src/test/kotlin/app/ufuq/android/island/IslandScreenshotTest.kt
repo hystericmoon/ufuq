@@ -33,7 +33,7 @@ class IslandScreenshotTest {
     @Test fun collapsedPill() = capture("island-01-collapsed-pill") {
         PhoneWall {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                IslandPill(PillModel("Ashar 15:12", "1:12", UsageLevel.NORMAL, false, "Ashar in 1 hour 12 minutes"), gapDp = 46, onClick = {})
+                IslandPill(PillModel("1:12", "", UsageLevel.NORMAL, false, "Ashar in 1 hour 12 minutes"), gapDp = 46, onClick = {}, placement = IslandGeometry.Placement(8, 26))
             }
         }
     }
@@ -41,7 +41,7 @@ class IslandScreenshotTest {
     @Test fun collapsedPillWithAiAmber() = capture("island-02-collapsed-pill-ai") {
         PhoneWall {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                IslandPill(PillModel("Ashar 15:12", "82%", UsageLevel.WARNING, false, "Ashar in 1 hour 12 minutes. Claude 82 percent"), gapDp = 46, onClick = {})
+                IslandPill(PillModel("1:12", "82%", UsageLevel.WARNING, false, "Ashar in 1 hour 12 minutes. Claude 82 percent"), gapDp = 46, onClick = {}, placement = IslandGeometry.Placement(8, 26))
             }
         }
     }

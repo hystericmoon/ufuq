@@ -373,31 +373,42 @@ fun ExpandedIsland(
 
 /** The collapsed pill: prayer on the left, the right wing on the other side of the camera gap. */
 @Composable
-fun IslandPill(pill: PillModel, gapDp: Int, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun IslandPill(
+    pill: PillModel,
+    gapDp: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    placement: IslandGeometry.Placement = IslandGeometry.Placement(IslandGeometry.PILL_PADDING_DP, IslandGeometry.DEFAULT_PILL_DP),
+) {
     val expand = stringResource(R.string.island_expand)
-    // The touch target is at least 48 dp tall; the pill drawn in it is 32 dp.
+    // The touch target is at least 48 dp tall and starts at the screen edge; the pill drawn in it
+    // is centred on the camera hole. Text is fixed at 12 sp so the pill keeps hugging the camera at
+    // large font sizes; TalkBack reads the full sentence from the description.
     Box(
         modifier
-            .defaultMinSize(minHeight = 48.dp)
+            .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp)
             .clickable(onClickLabel = expand, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = pill.description },
         contentAlignment = Alignment.TopCenter,
     ) {
+        val density = LocalDensity.current
+        val fixed = with(density) { 12.dp.toSp() }
         Row(
             Modifier
+                .padding(top = placement.topDp.dp)
                 .width(IntrinsicSize.Max)
-                .height(32.dp)
+                .height(placement.heightDp.dp)
                 .clip(RoundedCornerShape(percent = 50))
                 .background(IslandColors.Black)
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
-                Text(pill.left, color = Color.White, fontFamily = IslandFont, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
+            Box(Modifier.weight(1f).defaultMinSize(minWidth = 28.dp), contentAlignment = Alignment.CenterStart) {
+                Text(pill.left, color = Color.White, fontFamily = IslandFont, fontSize = fixed, fontWeight = FontWeight.SemiBold, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
             }
             Spacer(Modifier.width(if (gapDp > 0) gapDp.dp else 8.dp))
-            Box(Modifier.weight(1f), contentAlignment = Alignment.CenterEnd) {
-                Text(pill.right, color = IslandColors.tone(pill.rightLevel), fontFamily = IslandFont, fontSize = 13.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
+            Box(Modifier.weight(1f).defaultMinSize(minWidth = 28.dp), contentAlignment = Alignment.CenterEnd) {
+                Text(pill.right, color = IslandColors.tone(pill.rightLevel), fontFamily = IslandFont, fontSize = fixed, fontWeight = FontWeight.SemiBold, maxLines = 1, style = androidx.compose.ui.text.TextStyle(fontFeatureSettings = "tnum"))
             }
         }
     }
@@ -455,6 +466,7 @@ fun IslandContent(
     onInteract: () -> Unit = {},
     reduceMotion: Boolean = LocalReduceMotion.current,
     onSeek: (Float) -> Unit = {},
+    placement: IslandGeometry.Placement = IslandGeometry.Placement(IslandGeometry.PILL_PADDING_DP, IslandGeometry.DEFAULT_PILL_DP),
 ) {
     AnimatedContent(
         targetState = mode,
@@ -472,7 +484,7 @@ fun IslandContent(
         label = "island",
     ) { target ->
         when (target) {
-            IslandMode.Collapsed -> if (pill != null) IslandPill(pill, gapDp, onPillClick)
+            IslandMode.Collapsed -> if (pill != null) IslandPill(pill, gapDp, onPillClick, placement = placement)
             is IslandMode.Peek -> IslandPeek(target.event, onPeekDismiss, onPeekHold)
             IslandMode.Expanded -> ExpandedIsland(pages, onAction, onClose, onInteract = onInteract, onSeek = onSeek)
         }
