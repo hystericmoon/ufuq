@@ -57,6 +57,7 @@ struct SettingsView: View {
             Text("The hotkey ⌥Space always opens the panel.")
                 .foregroundStyle(.secondary)
             AgentStatusSection()
+            GitHubActionsSection()
             UpdateSettingsSection(updater: updater)
         }
         .formStyle(.grouped)
@@ -166,6 +167,150 @@ struct AgentStatusSection: View {
         switch error {
         case .invalidSettings: return "settings.json isn't valid JSON; nothing changed."
         case .invalidHookPath: return "The hook helper path is unexpected; nothing changed."
+        }
+    }
+}
+
+/// Token and watched repos for the GitHub Actions tile. The token is never displayed.
+struct GitHubActionsSection: View {
+    private enum Source: Equatable { case gh(login: String?), saved(login: String?), none }
+
+    @State private var source: Source?
+    @State private var tokenInput = ""
+    @State private var saveError = false
+    @State private var manual = GitHubSupport.manualRepos
+    @State private var auto: [String] = []
+    @State private var newRepo = ""
+    @State private var addMessage: String?
+    @State private var adding = false
+
+    private static let tokenURL = URL(string: "https://github.com/settings/personal-access-tokens/new")!
+
+    private var statusText: String {
+        switch source {
+        case nil: return "Checking…"
+        case .gh(let login)?: return login.map { "Using gh (\($0))" } ?? "Using gh"
+        case .saved(let login)?: return login.map { "Using saved token (\($0))" } ?? "Using saved token"
+        case .none?: return "No token"
+        }
+    }
+
+    private var repoRows: [(repo: String, fromSession: Bool)] {
+        var seen = Set<String>()
+        var rows: [(String, Bool)] = []
+        for repo in manual where seen.insert(repo.lowercased()).inserted { rows.append((repo, false)) }
+        for repo in auto where seen.insert(repo.lowercased()).inserted { rows.append((repo, true)) }
+        return rows
+    }
+
+    var body: some View {
+        Section("GitHub Actions") {
+            Text(statusText)
+            HStack {
+                SecureField("Personal access token", text: $tokenInput)
+                    .textContentType(.password)
+                Button("Save") { saveToken() }
+                    .disabled(tokenInput.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                if case .saved? = source {
+                    Button("Remove") { removeToken() }
+                }
+            }
+            if saveError {
+                Text("Could not save the token.").font(.callout).foregroundStyle(.secondary)
+            }
+            Link("Create a fine-grained token (Actions: read)", destination: Self.tokenURL)
+            Text("Ufuq uses the gh command when it is logged in. Otherwise paste a token; it is kept in a private file in Application Support and never shown again.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
+
+            ForEach(repoRows, id: \.repo) { row in
+                HStack {
+                    VStack(alignment: .leading) {
+                        Text(row.repo)
+                        Text(row.fromSession ? "from a Claude session" : "added")
+                            .font(.callout)
+                            .foregroundStyle(.secondary)
+                    }
+                    Spacer()
+                    if !row.fromSession {
+                        Button("Remove") { removeRepo(row.repo) }
+                            .accessibilityLabel("Remove \(row.repo)")
+                    }
+                }
+                .accessibilityElement(children: .contain)
+            }
+            HStack {
+                TextField("owner/repo", text: $newRepo)
+                    .onSubmit { addRepo() }
+                Button("Add") { addRepo() }
+                    .disabled(adding || newRepo.trimmingCharacters(in: .whitespaces).isEmpty)
+            }
+            if let addMessage {
+                Text(addMessage).font(.callout).foregroundStyle(.secondary)
+            }
+        }
+        .onAppear {
+            auto = GitHubSupport.autoStore?.repos() ?? []
+            Task { await loadSource() }
+        }
+    }
+
+    private func loadSource() async {
+        let found = await Task.detached { GitHubSupport.tokenSource().token() }.value
+        guard let found else { source = Source.none; return }
+        source = found.origin == .gh ? .gh(login: nil) : .saved(login: nil)
+        let login = try? await GitHubSupport.makeClient(found.value).user()
+        source = found.origin == .gh ? .gh(login: login) : .saved(login: login)
+    }
+
+    private func saveToken() {
+        saveError = !GitHubSupport.saveToken(tokenInput)
+        if !saveError { tokenInput = "" }
+        Task { await loadSource() }
+    }
+
+    private func removeToken() {
+        GitHubSupport.removeToken()
+        Task { await loadSource() }
+    }
+
+    private func removeRepo(_ repo: String) {
+        manual.removeAll { $0 == repo }
+        UserDefaults.standard.set(manual, forKey: GitHubSupport.manualReposKey)
+    }
+
+    private func addRepo() {
+        let repo = newRepo.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard repo.range(of: #"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"#, options: .regularExpression) != nil else {
+            addMessage = "Use the form owner/repo."
+            return
+        }
+        guard !manual.contains(where: { $0.caseInsensitiveCompare(repo) == .orderedSame }) else {
+            addMessage = "Already added."
+            return
+        }
+        adding = true
+        addMessage = "Checking…"
+        Task {
+            defer { adding = false }
+            guard let token = await Task.detached(operation: { GitHubSupport.tokenSource().token() }).value else {
+                addMessage = "Add a token first."
+                return
+            }
+            do {
+                if try await GitHubSupport.makeClient(token.value).repoExists(repo) {
+                    manual.append(repo)
+                    UserDefaults.standard.set(manual, forKey: GitHubSupport.manualReposKey)
+                    newRepo = ""
+                    addMessage = nil
+                } else {
+                    addMessage = "Not found or the token can't see it"
+                }
+            } catch GitHubError.unauthorized {
+                addMessage = "GitHub rejected the token."
+            } catch {
+                addMessage = "Could not reach GitHub."
+            }
         }
     }
 }

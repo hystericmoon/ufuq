@@ -86,6 +86,7 @@ final class NotchController: NSObject {
     private var lastAnnouncedPeekID: String?
     private var lastEscape = Date.distantPast
     private var tickCount = 0
+    private var lastGitHubPoll = Date.distantPast
     private var allDisplays = AppSettings.allDisplays
 
     init(registry: ModuleRegistry) {
@@ -222,6 +223,7 @@ final class NotchController: NSObject {
         if let agent = registry.module(id: "agent") {
             Task { try? await agent.refresh() }
         }
+        pollGitHub(at: now)
         queue.tick(at: now)
         machine.setPeek(queue.current)
         announceIfNew()
@@ -238,6 +240,7 @@ final class NotchController: NSObject {
                 island.model.snapshot = snapshot
                 updateAIRows(island, now: now)
                 refreshAgents(island, now: now)
+                refreshActions(island, now: now)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
                 if tickCount % 30 == 0 { refreshBattery(island) }
             }
@@ -270,6 +273,7 @@ final class NotchController: NSObject {
                     island.model.snapshot = snapshot
                     updateAIRows(island, now: Date())
                     island.model.agents = (registry.module(id: "agent") as? AgentStatusModule)?.sessions(at: Date()) ?? []
+                    island.model.actions = githubBuilds(at: Date())
                     island.model.battery = BatteryReader.read()
                     island.model.focusedTile = focusedTile
                 }
@@ -301,6 +305,29 @@ final class NotchController: NSObject {
         guard sessions != island.model.agents else { return }
         let resized = sessions.isEmpty != island.model.agents.isEmpty
         island.model.agents = sessions
+        if resized { updateFrame(island, for: island.model.state.kind) }
+    }
+
+    /// The GitHub module polls on its own schedule: 15 s while a build runs, else 60 s.
+    private func pollGitHub(at now: Date) {
+        guard let module = registry.module(id: "github") as? GitHubActionsModule else { return }
+        guard now.timeIntervalSince(lastGitHubPoll) >= module.pollInterval(at: now) else { return }
+        lastGitHubPoll = now
+        Task { try? await module.refresh() }
+    }
+
+    private func githubBuilds(at now: Date) -> [GitHubBuild] {
+        guard let module = registry.module(id: "github") as? GitHubActionsModule,
+              module.status.isAvailable else { return [] }
+        return module.builds(at: now)
+    }
+
+    /// A first or last build appearing changes the open panel's width.
+    private func refreshActions(_ island: ScreenIsland, now: Date) {
+        let builds = githubBuilds(at: now)
+        guard builds != island.model.actions else { return }
+        let resized = builds.isEmpty != island.model.actions.isEmpty
+        island.model.actions = builds
         if resized { updateFrame(island, for: island.model.state.kind) }
     }
 

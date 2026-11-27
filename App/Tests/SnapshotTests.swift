@@ -142,6 +142,52 @@ final class SnapshotTests: XCTestCase {
         try render(PeekView(event: event, topInset: 32), size: CGSize(width: 352, height: 92), name: "peek-agent-waiting")
     }
 
+    // MARK: - GitHub Actions
+
+    private static let sampleRuns = """
+    {"workflow_runs":[
+     {"id":1,"name":"Mac app","status":"completed","conclusion":"failure","head_sha":"aaa","head_branch":"main","event":"push","html_url":"https://github.com/o/ufuq/actions/runs/1","run_started_at":"2026-11-26T07:50:00Z","updated_at":"2026-11-26T07:55:00Z","pull_requests":[],"triggering_actor":{"login":"me"}},
+     {"id":2,"name":"CI","status":"in_progress","conclusion":null,"head_sha":"bbb","head_branch":"feature","event":"push","html_url":"https://github.com/o/adwam/actions/runs/2","run_started_at":"2026-11-26T07:56:00Z","updated_at":"2026-11-26T07:58:00Z","pull_requests":[],"triggering_actor":{"login":"me"}}
+    ]}
+    """
+
+    /// Builds through the real module with a fake transport and token: no network, no disk.
+    private func githubBuilds() async throws -> (GitHubActionsModule, [GitHubBuild]) {
+        let now = fixedNow
+        let transport: GitHubClient.Transport = { request in
+            let path = request.url?.path ?? ""
+            let body = path == "/user" ? #"{"login":"me"}"# : Self.sampleRuns
+            let response = HTTPURLResponse(url: request.url!, statusCode: 200, httpVersion: nil, headerFields: nil)!
+            return (Data(body.utf8), response)
+        }
+        let tokenSource = GitHubTokenSource(
+            runCommand: { _, _ in nil }, readFile: { _ in "fake-token" }, fileExists: { _ in false }, tokenPath: "/fake")
+        let module = GitHubActionsModule(
+            tokenSource: tokenSource,
+            makeClient: { GitHubClient(token: $0, transport: transport, now: { now }) },
+            manualRepos: { ["o/ufuq"] },
+            now: { now })
+        try await module.refresh()
+        return (module, module.builds(at: now))
+    }
+
+    func testCollapsedCIFailed() async throws {
+        let (module, builds) = try await githubBuilds()
+        XCTAssertFalse(builds.isEmpty)
+        let activity = try XCTUnwrap(try module.collapsedActivity(at: fixedNow))
+        var layout = wings
+        layout.rotating = activity
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-ci-failed")
+    }
+
+    func testExpandedBentoActions() async throws {
+        let (_, builds) = try await githubBuilds()
+        let (_, sessions) = try await agentSessions()
+        XCTAssertEqual(builds.count, 2)
+        try renderBento(name: "expanded-bento-actions", content: BentoContent(
+            snapshot: jakarta, now: fixedNow, ai: Self.aiRows, agents: sessions, actions: builds))
+    }
+
     private var jakarta: PrayerSnapshot? { PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation) }
 
     private static let aiRows = [

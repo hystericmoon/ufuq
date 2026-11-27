@@ -3,7 +3,7 @@ import UfuqCore
 
 /// The tiles of the open panel, in reading and Tab order.
 enum BentoTileID: String, CaseIterable, Identifiable {
-    case prayer, ai, agents, battery
+    case prayer, ai, agents, actions, battery
 
     var id: String { rawValue }
 }
@@ -32,9 +32,10 @@ struct BentoContent: Equatable {
     var ai: [AIUsageRow] = []
     var battery: BatteryStatus?
     var agents: [AgentSession] = []
+    var actions: [GitHubBuild] = []
 
     var smallTiles: [BentoTileID] {
-        (agents.isEmpty ? [] : [.agents]) + (battery == nil ? [] : [.battery])
+        (agents.isEmpty ? [] : [.agents]) + (actions.isEmpty ? [] : [.actions]) + (battery == nil ? [] : [.battery])
     }
     var tileOrder: [BentoTileID] { [.prayer, .ai] + smallTiles }
 }
@@ -49,6 +50,7 @@ final class NotchModel: ObservableObject {
     @Published var ai: [AIUsageRow] = []
     @Published var battery: BatteryStatus?
     @Published var agents: [AgentSession] = []
+    @Published var actions: [GitHubBuild] = []
     /// The tile that gets focus when the panel opens (the last one used).
     @Published var focusedTile: BentoTileID = .prayer
     /// Height of the black strip on top of the open panel.
@@ -62,7 +64,7 @@ final class NotchModel: ObservableObject {
     /// Bumped each time the panel opens, so the expanded view moves keyboard and VoiceOver focus in.
     @Published var focusToken = 0
 
-    var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents) }
+    var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions) }
 
     var onEscape: () -> Void = {}
     var onTapCollapsed: () -> Void = {}
