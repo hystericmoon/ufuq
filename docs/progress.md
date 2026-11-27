@@ -111,6 +111,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 
 ## History
 
+- 2026-11-27: v0.1.0 released (DMG, MSI, APK; release workflows started by hand because tags cannot be pushed from cloud sessions, so the `v0.1.0` tag still points at the kickoff commit). v0.1.1 carries the four decisions and the Mac release-script fix.
+
 - 2026-11-26 (late): Sync replay fix: the Mac server accepts each auth token once (`SyncReplayGuard`, keyed on the decoded bytes, entries expire with the 5-min window, capped at 4096). No Android change: it already seals a fresh token per request.
 
 - 2026-11-26 (night): Android A1–A4, A6, A7 and Windows W1–W2 built in cloud with parallel agents; Mac sync server; Wear OS skipped. CI green on all three platforms; device checks pending.
