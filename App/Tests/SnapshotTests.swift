@@ -20,7 +20,7 @@ final class SnapshotTests: XCTestCase {
             usageFraction: 0.82),
         rotating: LiveActivity(
             id: "agent.1", moduleID: "agent", source: .agent,
-            text: "Task", accessibilityLabel: "Agent task running"))
+            text: "ufuq · 4m", accessibilityLabel: "Claude Code, ufuq, running"))
 
     func testCollapsedNotch() throws {
         try render(CollapsedView(layout: wings, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-notch")
@@ -125,7 +125,7 @@ final class SnapshotTests: XCTestCase {
         XCTAssertTrue(activity.isAlert)
         var layout = wings
         layout.rotating = activity
-        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-agent-waiting")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-agent-waiting")
     }
 
     func testExpandedBentoAgents() async throws {
@@ -179,7 +179,15 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(activity.text, "CI running")
         var layout = wings
         layout.rotating = activity
-        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-ci-running")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-ci-running")
+    }
+
+    func testCollapsedLongTitle() throws {
+        var layout = wings
+        layout.rotating = LiveActivity(
+            id: "agent.long", moduleID: "agent", source: .agent,
+            text: "muslimdaily · 12m", accessibilityLabel: "Claude Code, muslimdaily, running")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-long-title")
     }
 
     func testExpandedBentoActions() async throws {

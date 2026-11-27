@@ -87,7 +87,7 @@ public final class AgentStatusModule: UfuqModule {
             let extra = waiting.count - 1
             return LiveActivity(
                 id: "agent", moduleID: id, source: .agent,
-                // The rotating slot fits ~11 characters: the title lives in the peek, tile and label.
+                // The right-wing slot fits ~11 characters: the title lives in the peek, tile and label.
                 text: waiting.count == 1 ? "Needs input" : "\(waiting.count) need input",
                 accessibilityLabel: "Claude Code, \(first.title), needs input"
                     + (extra > 0 ? ", plus \(extra) more waiting" : ""),

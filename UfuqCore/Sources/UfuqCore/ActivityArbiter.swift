@@ -17,8 +17,12 @@ public enum WingPriority: Int, Comparable, Sendable {
 public struct WingLayout: Equatable, Sendable {
     public var left: LiveActivity?
     public var right: LiveActivity?
-    /// The third activity, rotated every 8 s (or pinned while an alert is active).
+    /// Shown in the right wing instead of `right` right now: the third activity on its 8 s turn,
+    /// or an alert pinned. `nil` means it is `right`'s turn (or there is no third activity).
     public var rotating: LiveActivity?
+
+    /// What the right wing displays at this moment.
+    public var rightWingShown: LiveActivity? { rotating ?? right }
 
     public init(left: LiveActivity? = nil, right: LiveActivity? = nil, rotating: LiveActivity? = nil) {
         self.left = left
@@ -31,8 +35,10 @@ public struct WingLayout: Equatable, Sendable {
 ///
 /// - Prayer always takes the left wing and AI usage the right (fixed positions build habit).
 ///   An empty home wing is filled with the highest-priority remaining activity.
-/// - The rest form the rotation pool, ordered by priority. Each shows for `rotationInterval`.
-/// - While an alert is in the pool it is pinned to the rotating slot; no rotation.
+/// - The rest form the pool, ordered by priority. The pool shares the right wing with AI:
+///   the cycle is `[AI] + pool` (just the pool when there is no AI), each shown for `rotationInterval`.
+///   `rotating` is `nil` on AI's turn, otherwise the pool item whose turn it is.
+/// - While an alert is in the pool it is pinned in the right wing and hides AI; no cycling.
 public struct ActivityArbiter {
     public static let defaultRotationInterval: TimeInterval = 8
     public static let prayerSoonWindow: TimeInterval = 10 * 60
@@ -97,10 +103,10 @@ public struct ActivityArbiter {
         if left == nil, let index = pool.firstIndex(where: { !$0.isAlert }) { left = pool.remove(at: index) }
         if right == nil, let index = pool.firstIndex(where: { !$0.isAlert }) { right = pool.remove(at: index) }
 
-        return WingLayout(left: left, right: right, rotating: nextRotating(from: pool, at: now))
+        return WingLayout(left: left, right: right, rotating: nextRotating(right: right, pool: pool, at: now))
     }
 
-    private mutating func nextRotating(from pool: [LiveActivity], at now: Date) -> LiveActivity? {
+    private mutating func nextRotating(right: LiveActivity?, pool: [LiveActivity], at now: Date) -> LiveActivity? {
         guard !pool.isEmpty else {
             rotatingID = nil
             shownSince = nil
@@ -108,23 +114,26 @@ public struct ActivityArbiter {
         }
 
         if let alert = pool.first(where: \.isAlert) {
-            return show(alert, at: now, keepTimer: alert.id == rotatingID)
+            return show(alert, at: now, keepTimer: alert.id == rotatingID, isRight: false)
         }
 
-        guard let currentIndex = pool.firstIndex(where: { $0.id == rotatingID }),
+        let cycle = (right.map { [$0] } ?? []) + pool
+        guard let currentIndex = cycle.firstIndex(where: { $0.id == rotatingID }),
               let since = shownSince else {
-            return show(pool[0], at: now, keepTimer: false)
+            return show(cycle[0], at: now, keepTimer: false, isRight: cycle[0].id == right?.id)
         }
 
         if now.timeIntervalSince(since) >= rotationInterval {
-            return show(pool[(currentIndex + 1) % pool.count], at: now, keepTimer: false)
+            let next = cycle[(currentIndex + 1) % cycle.count]
+            return show(next, at: now, keepTimer: false, isRight: next.id == right?.id)
         }
-        return pool[currentIndex]
+        let current = cycle[currentIndex]
+        return current.id == right?.id ? nil : current
     }
 
-    private mutating func show(_ activity: LiveActivity, at now: Date, keepTimer: Bool) -> LiveActivity {
+    private mutating func show(_ activity: LiveActivity, at now: Date, keepTimer: Bool, isRight: Bool) -> LiveActivity? {
         if !keepTimer || shownSince == nil { shownSince = now }
         rotatingID = activity.id
-        return activity
+        return isRight ? nil : activity
     }
 }

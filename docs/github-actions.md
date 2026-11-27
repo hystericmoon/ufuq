@@ -33,7 +33,7 @@ A **build** = runs of one repo with the same `head_sha` and `event` (one push fa
 
 ## Notch
 
-- One collapsed activity, id `github`, source `.other`, never `isAlert`. Priority: any running → `CI running` (`2 CI running`); else a failed build finished < 10 min ago → `CI failed`; else a mine build passed < 5 min ago → `CI passed`. The slot fits ~11 characters; repo and branch go in the label: "GitHub Actions, ufuq, main, failed".
+- One collapsed activity, id `github`, source `.other`, never `isAlert`. Priority: any running → `CI running` (`2 CI running`); else a failed build finished < 10 min ago → `CI failed`; else a mine build passed < 5 min ago → `CI passed`. The slot is ~66 pt, roughly 11 characters at 13/600 with 0.8 scaling; repo and branch go in the label: "GitHub Actions, ufuq, main, failed".
 - Peeks (from comparing the previous poll; none on the first poll after launch or after a token change):
   - build → `failed`: normal, title `CI failed`, message `ufuq · main · Mac app` (PR: `ufuq · PR #12`; several failing workflows: `… · 2 workflows`), id `github.failed.<repo>.<sha>`.
   - build → `passed`, `isMine`, ran ≥ 60 s: normal, title `CI passed`, message `ufuq · PR #12 · 3m 40s`, id `github.passed.<repo>.<sha>`.

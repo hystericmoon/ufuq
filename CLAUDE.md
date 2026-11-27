@@ -12,7 +12,7 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 - **Logic lives in the `UfuqCore` Swift package (Foundation only); the Mac app imports it.** Work starts in Linux cloud sessions with no Xcode, and keeping logic UI-free lets `swift test` run anywhere.
 - **Every module implements `UfuqModule` and is loaded by `ModuleRegistry`.** Several data sources are undocumented (Claude limits, Codex logs, Antigravity, MediaRemote); one breaking must show "unavailable", never crash the app.
 - **Collapsed AI indicator = one ring per provider + worst % as text.** Chosen on the design canvas: all providers visible without opening the panel.
-- **Prayer in the left wing, AI in the right; a third activity rotates every 8 s.** Fixed positions build habit; notch width stays constant.
+- **Prayer in the left wing, AI in the right; a third activity shares the right wing with AI, taking 8 s turns (alerts pin).** Fixed positions build habit; notch width stays constant.
 - **Usage thresholds: amber at 80%, red at 95%.** Also the two peek-alert points.
 - **Prayer: local calculation, Kemenag method by default.** Works offline; primary user is in Jakarta. Port the logic from Adwam (hystericmoon/muslimdaily).
 - **Hotkey always opens the panel; hover is optional.** Keyboard and VoiceOver users must never depend on the pointer.
