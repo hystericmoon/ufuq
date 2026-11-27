@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -85,6 +86,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.ufuq.core.PeekEvent
 import app.ufuq.core.UsageLevel
+import app.ufuq.desktop.IslandSizes
 import app.ufuq.desktop.NotchState
 
 // TODO: duplicated from :app (app.ufuq.android.island.IslandUi); extract to a KMP :island-ui module later.
@@ -100,6 +102,7 @@ object IslandColors {
     val Icon = Color(0xFFC9CFC9)
     val Amber = Color(0xFFFFB340)
     val Red = Color(0xFFFF6B5E)
+    val Divider = Color(0xFF1C211E)
 
     /** Dark text for the filled part of the track (all three fills are light enough for it). */
     private val OnAmberRed = Color(0xFF2A1A00)
@@ -113,7 +116,7 @@ object IslandColors {
     fun onTone(level: UsageLevel): Color = if (level == UsageLevel.NORMAL) OnAccent else OnAmberRed
 }
 
-/** Reduce motion: then the island cross-fades instead of morphing and pages fade instead of sliding. */
+/** Reduce motion: then the island cross-fades instead of morphing. */
 val LocalReduceMotion = compositionLocalOf { false }
 
 private val IslandFont = FontFamily.SansSerif
@@ -124,104 +127,9 @@ private val TabularSpan = SpanStyle(fontFeatureSettings = "tnum")
 private fun Modifier.ring(focused: Boolean, shape: Shape): Modifier =
     if (focused) border(2.dp, IslandColors.Ink, shape) else this
 
-/** A horizontal slice of a box, in dp: how the label is clipped to one segment of the track. */
-private class SliceShape(private val startDp: Float, private val endDp: Float) : Shape {
-    override fun createOutline(size: androidx.compose.ui.geometry.Size, layoutDirection: LayoutDirection, density: Density): Outline =
-        Outline.Rectangle(Rect(startDp * density.density, 0f, (endDp * density.density).coerceAtLeast(startDp * density.density), size.height))
-}
-
-/** The label row that overlays the whole track: name and secondary at the start, the icon at the end. */
+/** The round button (40 dp drawn, 48 dp target) inside a 54 dp box that leaves room for the focus ring; its label is its only accessible text. */
 @Composable
-private fun TrackLabels(model: SliderModel, primary: Color, secondary: Color, modifier: Modifier = Modifier) {
-    Row(modifier.padding(horizontal = 12.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(
-            text = buildAnnotatedString {
-                withStyle(TabularSpan.copy(color = primary)) { append(model.label) }
-                model.secondary?.let { withStyle(TabularSpan.copy(color = secondary, fontWeight = FontWeight.Normal)) { append(" $it") } }
-            },
-            modifier = Modifier.weight(1f),
-            fontFamily = IslandFont,
-            fontSize = 14.sp,
-            fontWeight = FontWeight.Medium,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis,
-        )
-        model.endIcon?.let {
-            Spacer(Modifier.width(8.dp))
-            Icon(IslandIcons.of(it), contentDescription = null, tint = secondary, modifier = Modifier.size(18.dp))
-        }
-    }
-}
-
-/**
- * The proportional slider: the handle (4x52) sits at `fraction x (width - 4)`, the active track
- * runs from the start to 6 dp before it, the inactive track from 6 dp after it to the end. The
- * label overlays the whole track; each segment clips its own copy, so the text is dark on the
- * fill and light on the dark track. It is one accessibility node with progress semantics.
- */
-@Composable
-fun IslandSlider(model: SliderModel, modifier: Modifier = Modifier, pageHint: String? = null) {
-    val tone = IslandColors.tone(model.level)
-    BoxWithConstraints(
-        modifier
-            .height(52.dp)
-            .clearAndSetSemantics {
-                contentDescription = model.description
-                stateDescription = listOfNotNull(model.stateText, pageHint).joinToString(", ")
-                if (model.meter) progressBarRangeInfo = ProgressBarRangeInfo(model.fraction.coerceIn(0f, 1f), 0f..1f)
-            },
-    ) {
-        if (!model.meter) {
-            // A count with no known limit: a plain track, no fill and no handle to read as a level.
-            Box(Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(IslandColors.Track))
-            TrackLabels(model, IslandColors.Ink, IslandColors.Ink2, Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp))
-            return@BoxWithConstraints
-        }
-        val total = maxWidth.value
-        val g = SliderGeometry.of(model.fraction, total)
-        val activeShape = RoundedCornerShape(topStart = 12.dp, topEnd = 4.dp, bottomEnd = 4.dp, bottomStart = 12.dp)
-        val inactiveShape = RoundedCornerShape(topStart = 4.dp, topEnd = 12.dp, bottomEnd = 12.dp, bottomStart = 4.dp)
-        if (g.activeWidth > 0.5f) {
-            Box(Modifier.align(Alignment.CenterStart).width(g.activeWidth.dp).height(44.dp).clip(activeShape).background(tone))
-        }
-        Box(Modifier.align(Alignment.CenterStart).offset(x = g.handleX.dp).size(width = SliderGeometry.HANDLE_DP.dp, height = 52.dp).clip(RoundedCornerShape(2.dp)).background(tone))
-        if (g.inactiveWidth > 0.5f) {
-            Box(Modifier.align(Alignment.CenterStart).offset(x = g.inactiveStart.dp).width(g.inactiveWidth.dp).height(44.dp).clip(inactiveShape).background(IslandColors.Track))
-        }
-        // Two copies of the label across the full track, each clipped to its segment.
-        val onTone = IslandColors.onTone(model.level)
-        if (g.activeWidth > 0.5f) {
-            TrackLabels(model, onTone, onTone.copy(alpha = 0.8f), Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp).clip(SliceShape(0f, g.activeWidth)))
-        }
-        if (g.inactiveWidth > 0.5f) {
-            TrackLabels(model, IslandColors.Ink, IslandColors.Ink2, Modifier.align(Alignment.CenterStart).fillMaxWidth().height(44.dp).clip(SliceShape(g.inactiveStart, total)))
-        }
-    }
-}
-
-/**
- * The trailing text (reset time) on its own line under the track, ending where the track ends, so
- * the handle never covers it. At least 16 dp tall, empty or not, so pages line up. Hidden from the
- * screen reader: the slider's description already says it.
- */
-@Composable
-fun SliderCaption(text: String?, modifier: Modifier = Modifier) {
-    Text(
-        text.orEmpty(),
-        modifier.fillMaxWidth().heightIn(min = 16.dp).clearAndSetSemantics { },
-        color = IslandColors.Ink2,
-        fontFamily = IslandFont,
-        fontSize = 12.sp,
-        lineHeight = 16.sp,
-        maxLines = 1,
-        textAlign = androidx.compose.ui.text.style.TextAlign.End,
-        style = Tabular.copy(color = IslandColors.Ink2),
-    )
-}
-
-/** The round 48 dp tonal button inside a 54 dp box that leaves room for the focus ring; its label is its only accessible text. */
-@Composable
-fun IslandButton(icon: IslandIcon, label: String, onClick: () -> Unit, modifier: Modifier = Modifier) {
+fun IslandButton(icon: IslandIcon, label: String, onClick: () -> Unit, modifier: Modifier = Modifier, tonal: Boolean = true) {
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     Box(
@@ -230,107 +138,86 @@ fun IslandButton(icon: IslandIcon, label: String, onClick: () -> Unit, modifier:
             .ring(focused, CircleShape)
             .padding(3.dp)
             .clip(CircleShape)
-            .background(IslandColors.Accent)
             .clickable(interactionSource = interaction, indication = null, onClickLabel = label, role = Role.Button, onClick = onClick)
             .semantics { contentDescription = label },
         contentAlignment = Alignment.Center,
     ) {
-        Icon(IslandIcons.of(icon), contentDescription = null, tint = IslandColors.OnAccent, modifier = Modifier.size(22.dp))
-    }
-}
-
-/** A page dot: a 28 dp target with a visible focus ring; selecting it switches the page. */
-@Composable
-private fun PageDot(selected: Boolean, label: String, onSelect: () -> Unit) {
-    val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
-    Box(
-        Modifier
-            .size(28.dp)
-            .ring(focused, CircleShape)
-            .selectable(selected = selected, interactionSource = interaction, indication = null, role = Role.Tab, onClick = onSelect)
-            .semantics { contentDescription = label },
-        contentAlignment = Alignment.Center,
-    ) {
-        Box(Modifier.size(if (selected) 7.dp else 5.dp).clip(CircleShape).background(if (selected) IslandColors.Ink else IslandColors.Ink2))
+        Box(Modifier.size(40.dp).clip(CircleShape).background(if (tonal) IslandColors.Accent else IslandColors.Track), contentAlignment = Alignment.Center) {
+            Icon(IslandIcons.of(icon), contentDescription = null, tint = if (tonal) IslandColors.OnAccent else IslandColors.Ink, modifier = Modifier.size(20.dp))
+        }
     }
 }
 
 /**
- * The expanded island: black, radius 28. Left and right arrows or the dots switch pages, Tab
- * reaches the button and the dots, Esc closes.
+ * The expanded island (option C, as on Android): one black card, one row per module, no pages.
+ * Tab moves between the row buttons, Esc closes. Each row is one screen-reader node (label, value,
+ * progress where it is a meter), then its button.
  */
 @Composable
 fun ExpandedIsland(
     pages: List<IslandPageModel>,
-    pageIndex: Int,
-    strings: IslandStrings,
-    onPage: (Int) -> Unit,
     onAction: (ButtonAction) -> Unit,
     onClose: () -> Unit,
     modifier: Modifier = Modifier,
-    reduceMotion: Boolean = LocalReduceMotion.current,
     requestFocus: Boolean = true,
 ) {
     val root = remember { FocusRequester() }
     val closeNow by rememberUpdatedState(onClose)
-    val pageNow by rememberUpdatedState(onPage)
-    val index = pageIndex.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
-    val indexNow by rememberUpdatedState(index)
     // The window only becomes focusable once expanded, so ask again when it gains focus.
     val windowFocused = LocalWindowInfo.current.isWindowFocused
     if (requestFocus) LaunchedEffect(windowFocused) { runCatching { root.requestFocus() } }
-    Box(
+    Column(
         modifier
             .fillMaxSize()
             .clip(RoundedCornerShape(28.dp))
             .background(IslandColors.Black)
             .focusRequester(root)
             .onPreviewKeyEvent { e ->
-                if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                when (e.key) {
-                    Key.Escape -> { closeNow(); true }
-                    Key.DirectionLeft -> { if (indexNow > 0) pageNow(indexNow - 1); true }
-                    Key.DirectionRight -> { if (indexNow < pages.size - 1) pageNow(indexNow + 1); true }
-                    else -> false
-                }
+                if (e.type == KeyEventType.KeyDown && e.key == Key.Escape) { closeNow(); true } else false
             }
-            .focusable(),
+            .focusable()
+            .padding(vertical = IslandSizes.EXPANDED_PADDING.dp, horizontal = 6.dp),
     ) {
-        AnimatedContent(
-            targetState = index,
-            modifier = Modifier.fillMaxSize(),
-            transitionSpec = {
-                if (reduceMotion) {
-                    ContentTransform(fadeIn(tween(150)), fadeOut(tween(150)), sizeTransform = SizeTransform(clip = false) { _, _ -> snap() })
-                } else {
-                    val dir = if (targetState > initialState) 1 else -1
-                    ContentTransform(
-                        slideInHorizontally(tween(220)) { it * dir / 4 } + fadeIn(tween(220)),
-                        slideOutHorizontally(tween(220)) { -it * dir / 4 } + fadeOut(tween(120)),
-                        sizeTransform = SizeTransform(clip = false) { _, _ -> snap() },
-                    )
-                }
+        pages.forEachIndexed { i, page ->
+            if (i > 0) Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp).height(1.dp).background(IslandColors.Divider))
+            IslandRow(page, onAction)
+        }
+    }
+}
+
+/** One module: heading, large value and a 4 dp line (a meter only), with its button on the right. */
+@Composable
+fun IslandRow(page: IslandPageModel, onAction: (ButtonAction) -> Unit, modifier: Modifier = Modifier) {
+    val model = page.slider
+    // A message row: its title ("AI usage") is the heading, its hint is the message.
+    val heading = if (page.message) model.label else listOfNotNull(model.label, model.trailing).joinToString(" · ")
+    val value = model.secondary.orEmpty()
+    Row(
+        modifier.fillMaxWidth().height(IslandSizes.EXPANDED_ROW.dp).padding(start = 14.dp, end = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Column(
+            Modifier.weight(1f).clearAndSetSemantics {
+                contentDescription = model.description
+                if (model.stateText.isNotBlank()) stateDescription = model.stateText
+                if (model.meter && !page.message) progressBarRangeInfo = ProgressBarRangeInfo(model.fraction.coerceIn(0f, 1f), 0f..1f)
             },
-            label = "page",
-        ) { i ->
-            val page = pages.getOrNull(i)
-            if (page != null) {
-                // Slider row at the top, its trailing text on a caption line that ends under the track.
-                Column(Modifier.fillMaxSize().padding(start = 22.dp, end = 14.dp, top = 16.dp)) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                        IslandSlider(page.slider, Modifier.weight(1f), pageHint = strings.pageOf(i + 1, pages.size))
-                        IslandButton(page.buttonIcon, page.buttonLabel, onClick = { onAction(page.buttonAction) })
+        ) {
+            Text(heading, color = IslandColors.Ink2, fontFamily = IslandFont, fontSize = 13.sp, lineHeight = 17.sp, maxLines = 1, overflow = TextOverflow.Ellipsis, style = Tabular.copy(color = IslandColors.Ink2))
+            if (page.message) {
+                Text(value, color = IslandColors.Ink, fontFamily = IslandFont, fontSize = 15.sp, lineHeight = 20.sp, fontWeight = FontWeight.Medium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            } else {
+                Text(value, color = IslandColors.Ink, fontFamily = IslandFont, fontSize = 22.sp, lineHeight = 26.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, style = Tabular.copy(color = IslandColors.Ink))
+                if (model.meter) {
+                    BoxWithConstraints(Modifier.padding(top = 6.dp).fillMaxWidth().height(4.dp).clip(RoundedCornerShape(2.dp)).background(IslandColors.Track)) {
+                        val f = model.fraction.coerceIn(0f, 1f)
+                        if (f > 0f) Box(Modifier.width(maxWidth * f).fillMaxHeight().clip(RoundedCornerShape(2.dp)).background(IslandColors.tone(model.level)))
                     }
-                    SliderCaption(page.slider.trailing, Modifier.padding(top = 2.dp, end = 54.dp + 12.dp))
                 }
             }
         }
-        if (pages.size > 1) {
-            Row(Modifier.align(Alignment.BottomCenter), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                pages.forEachIndexed { i, _ -> PageDot(i == index, strings.pageOf(i + 1, pages.size)) { onPage(i) } }
-            }
-        }
+        Spacer(Modifier.width(10.dp))
+        IslandButton(page.buttonIcon, page.buttonLabel, onClick = { onAction(page.buttonAction) }, tonal = !page.message)
     }
 }
 
@@ -410,10 +297,8 @@ fun IslandContent(
     mode: NotchState,
     pill: PillModel?,
     pages: List<IslandPageModel>,
-    pageIndex: Int,
     strings: IslandStrings,
     onPillClick: () -> Unit,
-    onPage: (Int) -> Unit,
     onAction: (ButtonAction) -> Unit,
     onClose: () -> Unit,
     onPeekDismiss: () -> Unit,
@@ -439,7 +324,7 @@ fun IslandContent(
         when (target) {
             NotchState.Collapsed -> if (pill != null) IslandPill(pill, strings, onPillClick)
             is NotchState.Peek -> IslandPeek(target.event, strings, onPeekDismiss, onPeekHold)
-            NotchState.Expanded -> ExpandedIsland(pages, pageIndex, strings, onPage, onAction, onClose, reduceMotion = reduceMotion)
+            NotchState.Expanded -> ExpandedIsland(pages, onAction, onClose)
         }
     }
 }

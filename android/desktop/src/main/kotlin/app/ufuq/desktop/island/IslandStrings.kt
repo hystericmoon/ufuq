@@ -12,7 +12,6 @@ object EnglishIslandStrings : IslandStrings {
     override val expand = "Open Ufuq"
     override val close = "Close"
     override val dismiss = "Dismiss"
-    override fun pageOf(index: Int, count: Int) = "Page $index of $count"
     override fun percent(value: Int) = "$value%"
     override fun percentSpoken(value: Int) = "$value percent"
     override fun prayerDescription(name: String, spoken: String, percent: Int) =

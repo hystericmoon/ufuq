@@ -12,6 +12,7 @@ import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertNotNull
 import kotlin.test.assertTrue
+import kotlin.test.assertTrue
 
 class IslandControllerTest {
     // 12:00 in Jakarta: after Dhuhr, before Ashar.
@@ -60,16 +61,12 @@ class IslandControllerTest {
         assertEquals(listOf("before", "after", "before", "after"), log)
     }
 
-    @Test fun clickOpensAndPagesClamp() = runBlocking {
+    @Test fun clickOpensWithEveryModule() = runBlocking {
         val c = controller()
         c.refreshUsage()
         c.pillClicked()
-        c.selectPage(1)
-        assertEquals(1, c.state.value.pageIndex)
-        c.selectPage(9)
-        assertEquals(1, c.state.value.pageIndex)
-        c.selectPage(-3)
-        assertEquals(0, c.state.value.pageIndex)
+        assertEquals(NotchState.Expanded, c.state.value.mode)
+        assertTrue(c.state.value.pages.isNotEmpty())
     }
 
     @Test fun aPeekShowsUntilItsTimeIsUpAndExpandedWinsOverIt() {

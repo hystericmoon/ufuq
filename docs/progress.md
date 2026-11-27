@@ -10,14 +10,13 @@ bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSIO
 points at the kickoff commit; harmless.)
 
 0.1.2 (PR #4) carries:
-- Android open island = **option C** (owner pick, 27 Nov): one black card under the status bar, one row per module (heading, large value, 4 dp progress line, 40 dp action in a 48 dp target), no pages. Rows without data show their message, no line. Media seek drags on the line; TalkBack reads each row as one node with progress (and the seek action), then its button. `IslandSlider`/pager removed. Windows island unchanged (still pages).
+- Android open island = **option C** (owner pick, 27 Nov): one black card under the status bar, one row per module (heading, large value, 4 dp progress line, 40 dp action in a 48 dp target), no pages. Rows without data show their message, no line. Media seek drags on the line; TalkBack reads each row as one node with progress (and the seek action), then its button. `IslandSlider`/pager removed. Windows follows (owner, 27 Nov): same card, 72 dp rows, window height grows with the rows (`IslandSizes.expandedHeight`), Tab between buttons, Esc closes; no arrow-key pages any more.
 - Android pill: countdown only, 24–30 dp, centred on the camera hole.
 - Mac: sync key in `~/Library/Application Support/Ufuq/sync-key` (not Keychain); island on non-notch screens sits in the menu bar; "Paired with <phone> · seen …"; "Forget phone…" confirms. macOS CI green.
 
 Next:
 1. Owner checks on 0.1.2: Android open island (all three rows, swipe up closes, TalkBack order); last Keychain prompt during migration (click Allow), external-monitor island in the menu bar, paired-phone line, Forget phone.
-2. Decide whether Windows follows option C (shared `:island-ui` module would make it free).
-3. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
+2. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
 
 Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 
@@ -117,7 +116,7 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 
 ## History
 
-- 2026-11-27 (afternoon): v0.1.2 released: Android open island option C, pill countdown, Mac sync key file, menu-bar island on external screens, paired-phone line.
+- 2026-11-27 (afternoon): v0.1.2 released: Android and Windows open island option C, pill countdown, Mac sync key file, menu-bar island on external screens, paired-phone line.
 
 - 2026-11-27 (morning): v0.1.1 released (Mac every-display island, faster Settings, pairing link; Windows tokens; reset caption). Owner tested 0.1.1; feedback fixes in PR #4. CI: Robolectric runtimes now resolved by Gradle, tests run offline.
 

@@ -31,7 +31,6 @@ data class IslandViewState(
     val mode: NotchState = NotchState.Collapsed,
     val pill: PillModel? = null,
     val pages: List<IslandPageModel> = emptyList(),
-    val pageIndex: Int = 0,
 )
 
 /**
@@ -57,7 +56,6 @@ class IslandController(
     private val prayer = PrayerModule(initial.location, initial.calculation, clock = clock)
     private var usage: List<AiUsageSample> = emptyList()
     private var usageDue = true
-    private var pageIndex = 0
 
     private val _state = MutableStateFlow(IslandViewState())
     val state: StateFlow<IslandViewState> = _state.asStateFlow()
@@ -105,11 +103,6 @@ class IslandController(
 
     fun peekHold(hold: Boolean) = synchronized(lock) { peeks.setHovering(hold, clock()) }
 
-    fun selectPage(index: Int) = synchronized(lock) {
-        pageIndex = index
-        publish(clock())
-    }
-
     fun onAction(action: ButtonAction) {
         when (action) {
             ButtonAction.OPEN_SETTINGS -> onOpenSettings()
@@ -126,7 +119,6 @@ class IslandController(
     private fun open(origin: ExpandOrigin) {
         beforeOpen()
         machine.open(origin)
-        pageIndex = 0
     }
 
     // Time
@@ -145,8 +137,7 @@ class IslandController(
         val pill = PillMapper.from(arbiter.layout(activities, now), now)
         val progress = runCatching { PrayerProgress.at(now, prayer) }.getOrNull()
         val pages = IslandPages.all(progress, usage, strings)
-        pageIndex = pageIndex.coerceIn(0, (pages.size - 1).coerceAtLeast(0))
-        _state.value = IslandViewState(machine.state, pill, pages, pageIndex)
+        _state.value = IslandViewState(machine.state, pill, pages)
     }
 
     /** Reads the usage logs and queues peeks for new alerts. */

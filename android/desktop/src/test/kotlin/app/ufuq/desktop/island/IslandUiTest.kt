@@ -78,12 +78,11 @@ class IslandUiTest {
         }
     }
 
-    private fun expanded(pages: List<IslandPageModel>, start: Int = 0) = @Composable {
-        var page by remember { mutableIntStateOf(start) }
-        ExpandedIsland(pages, page, s, onPage = { page = it }, onAction = {}, onClose = {})
+    /** Draws the card at the size the window gives it for [pages]. */
+    private fun card(name: String, pages: List<IslandPageModel>, reduceMotion: Boolean = false, check: DesktopComposeUiTest.() -> Unit = {}) {
+        val (w, h) = IslandSizes.of(NotchState.Kind.EXPANDED, pages.size)
+        shot(name, w, h, reduceMotion, content = { ExpandedIsland(pages, onAction = {}, onClose = {}, requestFocus = false) }, check = check)
     }
-
-    private val ex = IslandSizes.EXPANDED_WIDTH to IslandSizes.EXPANDED_HEIGHT
 
     @Test fun collapsedPill() = shot(
         "01-pill", IslandSizes.COLLAPSED_WIDTH, IslandSizes.COLLAPSED_HEIGHT,
@@ -105,9 +104,8 @@ class IslandUiTest {
         check = { onNodeWithContentDescription("Ashar. in 10 minutes, at 15:12").assertExists() },
     )
 
-    @Test fun expandedPrayerPage() = shot(
-        "03-expanded-prayer", ex.first, ex.second,
-        content = expanded(listOf(prayerPage) + aiPages(codex82)),
+    @Test fun expandedPrayerPage() = card(
+        "03-expanded-prayer", listOf(prayerPage) + aiPages(codex82),
         check = {
             // The sentence Narrator reads for the slider.
             val node = onNodeWithContentDescription("Ashar in 1 hour 12 minutes, 62 percent of the time since the previous prayer")
@@ -116,27 +114,22 @@ class IslandUiTest {
         },
     )
 
-    @Test fun expandedUsageAmber() = shot(
-        "04-expanded-ai-amber", ex.first, ex.second,
-        content = expanded(listOf(prayerPage) + aiPages(codex82), start = 1),
+    @Test fun expandedUsageAmber() = card(
+        "04-expanded-ai-amber", aiPages(codex82),
         check = {
             onNodeWithContentDescription("Codex 5-hour session, 82 percent used, resets in 1 hour 12 minutes").assertExists()
         },
     )
 
-    @Test fun expandedUsageRed() = shot(
-        "05-expanded-ai-red", ex.first, ex.second,
-        content = expanded(aiPages(AiUsageSample("Codex", 0.97, Duration.ofMinutes(35), "5h")), start = 0),
-    )
+    @Test fun expandedUsageRed() = card("05-expanded-ai-red", aiPages(AiUsageSample("Codex", 0.97, Duration.ofMinutes(35), "5h")))
 
     @Test fun expandedUsageLowAndFull() {
-        shot("06-expanded-ai-low", ex.first, ex.second, content = expanded(aiPages(AiUsageSample("Codex work", 0.03, Duration.ofHours(4), "week"))))
-        shot("07-expanded-ai-full", ex.first, ex.second, content = expanded(aiPages(AiUsageSample("Codex", 1.0, null, "5h"))))
+        card("06-expanded-ai-low", aiPages(AiUsageSample("Codex work", 0.03, Duration.ofHours(4), "week")))
+        card("07-expanded-ai-full", aiPages(AiUsageSample("Codex", 1.0, null, "5h")))
     }
 
-    @Test fun expandedClaudeTokens() = shot(
-        "09-expanded-ai-claude-tokens", ex.first, ex.second,
-        content = expanded(listOf(prayerPage) + aiPages(claudeTokens, codex82), start = 1),
+    @Test fun expandedClaudeTokens() = card(
+        "09-expanded-ai-claude-tokens", listOf(prayerPage) + aiPages(claudeTokens, codex82),
         check = {
             // A count with no known limit: no %, no progress range for Narrator to read as a level.
             val node = onNodeWithContentDescription("Claude 5-hour session, 4.2 million tokens used, resets in 3 hours")
@@ -145,39 +138,20 @@ class IslandUiTest {
         },
     )
 
-    @Test fun expandedEmptyUsage() = shot(
-        "08-expanded-ai-empty", ex.first, ex.second,
-        content = expanded(listOf(prayerPage) + aiPages(), start = 1),
+    @Test fun expandedEmptyUsage() = card(
+        "08-expanded-ai-empty", listOf(prayerPage) + aiPages(),
         check = { onNodeWithContentDescription(s.noUsageDescription).assertExists() },
     )
 
-    @Test fun reduceMotionStillRenders() = shot(
-        "09-expanded-reduce-motion", ex.first, ex.second, reduceMotion = true,
-        content = expanded(listOf(prayerPage) + aiPages(codex82)),
-    )
+    @Test fun reduceMotionStillRenders() = card("09-expanded-reduce-motion", listOf(prayerPage) + aiPages(codex82), reduceMotion = true)
 
-    @Test fun arrowKeysAndDotsSwitchPagesAndEscCloses() {
+    @Test fun everyRowIsVisibleAtOnceAndEscCloses() {
         var closed = 0
-        var page = -1
-        runDesktopComposeUiTest(420, 112) {
-            setContent {
-                var p by remember { mutableIntStateOf(0) }
-                page = p
-                ExpandedIsland(listOf(prayerPage) + aiPages(codex82), p, s, onPage = { p = it }, onAction = {}, onClose = { closed++ })
-            }
+        val pages = listOf(prayerPage) + aiPages(claudeTokens, codex82)
+        runDesktopComposeUiTest(420, IslandSizes.expandedHeight(pages.size)) {
+            setContent { ExpandedIsland(pages, onAction = {}, onClose = { closed++ }) }
             waitForIdle()
-            onRoot().performKeyInput { pressKey(Key.DirectionRight) }
-            waitForIdle()
-            assertEquals(1, page)
-            onRoot().performKeyInput { pressKey(Key.DirectionRight) } // already on the last page
-            waitForIdle()
-            assertEquals(1, page)
-            onRoot().performKeyInput { pressKey(Key.DirectionLeft) }
-            waitForIdle()
-            assertEquals(0, page)
-            onNodeWithContentDescription("Page 2 of 2").performClick()
-            waitForIdle()
-            assertEquals(1, page)
+            for (page in pages) onNodeWithContentDescription(page.slider.description).assertExists()
             onRoot().performKeyInput { pressKey(Key.Escape) }
             assertEquals(1, closed)
         }
@@ -186,7 +160,7 @@ class IslandUiTest {
     @Test fun buttonIsLabelledAndClickable() {
         var action: ButtonAction? = null
         runDesktopComposeUiTest(420, 112) {
-            setContent { ExpandedIsland(aiPages(codex82), 0, s, onPage = {}, onAction = { action = it }, onClose = {}) }
+            setContent { ExpandedIsland(aiPages(codex82), onAction = { action = it }, onClose = {}) }
             waitForIdle()
             onNodeWithContentDescription("Refresh usage").performClick()
         }
@@ -195,11 +169,11 @@ class IslandUiTest {
 
     @Test fun contentSwitchesWithTheState() {
         var mode by mutableStateOf<NotchState>(NotchState.Collapsed)
-        runDesktopComposeUiTest(420, 112) {
+        runDesktopComposeUiTest(420, 160) {
             setContent {
                 IslandContent(
-                    mode, PillModel("Ashar 15:12", "82%", UsageLevel.NORMAL, false, "the pill"), listOf(prayerPage), 0, s,
-                    onPillClick = {}, onPage = {}, onAction = {}, onClose = {}, onPeekDismiss = {}, onPeekHold = {},
+                    mode, PillModel("Ashar 15:12", "82%", UsageLevel.NORMAL, false, "the pill"), listOf(prayerPage), s,
+                    onPillClick = {}, onAction = {}, onClose = {}, onPeekDismiss = {}, onPeekHold = {},
                     reduceMotion = true,
                 )
             }
