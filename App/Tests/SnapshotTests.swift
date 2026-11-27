@@ -98,6 +98,50 @@ final class SnapshotTests: XCTestCase {
             battery: BatteryStatus(percent: 8, isCharging: false, isPluggedIn: false)))
     }
 
+    // MARK: - Agents
+
+    /// A waiting and a running session, through the real module and an in-memory directory.
+    private func agentSessions() async throws -> (AgentStatusModule, [AgentSession]) {
+        let dir = "/agents"
+        let waiting = AgentSession(
+            id: "s1", title: "ufuq", cwd: "/work/ufuq", state: .waiting,
+            updatedAt: fixedNow.addingTimeInterval(-10), appBundleID: "com.apple.Terminal")
+        let running = AgentSession(
+            id: "s2", title: "adwam", cwd: "/work/adwam", state: .running,
+            updatedAt: fixedNow.addingTimeInterval(-20), runningSince: fixedNow.addingTimeInterval(-250),
+            appBundleID: "com.googlecode.iterm2")
+        let source = InMemoryFileSource(files: [
+            "\(dir)/s1.json": try waiting.encoded(),
+            "\(dir)/s2.json": try running.encoded(),
+        ])
+        let module = AgentStatusModule(directory: dir, fileSource: source)
+        try await module.refresh()
+        return (module, module.sessions(at: fixedNow))
+    }
+
+    func testCollapsedAgentWaiting() async throws {
+        let (module, _) = try await agentSessions()
+        let activity = try XCTUnwrap(try module.collapsedActivity(at: fixedNow))
+        XCTAssertTrue(activity.isAlert)
+        var layout = wings
+        layout.rotating = activity
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-agent-waiting")
+    }
+
+    func testExpandedBentoAgents() async throws {
+        let (_, sessions) = try await agentSessions()
+        XCTAssertEqual(sessions.count, 2)
+        try renderBento(name: "expanded-bento-agents", content: BentoContent(
+            snapshot: jakarta, now: fixedNow, ai: Self.aiRows, agents: sessions))
+    }
+
+    func testPeekAgentWaiting() throws {
+        let event = PeekEvent(
+            id: "agent.waiting.s1", moduleID: "agent", title: "Claude needs input", message: "ufuq",
+            priority: .critical)
+        try render(PeekView(event: event, topInset: 32), size: CGSize(width: 352, height: 92), name: "peek-agent-waiting")
+    }
+
     private var jakarta: PrayerSnapshot? { PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation) }
 
     private static let aiRows = [

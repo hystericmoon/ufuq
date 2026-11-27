@@ -48,6 +48,7 @@ struct CollapsedView: View {
                     .accessibilityLabel(right.accessibilityLabel)
             }
             if let rotating = layout.rotating {
+                if rotating.source == .agent, rotating.isAlert { WaitingDot() }
                 Text(rotating.text)
                     .font(Tokens.Typography.collapsed)
                     .monospacedDigit()
@@ -60,5 +61,24 @@ struct CollapsedView: View {
                     .accessibilityLabel(rotating.accessibilityLabel)
             }
         }
+    }
+}
+
+/// 6 pt dot before a waiting agent's text: pulses 1 → 0.4 over 1.2 s, static under Reduce Motion.
+/// Hidden from VoiceOver; the wing's label already says "needs input".
+struct WaitingDot: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var dimmed = false
+
+    var body: some View {
+        Circle()
+            .fill(Tokens.stateWarning)
+            .frame(width: 6, height: 6)
+            .opacity(dimmed && !reduceMotion ? 0.4 : 1)
+            .animation(
+                reduceMotion ? nil : .easeInOut(duration: 1.2).repeatForever(autoreverses: true),
+                value: dimmed)
+            .onAppear { dimmed = true }
+            .accessibilityHidden(true)
     }
 }

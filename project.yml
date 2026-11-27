@@ -33,6 +33,12 @@ targets:
     dependencies:
       - package: UfuqCore
       - package: Sparkle
+      # The Claude Code hook helper, embedded at Contents/MacOS/ufuq-hook.
+      - target: ufuq-hook
+        embed: true
+        codeSign: true
+        copy:
+          destination: executables
     info:
       path: App/Info.plist
       properties:
@@ -54,6 +60,17 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac
         PRODUCT_NAME: Ufuq
+  ufuq-hook:
+    type: tool
+    platform: macOS
+    sources:
+      - UfuqCore/Sources/UfuqHook
+    dependencies:
+      - package: UfuqCore
+    settings:
+      base:
+        PRODUCT_NAME: ufuq-hook
+        SKIP_INSTALL: YES
   UfuqTests:
     type: bundle.unit-test
     platform: macOS
