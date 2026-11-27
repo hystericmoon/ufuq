@@ -108,6 +108,12 @@ struct ExpandedView: View {
             AgentsTile(sessions: content.agents, now: content.now)
         case .actions:
             ActionsTile(builds: content.actions, now: content.now)
+        case .meetings:
+            MeetingsTile(
+                meeting: content.meeting,
+                devices: content.mediaDevices,
+                isDNDActive: content.isDNDActive,
+                now: content.now)
         case .nowPlaying:
             if let nowPlaying = content.nowPlaying { NowPlayingTile(track: nowPlaying, now: content.now) }
         case .clipboard:
@@ -144,6 +150,16 @@ struct ExpandedView: View {
                         return .handled
                     }
                     return move(from: id, by: delta)
+                },
+                onReturn: {
+                    if id == .meetings,
+                       let meeting = self.content.meeting,
+                       meeting.canJoin(at: self.content.now),
+                       let url = meeting.joinURL {
+                        NSWorkspace.shared.open(url)
+                        return .handled
+                    }
+                    return .ignored
                 }))
     }
 
@@ -174,6 +190,7 @@ private struct TileFocus: ViewModifier {
     var voiceOverFocus: AccessibilityFocusState<BentoTileID?>.Binding
     let onSpace: () -> KeyPress.Result
     let onArrow: (Int) -> KeyPress.Result
+    let onReturn: () -> KeyPress.Result
 
     func body(content: Content) -> some View {
         if enabled {
@@ -185,6 +202,7 @@ private struct TileFocus: ViewModifier {
                 .onKeyPress(.space) { onSpace() }
                 .onKeyPress(.rightArrow) { onArrow(1) }
                 .onKeyPress(.leftArrow) { onArrow(-1) }
+                .onKeyPress(.return) { onReturn() }
         } else {
             content
         }

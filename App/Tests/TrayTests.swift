@@ -135,9 +135,17 @@ final class TrayTests: XCTestCase {
 
     func testImageItemsOfferConversions() {
         let image = TrayItem(path: "/tmp/a.png")
+        let video = TrayItem(path: "/tmp/clip.mov")
+        let pdf = TrayItem(path: "/tmp/doc.pdf")
         let text = TrayItem(path: "/tmp/a.txt")
         XCTAssertTrue(TrayAction.available(for: image).contains(.png))
+        XCTAssertTrue(TrayAction.available(for: image).contains(.ocrText))
+        XCTAssertTrue(TrayAction.available(for: image).contains(.removeBackground))
+        XCTAssertTrue(TrayAction.available(for: image).contains(.makePDF))
+        XCTAssertTrue(TrayAction.available(for: video).contains(.compressVideo))
+        XCTAssertTrue(TrayAction.available(for: pdf).contains(.makePDF))
         XCTAssertFalse(TrayAction.available(for: text).contains(.png))
+        XCTAssertFalse(TrayAction.available(for: text).contains(.ocrText))
         XCTAssertTrue(TrayAction.available(for: TrayItem(path: "/tmp/d", kind: .folder)).contains(.pinFolder))
     }
 }

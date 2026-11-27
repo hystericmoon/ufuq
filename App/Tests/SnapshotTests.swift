@@ -258,6 +258,43 @@ final class SnapshotTests: XCTestCase {
             snapshot: jakarta, now: fixedNow, ai: Self.aiRows, clipboard: clips))
     }
 
+    func testPhase8MeetingsAndJoinPeek() throws {
+        let meet = MeetingEvent(
+            id: "meet-1",
+            title: "Design Review",
+            startDate: fixedNow.addingTimeInterval(4 * 60),
+            endDate: fixedNow.addingTimeInterval(34 * 60),
+            joinURL: URL(string: "https://meet.google.com/abc-defg-hij")
+        )
+        let devices = MediaDeviceSnapshot(
+            isMicInUse: true,
+            isMicMuted: false,
+            canMuteMic: true,
+            isCameraInUse: true
+        )
+        try renderBento(name: "expanded-bento-meetings", content: BentoContent(
+            snapshot: jakarta,
+            now: fixedNow,
+            ai: Self.aiRows,
+            battery: BatteryStatus(percent: 84, isCharging: false, isPluggedIn: false),
+            meeting: meet,
+            mediaDevices: devices,
+            isDNDActive: true
+        ))
+
+        let joinPeek = PeekEvent(
+            id: "calendar.join.meet-1",
+            moduleID: "calendar",
+            title: "Design Review",
+            message: "In 4 min · Meet",
+            priority: .normal,
+            actionTitle: "Join",
+            actionURL: "https://meet.google.com/abc-defg-hij"
+        )
+        try render(PeekView(event: joinPeek, topInset: 32, onAction: { _ in }),
+                   size: CGSize(width: 352, height: 92), name: "peek-meeting-join")
+    }
+
     private var jakarta: PrayerSnapshot? { PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation) }
 
     private static let aiRows = [

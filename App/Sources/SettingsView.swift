@@ -1,4 +1,5 @@
 import AppKit
+import EventKit
 import SwiftUI
 import UfuqCore
 
@@ -65,6 +66,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             AgentStatusSection()
             GitHubActionsSection()
+            CalendarMeetingsSection()
             NowPlayingSection()
             UpdateSettingsSection(updater: updater)
         }
@@ -320,6 +322,75 @@ struct GitHubActionsSection: View {
                 addMessage = "Could not reach GitHub."
             }
         }
+    }
+}
+
+/// Calendar, meeting join links, mic/camera status, and optional Focus Shortcut automation.
+struct CalendarMeetingsSection: View {
+    @AppStorage(AppSettings.calendarKey) private var calendarEnabled = true
+    @AppStorage(AppSettings.meetingDevicesKey) private var meetingDevicesEnabled = true
+    @AppStorage(AppSettings.autoDNDKey) private var autoDNDEnabled = false
+    @AppStorage(AppSettings.autoDNDShortcutKey) private var shortcutName = ""
+
+    @ObservedObject private var dndBridge = AutoDNDBridge.shared
+    @State private var authorized = EventKitCalendarSource.isAuthorized
+    @State private var denied = EventKitCalendarSource.isDenied
+
+    var body: some View {
+        Section("Calendar & Meetings") {
+            Toggle("Show upcoming meetings & Join links", isOn: $calendarEnabled)
+            HStack {
+                Text(statusText)
+                    .foregroundStyle(.secondary)
+                Spacer()
+                if !authorized {
+                    if denied {
+                        Button("Open Settings") {
+                            if let url = URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Calendars") {
+                                NSWorkspace.shared.open(url)
+                            }
+                        }
+                    } else {
+                        Button("Allow Calendar") {
+                            Task {
+                                let ok = await EventKitCalendarSource.shared.requestAccess()
+                                refreshAuth()
+                                if ok { CalendarControl.refresh() }
+                            }
+                        }
+                    }
+                }
+            }
+            Toggle("Show mic & camera status", isOn: $meetingDevicesEnabled)
+            Toggle("Auto Do Not Disturb during meetings", isOn: $autoDNDEnabled)
+            if autoDNDEnabled {
+                HStack {
+                    TextField("Focus Shortcut name (optional)", text: $shortcutName)
+                    Button("Test") { dndBridge.testShortcut(on: true) }
+                        .disabled(shortcutName.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty)
+                }
+                Text("Create a Shortcut that turns Focus On/Off from input (\"on\" / \"off\") and enter its name here.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                if let status = dndBridge.lastStatus {
+                    Text(status)
+                        .font(.callout)
+                        .foregroundStyle(.secondary)
+                }
+            }
+        }
+        .onAppear { refreshAuth() }
+    }
+
+    private var statusText: String {
+        if authorized { return "Calendar access granted" }
+        if denied { return "Calendar access denied in System Settings" }
+        return "Calendar permission not requested yet"
+    }
+
+    private func refreshAuth() {
+        authorized = EventKitCalendarSource.isAuthorized
+        denied = EventKitCalendarSource.isDenied
     }
 }
 

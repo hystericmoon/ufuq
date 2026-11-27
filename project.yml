@@ -59,6 +59,8 @@ targets:
         NSHumanReadableCopyright: "Ufuq"
         NSLocalNetworkUsageDescription: "Ufuq shares usage and agent status with your paired phone over your local network."
         NSAppleEventsUsageDescription: "Ufuq shows and controls the song playing in Spotify."
+        NSCalendarsFullAccessUsageDescription: "Ufuq shows your upcoming meetings and Join links in the notch."
+        NSCalendarsUsageDescription: "Ufuq shows your upcoming meetings and Join links in the notch."
         NSBonjourServices:
           - _ufuq._tcp
         NSServices:
