@@ -2,7 +2,7 @@
 
 ## Goal
 
-A macOS notch app (Dynamic Island-style) with native polish and a small core. Main modules: prayer times and multi-account AI usage limits (Claude, Codex, Antigravity). Later: agent status, media/shelf, designer shelf, meeting mode. Full spec: `docs/spec.md`.
+A macOS notch app (Dynamic Island-style) with native polish and a small core. Main modules: prayer times and multi-account AI usage limits (Claude, Codex, Antigravity). Agent status shipped in 0.3.0. Next: file tray and Now Playing, then system HUDs, clipboard, calendar and the rest of tier 2 (`docs/plan.md`). Full spec: `docs/spec.md`.
 
 ## Decisions
 
@@ -15,6 +15,8 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 - **Prayer in the left wing, AI in the right; a third activity shares the right wing with AI, taking 8 s turns (alerts pin).** Fixed positions build habit; notch width stays constant.
 - **Usage thresholds: amber at 80%, red at 95%.** Also the two peek-alert points.
 - **Prayer: local calculation, Kemenag method by default.** Works offline; primary user is in Jakarta. Port the logic from Adwam (hystericmoon/muslimdaily).
+- **Match getdroppy.app (features and look), but better (owner, 27 Nov 2026).** Better = every feature works by keyboard and VoiceOver (Droppy is hover-first); each module fails on its own as "unavailable"; prayer, real AI usage and the Android/Windows companions; fewer features, each finished, not a store of 53. We take its interaction patterns, not its branding.
+- **Ufuq moves like one black jelly body; spec in `docs/motion.md`; Reduce Motion cross-fades (owner, 27 Nov 2026).** One shape that morphs reads as native and alive, not as stacked widgets.
 - **Hotkey always opens the panel; hover is optional.** Keyboard and VoiceOver users must never depend on the pointer.
 - **Antigravity is an isolated plugin labelled "Beta source".** No public API; its source is the most fragile.
 
@@ -60,6 +62,7 @@ Mac app (Xcode required). The Xcode project is generated from `project.yml` and 
 ## Pointers
 
 - Spec: `docs/spec.md`
+- Motion: `docs/motion.md`
 - Plan: `docs/plan.md`
 - Design canvas and refs: `refs/README.md`
 - UI rules: `.claude/rules/ui.md`
