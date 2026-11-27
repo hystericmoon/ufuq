@@ -16,6 +16,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -93,7 +94,19 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private enum class Screen { TODAY, SETTINGS, UPDATES, OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN, PAIRING }
+private enum class Screen {
+    HOME, LOCATION, METHOD, LEAD, SILENCE, OTHER_APPS, MAC, UPDATES,
+    OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN, PAIRING,
+}
+
+private fun SettingsPage.screen(): Screen = when (this) {
+    SettingsPage.LOCATION -> Screen.LOCATION
+    SettingsPage.METHOD -> Screen.METHOD
+    SettingsPage.LEAD -> Screen.LEAD
+    SettingsPage.SILENCE -> Screen.SILENCE
+    SettingsPage.OTHER_APPS -> Screen.OTHER_APPS
+    SettingsPage.MAC -> Screen.MAC
+}
 
 @Composable
 private fun UfuqRoot(
@@ -105,8 +118,12 @@ private fun UfuqRoot(
     val graph = context.graph
     val scope = rememberCoroutineScope()
     val settings by graph.settings.settings.collectAsState(initial = AppSettings())
-    var screen by remember { mutableStateOf(if (pairRequests > 0) Screen.PAIRING else Screen.TODAY) }
-    LaunchedEffect(pairRequests) { if (pairRequests > 0) screen = Screen.PAIRING }
+    // A back stack: Home at the bottom; sub-pages and explanations return to where they were opened from.
+    val stack = remember { mutableStateListOf(Screen.HOME) }
+    val screen = stack.last()
+    fun go(to: Screen) { if (stack.last() != to) stack.add(to) }
+    fun back() { if (stack.size > 1) stack.removeAt(stack.lastIndex) }
+    LaunchedEffect(pairRequests) { if (pairRequests > 0) go(Screen.PAIRING) }
     val pairing by graph.pairings.pairing.collectAsState(initial = null)
     var locationMessage by remember { mutableStateOf<String?>(null) }
     var overlayGranted by remember { mutableStateOf(Settings.canDrawOverlays(context)) }
@@ -124,7 +141,7 @@ private fun UfuqRoot(
     LaunchedEffect(openMediaAccess.value) {
         if (openMediaAccess.value) {
             openMediaAccess.value = false
-            screen = Screen.LISTENER_EXPLAIN
+            go(Screen.LISTENER_EXPLAIN)
         }
     }
 
@@ -146,7 +163,7 @@ private fun UfuqRoot(
         if (wantOverlay && overlayGranted) {
             wantOverlay = false
             scope.launch { graph.settings.update { it.copy(overlayEnabled = true) } }
-            screen = Screen.SETTINGS
+            if (stack.last() == Screen.OVERLAY_EXPLAIN) back()
         }
         // Back from Do Not Disturb access, location or exact-alarm settings.
         dndGranted = graph.silence.hasDndAccess()
@@ -156,7 +173,7 @@ private fun UfuqRoot(
         if (wantSilence && dndGranted) {
             wantSilence = false
             scope.launch { graph.settings.update { it.copy(silenceEnabled = true) } }
-            screen = Screen.SETTINGS
+            if (stack.last() == Screen.SILENCE_EXPLAIN) back()
         }
         onPauseOrDispose { }
     }
@@ -208,7 +225,8 @@ private fun UfuqRoot(
     }
 
     val actions = SettingsActions(
-        onBack = { screen = Screen.TODAY },
+        onBack = ::back,
+        onOpen = { page -> go(page.screen()) },
         onCity = { city ->
             scope.launch {
                 graph.settings.update {
@@ -230,30 +248,38 @@ private fun UfuqRoot(
             } else if (Settings.canDrawOverlays(context)) {
                 scope.launch { graph.settings.update { it.copy(overlayEnabled = true) } }
             } else {
-                screen = Screen.OVERLAY_EXPLAIN
+                go(Screen.OVERLAY_EXPLAIN)
             }
         },
-        onMediaAccess = { screen = Screen.LISTENER_EXPLAIN },
+        onMediaAccess = { go(Screen.LISTENER_EXPLAIN) },
         onLiveUpdate = { on -> scope.launch { graph.settings.update { it.copy(liveUpdateEnabled = on) } } },
         onLead = { m -> scope.launch { graph.settings.update { it.copy(adhanLeadMinutes = m) } } },
         onOtherApps = { on ->
-            if (on) screen = Screen.OTHER_APPS_EXPLAIN else scope.launch { graph.settings.update { it.copy(otherAppsEnabled = false) } }
+            if (on) go(Screen.OTHER_APPS_EXPLAIN) else scope.launch { graph.settings.update { it.copy(otherAppsEnabled = false) } }
         },
         onOtherAppAllow = { pkg, on ->
             scope.launch { graph.settings.update { it.copy(otherAppsAllowed = if (on) it.otherAppsAllowed + pkg else it.otherAppsAllowed - pkg) } }
         },
-        onOtherAppsLearnMore = { screen = Screen.OTHER_APPS_EXPLAIN },
+        onOtherAppsLearnMore = { go(Screen.OTHER_APPS_EXPLAIN) },
         onOtherAppsGrant = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-        onPairMac = { screen = Screen.PAIRING },
+        onPairMac = { go(Screen.PAIRING) },
         onForgetMac = { scope.launch { graph.pairings.forget() } },
-        onUpdates = { screen = Screen.UPDATES },
+        onUpdates = { go(Screen.UPDATES) },
+        onRamadan = { on -> scope.launch { graph.settings.update { it.copy(ramadanManual = on) } } },
+        onFollowLocation = { on ->
+            if (!on || granted(context, Manifest.permission.ACCESS_COARSE_LOCATION)) {
+                scope.launch { graph.settings.update { it.copy(followLocation = on) } }
+            } else {
+                followLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            }
+        },
     )
 
     // Sideload updater: a silent daily check on start; the dialog appears only when a newer version exists.
     val updateState by graph.updates.state.collectAsState()
     LaunchedEffect(Unit) { graph.updates.autoCheck() }
     val updateActions = UpdateActions(
-        onBack = { screen = Screen.SETTINGS },
+        onBack = ::back,
         onCheck = graph.updates::checkNow,
         onDownload = graph.updates::download,
         onInstall = {
@@ -278,11 +304,11 @@ private fun UfuqRoot(
             } else if (graph.silence.hasDndAccess()) {
                 scope.launch { graph.settings.update { it.copy(silenceEnabled = true) } }
             } else {
-                screen = Screen.SILENCE_EXPLAIN
+                go(Screen.SILENCE_EXPLAIN)
             }
         },
         onSilenceMinutes = { m -> scope.launch { graph.settings.update { it.copy(silenceMinutes = m) } } },
-        onGrantDnd = { screen = Screen.SILENCE_EXPLAIN },
+        onGrantDnd = { go(Screen.SILENCE_EXPLAIN) },
         onExactAlarms = {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
                 context.startActivity(Intent(Settings.ACTION_REQUEST_SCHEDULE_EXACT_ALARM, Uri.parse("package:${context.packageName}")))
@@ -300,23 +326,16 @@ private fun UfuqRoot(
             graph.silence.removeMosque(id)
             scope.launch { graph.liveUpdate.refresh(graph.currentSettings()) }
         },
-        onBackgroundLocation = { screen = Screen.BACKGROUND_EXPLAIN },
-        onRamadan = { on -> scope.launch { graph.settings.update { it.copy(ramadanManual = on) } } },
-        onFollowLocation = { on ->
-            if (!on || granted(context, Manifest.permission.ACCESS_COARSE_LOCATION)) {
-                scope.launch { graph.settings.update { it.copy(followLocation = on) } }
-            } else {
-                followLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
-            }
-        },
+        onBackgroundLocation = { go(Screen.BACKGROUND_EXPLAIN) },
+        onRamadan = actions.onRamadan,
+        onFollowLocation = actions.onFollowLocation,
     )
 
-    BackHandler(enabled = screen != Screen.TODAY) {
-        screen = if (screen == Screen.OVERLAY_EXPLAIN || screen == Screen.OTHER_APPS_EXPLAIN || screen == Screen.SILENCE_EXPLAIN || screen == Screen.BACKGROUND_EXPLAIN || screen == Screen.LISTENER_EXPLAIN || screen == Screen.PAIRING || screen == Screen.UPDATES) Screen.SETTINGS else Screen.TODAY
-    }
+    BackHandler(enabled = stack.size > 1) { back() }
 
+    val macName = pairing?.let { it.name ?: stringResource(R.string.sync_settings_paired_unnamed) }
     when (screen) {
-        Screen.TODAY -> {
+        Screen.HOME -> {
             var now by remember { mutableStateOf(Instant.now()) }
             LifecycleResumeEffect(settings) {
                 now = Instant.now()
@@ -324,39 +343,47 @@ private fun UfuqRoot(
             }
             LaunchedEffect(Unit) {
                 while (true) {
-                    delay(1_000)
+                    delay(15_000)
                     now = Instant.now()
                 }
             }
-            val state = remember(now, settings) { graph.apply(settings); TodayState.at(now, graph.prayer) }
-            TodayScreen(state, onOpenSettings = { screen = Screen.SETTINGS })
+            val today = remember(now, settings) { graph.apply(settings); TodayState.at(now, graph.prayer) }
+            HomeScreen(
+                settings, actions, overlayGranted,
+                today = today,
+                mediaAccessGranted = mediaGranted,
+                dndGranted = dndGranted,
+                macName = macName,
+            )
         }
-        Screen.SETTINGS -> SettingsScreen(
-            settings, actions, locationMessage, overlayGranted,
-            otherAppsAccessGranted = listenerGranted,
-            otherApps = ActivityAllowList.listed(seenApps, settings.otherAppsAllowed),
-            extras = extrasState, extrasActions = extrasActions,
-            mediaAccessGranted = mediaGranted,
-            macName = pairing?.let { it.name ?: stringResource(R.string.sync_settings_paired_unnamed) },
+        Screen.LOCATION -> LocationScreen(settings, actions, locationMessage)
+        Screen.METHOD -> MethodScreen(settings, actions)
+        Screen.LEAD -> LeadScreen(settings, actions)
+        Screen.SILENCE -> SilencePage(settings, extrasState, extrasActions, onBack = ::back)
+        Screen.OTHER_APPS -> OtherAppsPage(
+            settings, actions,
+            accessGranted = listenerGranted,
+            apps = ActivityAllowList.listed(seenApps, settings.otherAppsAllowed),
         )
+        Screen.MAC -> MacPage(macName, actions)
         Screen.OTHER_APPS_EXPLAIN -> OtherAppsExplainScreen(
             accessGranted = listenerGranted,
             onContinue = {
                 scope.launch { graph.settings.update { it.copy(otherAppsEnabled = true) } }
-                if (listenerGranted) screen = Screen.SETTINGS else context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
+                if (listenerGranted) back() else context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS))
             },
-            onCancel = { screen = Screen.SETTINGS },
+            onCancel = ::back,
         )
         Screen.SILENCE_EXPLAIN -> SilenceExplainScreen(
             onContinue = {
                 wantSilence = true
                 context.startActivity(Intent(Settings.ACTION_NOTIFICATION_POLICY_ACCESS_SETTINGS))
             },
-            onCancel = { wantSilence = false; screen = Screen.SETTINGS },
+            onCancel = { wantSilence = false; back() },
         )
         Screen.BACKGROUND_EXPLAIN -> BackgroundLocationExplainScreen(
             onContinue = {
-                screen = Screen.SETTINGS
+                back()
                 // Android 11+ sends the user to the app's settings for "Allow all the time"; Android 10 asks in place.
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     context.startActivity(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}")))
@@ -364,20 +391,20 @@ private fun UfuqRoot(
                     backgroundLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
             },
-            onCancel = { screen = Screen.SETTINGS },
+            onCancel = ::back,
         )
-        Screen.PAIRING -> PairingRoute(initialCode = pairLink.value, onClose = { pairLink.value = null; screen = Screen.SETTINGS })
+        Screen.PAIRING -> PairingRoute(initialCode = pairLink.value, onClose = { pairLink.value = null; back() })
         Screen.UPDATES -> UpdateScreen(updateState, updateActions)
         Screen.OVERLAY_EXPLAIN -> OverlayExplainScreen(
             onContinue = {
                 wantOverlay = true
                 context.startActivity(Intent(Settings.ACTION_MANAGE_OVERLAY_PERMISSION, Uri.parse("package:${context.packageName}")))
             },
-            onCancel = { screen = Screen.SETTINGS },
+            onCancel = ::back,
         )
         Screen.LISTENER_EXPLAIN -> ListenerExplainScreen(
             onContinue = { context.startActivity(Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS)) },
-            onCancel = { screen = Screen.SETTINGS },
+            onCancel = ::back,
         )
     }
 }

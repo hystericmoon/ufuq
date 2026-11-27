@@ -38,10 +38,8 @@
     <string name="listener_cancel">Not now</string>
     <string name="listener_service_label">Ufuq media and activities</string>
     <string name="settings_media">Media on the island</string>
-    <string name="settings_media_on">Allowed. Shows what is playing and lets you seek and pause.</string>
-    <string name="settings_media_off">Needs notification access. Reads only media sessions.</string>
-    <string name="settings_media_manage">Manage access</string>
-    <string name="settings_media_allow">Allow access</string>
+    <string name="settings_media_on">Allowed</string>
+    <string name="settings_media_off">Needs notification access</string>
     <string name="island_percent">%1$d%%</string>
     <string name="island_percent_spoken">%1$d percent</string>
     <string name="island_prayer_description">%1$s in %2$s, %3$d percent of the time since the previous prayer</string>
@@ -50,19 +48,25 @@
     <string name="island_usage_description">%1$s, %2$d percent of the limit used</string>
     <string name="island_usage_description_resets">%1$s, %2$d percent of the limit used, resets in %3$s</string>
 
-    <!-- Today -->
-    <string name="today_title">Today</string>
-    <string name="today_unavailable">Prayer times are unavailable for this place. Choose another in Settings.</string>
-    <string name="today_next">Next: %1$s</string>
-    <string name="today_next_description">Next prayer %1$s in %2$s</string>
-    <string name="today_row_next">Next</string>
+
+    <!-- Home: the app opens on its settings -->
+    <string name="home_on">On</string>
+    <string name="home_off">Off</string>
+    <string name="home_island_needs_permission">Island needs permission</string>
+    <string name="home_status_silence_needs_access">Silence needs Do Not Disturb access</string>
+    <string name="home_next">Next: %1$s %2$s · %3$s</string>
+    <string name="home_next_unavailable">Prayer times are unavailable for this place. Choose another location.</string>
+    <string name="home_section_island">Island &amp; notification</string>
+    <string name="home_section_prayer">Prayer</string>
+    <string name="home_mac_paired_hint">AI limits and agent status in the island</string>
+    <string name="home_silence_on">On · %1$d min</string>
+    <string name="home_silence_needs_access">Needs Do Not Disturb access</string>
+    <string name="other_title_short">Other apps (Beta)</string>
 
     <!-- Settings -->
-    <string name="settings_title">Settings</string>
     <string name="back">Back</string>
-    <string name="settings_surfaces">Where prayer shows</string>
     <string name="settings_live_update">Live Update chip</string>
-    <string name="settings_live_update_hint">Next prayer in the status bar and on the lock screen. Works with TalkBack. It stays on while the island is on, because Android needs it to keep the island running.</string>
+    <string name="settings_live_update_hint">Next prayer in the status bar and lock screen. Works with TalkBack; stays on while the island is on.</string>
     <string name="settings_overlay">Island overlay</string>
     <string name="settings_overlay_hint">A small island at the camera, over other apps.</string>
     <string name="settings_overlay_hint_needs_permission">Needs permission to display over other apps. Off by default.</string>
@@ -76,7 +80,7 @@
     <string name="method_mwl">Muslim World League</string>
     <string name="method_umm_al_qura">Umm al-Qura</string>
     <string name="method_custom">Custom</string>
-    <string name="settings_lead">Adhan peek lead time</string>
+    <string name="settings_lead">Reminder before adhan</string>
     <string name="settings_minutes">%1$d min</string>
     <string name="settings_lead_hint">How long before the adhan the island shows a heads-up.</string>
 
@@ -90,7 +94,6 @@
     <string name="overlay_cancel">Not now</string>
 
     <!-- A7: other apps in the island (Beta) -->
-    <string name="other_section">Other apps in the island (Beta)</string>
     <string name="other_switch">Other apps in the island</string>
     <string name="other_switch_hint">Rides, deliveries and timers from apps you choose. Off by default.</string>
     <string name="other_switch_on_hint">Only the apps you tick below show here.</string>
@@ -118,7 +121,7 @@
     </plurals>
     <string name="other_open">Open %1$s</string>
     <!-- A4: prayer silence -->
-    <string name="silence_title">Prayer silence</string>
+    <string name="silence_title">Silence phone at prayer</string>
     <string name="silence_switch">Silence after adhan</string>
     <string name="silence_switch_hint">Do Not Disturb for a few minutes after each adhan, then back to how it was. Off by default.</string>
     <string name="silence_switch_needs_access">Needs Do Not Disturb access. Tap to set it up.</string>
@@ -151,14 +154,12 @@
     <string name="background_explain_cancel">Not now</string>
 
     <!-- A4: Ramadan -->
-    <string name="ramadan_title">Ramadan</string>
     <string name="ramadan_switch">Ramadan mode</string>
-    <string name="ramadan_switch_hint">Shows when sahur ends (Subuh) and counts down to iftar (Maghrib), with a progress bar. It also turns on by itself during Ramadan.</string>
+    <string name="ramadan_switch_hint">Counts down to sahur’s end and iftar. Turns on by itself during Ramadan.</string>
 
     <!-- A4: travel -->
-    <string name="travel_title">Travel</string>
     <string name="travel_switch">Follow my location</string>
-    <string name="travel_switch_hint">After you move 25 km or more, Ufuq updates the city and time zone. Coarse location, nothing leaves your phone.</string>
+    <string name="travel_switch_hint">Updates the city and time zone after you move 25 km. Nothing leaves your phone.</string>
     <string name="travel_current_location">Current location</string>
     <string name="travel_updated">Prayer times updated for %1$s</string>
     <string name="channel_travel">Location changes</string>

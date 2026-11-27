@@ -64,7 +64,6 @@ data class ExtrasActions(
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun SilenceSection(settings: AppSettings, state: ExtrasState, actions: ExtrasActions) {
-    Section(stringResource(R.string.silence_title))
     val needsAccess = settings.silenceEnabled && !state.dndGranted
     SwitchRow(
         title = stringResource(R.string.silence_switch),
@@ -90,7 +89,7 @@ fun SilenceSection(settings: AppSettings, state: ExtrasState, actions: ExtrasAct
         }
     }
     if (settings.silenceEnabled && !state.exactAlarmsAllowed) {
-        Text(stringResource(R.string.silence_exact_hint), color = Tokens.Warning, fontSize = 13.sp)
+        Text(stringResource(R.string.silence_exact_hint), color = Tokens.Warning, fontSize = 13.sp, lineHeight = 18.sp)
         TextButton(onClick = actions.onExactAlarms, modifier = Modifier.heightIn(min = 48.dp)) {
             Text(stringResource(R.string.silence_exact_button), color = Tokens.AccentPrayer)
         }
@@ -100,7 +99,7 @@ fun SilenceSection(settings: AppSettings, state: ExtrasState, actions: ExtrasAct
 @Composable
 fun MosquesSection(state: ExtrasState, actions: ExtrasActions) {
     Section(stringResource(R.string.mosques_title))
-    Text(stringResource(R.string.mosques_hint), color = Tokens.Secondary, fontSize = 13.sp)
+    Text(stringResource(R.string.mosques_hint), color = Tokens.Secondary, fontSize = 13.sp, lineHeight = 18.sp)
     if (state.mosques.isEmpty()) {
         Text(stringResource(R.string.mosques_empty), color = Tokens.Muted, fontSize = 14.sp)
     } else {
@@ -135,11 +134,11 @@ fun MosquesSection(state: ExtrasState, actions: ExtrasActions) {
         modifier = Modifier.heightIn(min = 48.dp),
         colors = ButtonDefaults.buttonColors(containerColor = Tokens.AccentPrayer, contentColor = Color.Black),
     ) { Text(stringResource(R.string.mosque_add)) }
-    if (!state.fineLocationGranted) Text(stringResource(R.string.mosque_needs_location), color = Tokens.Muted, fontSize = 13.sp)
+    if (!state.fineLocationGranted) Text(stringResource(R.string.mosque_needs_location), color = Tokens.Muted, fontSize = 13.sp, lineHeight = 18.sp)
     state.message?.let { Text(it, color = Tokens.Secondary, fontSize = 14.sp) }
     if (state.mosques.isNotEmpty() && !state.backgroundLocationGranted) {
         Text(stringResource(R.string.mosque_background_title), color = Tokens.Primary, fontSize = 17.sp)
-        Text(stringResource(R.string.mosque_background_hint), color = Tokens.Secondary, fontSize = 13.sp)
+        Text(stringResource(R.string.mosque_background_hint), color = Tokens.Secondary, fontSize = 13.sp, lineHeight = 18.sp)
         TextButton(onClick = actions.onBackgroundLocation, modifier = Modifier.heightIn(min = 48.dp)) {
             Text(stringResource(R.string.mosque_background_button), color = Tokens.AccentPrayer)
         }

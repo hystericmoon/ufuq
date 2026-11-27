@@ -16,15 +16,11 @@ import app.ufuq.android.capture
 import app.ufuq.android.live.LiveUpdateContent
 import app.ufuq.android.live.LiveUpdate
 import app.ufuq.android.ramadan.RamadanLiveCard
-import app.ufuq.android.ramadan.RamadanSection
 import app.ufuq.android.settings.AppSettings
 import app.ufuq.android.silence.ExtrasActions
 import app.ufuq.android.silence.ExtrasState
-import app.ufuq.android.silence.Mosque
-import app.ufuq.android.silence.MosquesSection
 import app.ufuq.android.silence.SilenceExplainScreen
 import app.ufuq.android.silence.SilenceSection
-import app.ufuq.android.travel.TravelSection
 import app.ufuq.android.prayer.PrayerProgress
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -39,37 +35,7 @@ import kotlin.test.assertEquals
 @Config(qualifiers = "w360dp-h800dp-xhdpi")
 class PrayerExtrasScreenshotTest {
     private val actions = ExtrasActions()
-    private val state = ExtrasState(
-        dndGranted = true,
-        mosques = listOf(Mosque(1, "Masjid Istiqlal", -6.17, 106.83), Mosque(2, "Masjid At-Tin", -6.30, 106.89)),
-        fineLocationGranted = true,
-        exactAlarmsAllowed = false,
-    )
     private val on = AppSettings(silenceEnabled = true, silenceMinutes = 20, ramadanManual = true, followLocation = true)
-
-    @Test fun settingsSectionsOn() = capture("settings-a4-sections-on") {
-        Column(
-            Modifier.width(360.dp).background(Tokens.Bg).padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            SilenceSection(on, state, actions)
-            MosquesSection(state, actions)
-            RamadanSection(on, actions)
-            TravelSection(on, actions)
-        }
-    }
-
-    @Test fun settingsSectionsOff() = capture("settings-a4-sections-off") {
-        Column(
-            Modifier.width(360.dp).background(Tokens.Bg).padding(horizontal = 16.dp, vertical = 8.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            SilenceSection(AppSettings(), ExtrasState(), actions)
-            MosquesSection(ExtrasState(), actions)
-            RamadanSection(AppSettings(), actions)
-            TravelSection(AppSettings(), actions)
-        }
-    }
 
     @Test fun silenceNeedsAccess() = capture("settings-a4-silence-needs-access") {
         Column(Modifier.width(360.dp).background(Tokens.Bg).padding(horizontal = 16.dp, vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
