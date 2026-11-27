@@ -1,0 +1,59 @@
+name: Windows
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  desktop-test:
+    name: Desktop tests and screenshots
+    runs-on: ubuntu-24.04
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Android SDK 37 (the build also includes :app)
+        shell: bash
+        run: (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+      - run: ./gradlew :desktop:test --stacktrace
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-screenshots
+          path: android/desktop/build/screenshots/*.png
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: desktop-test-reports
+          path: android/desktop/build/reports/tests/
+
+  msi:
+    name: MSI installer
+    runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - run: ./gradlew :desktop:packageMsi --stacktrace
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ufuq-msi
+          path: android/desktop/build/compose/binaries/main/msi/*.msi

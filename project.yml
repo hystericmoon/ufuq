@@ -1,0 +1,80 @@
+name: Ufuq
+options:
+  bundleIdPrefix: app.ufuq
+  deploymentTarget:
+    macOS: "14.0"
+  createIntermediateGroups: true
+packages:
+  UfuqCore:
+    path: UfuqCore
+  Sparkle:
+    url: https://github.com/sparkle-project/Sparkle
+    from: 2.6.0
+settings:
+  base:
+    SWIFT_VERSION: "5.0"
+    MACOSX_DEPLOYMENT_TARGET: "14.0"
+    ENABLE_HARDENED_RUNTIME: NO
+    ENABLE_APP_SANDBOX: NO
+    CODE_SIGN_IDENTITY: "-"
+    CODE_SIGN_STYLE: Manual
+    # Release workflow overrides these from VERSION and the run number.
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: "1"
+    # Sparkle EdDSA public key. Empty in dev/CI builds: the updater stays off.
+    # The release workflow passes it from the repo variable SPARKLE_PUBLIC_KEY.
+    SPARKLE_PUBLIC_KEY: ""
+targets:
+  Ufuq:
+    type: application
+    platform: macOS
+    sources:
+      - App/Sources
+    dependencies:
+      - package: UfuqCore
+      - package: Sparkle
+    info:
+      path: App/Info.plist
+      properties:
+        CFBundleName: Ufuq
+        CFBundleDisplayName: Ufuq
+        CFBundleShortVersionString: "$(MARKETING_VERSION)"
+        CFBundleVersion: "$(CURRENT_PROJECT_VERSION)"
+        SUFeedURL: "https://github.com/hystericmoon/ufuq/releases/latest/download/appcast.xml"
+        SUPublicEDKey: "$(SPARKLE_PUBLIC_KEY)"
+        SUEnableAutomaticChecks: true
+        SUScheduledCheckInterval: 86400
+        LSUIElement: true
+        LSMinimumSystemVersion: "14.0"
+        NSHumanReadableCopyright: "Ufuq"
+        NSLocalNetworkUsageDescription: "Ufuq shares usage and agent status with your paired phone over your local network."
+        NSBonjourServices:
+          - _ufuq._tcp
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac
+        PRODUCT_NAME: Ufuq
+  UfuqTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - App/Tests
+    dependencies:
+      - target: Ufuq
+      - package: UfuqCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac.tests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  Ufuq:
+    build:
+      targets:
+        Ufuq: all
+        UfuqTests: [test]
+    run:
+      config: Debug
+    test:
+      config: Debug
+      targets:
+        - UfuqTests

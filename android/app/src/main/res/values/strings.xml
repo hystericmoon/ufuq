@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Ufuq</string>
+    <string name="tile_label">Next prayer</string>
+    <string name="tile_no_location">Set a location</string>
+    <string name="tile_description">%1$s in %2$s</string>
+    <string name="channel_live_update">Next prayer</string>
+    <string name="channel_live_update_description">A quiet, always-visible countdown to the next prayer.</string>
+    <string name="channel_island">Island</string>
+    <string name="island_notification_title">Ufuq island is on</string>
+    <string name="island_notification_text">Showing the next prayer over other apps. Turn it off in Settings.</string>
+
+    <!-- Island -->
+    <string name="island_close">Close island</string>
+    <string name="island_expand">Expand island</string>
+    <string name="island_dismiss">Dismiss</string>
+    <string name="island_page_of">Page %1$d of %2$d</string>
+    <string name="island_mute_adhan">Mute adhan</string>
+    <string name="island_unmute_adhan">Unmute adhan</string>
+    <string name="island_open_app">Open Ufuq</string>
+    <string name="island_refresh_usage">Refresh usage</string>
+    <string name="island_pair_title">Pair with your Mac</string>
+    <string name="island_pair_hint">AI usage</string>
+    <string name="island_pair_description">AI usage. Pair with your Mac to see your limits here.</string>
+    <string name="island_media_empty">Play something to control it here</string>
+    <string name="island_media_empty_description">Media. Play something to control it here.</string>
+    <string name="island_allow_access">Allow access</string>
+    <string name="island_seek_action">Seek</string>
+    <string name="island_play">Play</string>
+    <string name="island_pause">Pause</string>
+    <string name="island_media_seek">Seek, %1$s</string>
+    <string name="island_media_seek_artist">Seek, %1$s by %2$s</string>
+    <string name="island_media_position">%1$s of %2$s</string>
+    <string name="listener_title">Notification access</string>
+    <string name="listener_what">The island can show what is playing, with a seek bar and a play/pause button, for music, podcasts and video in any app.</string>
+    <string name="listener_reads">To do that Android asks for “Notification access”. Ufuq reads the media session (title, position, play state). If you also turn on “Other apps in the island”, it reads the title and progress of ongoing notifications from the apps you choose. It never reads messages or chats.</string>
+    <string name="listener_privacy">Nothing is stored or sent; this never leaves your phone. You can turn it off any time in Android settings.</string>
+    <string name="listener_continue">Open Android settings</string>
+    <string name="listener_cancel">Not now</string>
+    <string name="listener_service_label">Ufuq media and activities</string>
+    <string name="settings_media">Media on the island</string>
+    <string name="settings_media_on">Allowed. Shows what is playing and lets you seek and pause.</string>
+    <string name="settings_media_off">Needs notification access. Reads only media sessions.</string>
+    <string name="settings_media_manage">Manage access</string>
+    <string name="settings_media_allow">Allow access</string>
+    <string name="island_percent">%1$d%%</string>
+    <string name="island_percent_spoken">%1$d percent</string>
+    <string name="island_prayer_description">%1$s in %2$s, %3$d percent of the time since the previous prayer</string>
+    <string name="island_usage_description">%1$s, %2$d percent of the limit used</string>
+    <string name="island_usage_description_resets">%1$s, %2$d percent of the limit used, resets in %3$s</string>
+
+    <!-- Today -->
+    <string name="today_title">Today</string>
+    <string name="today_unavailable">Prayer times are unavailable for this place. Choose another in Settings.</string>
+    <string name="today_next">Next: %1$s</string>
+    <string name="today_next_description">Next prayer %1$s in %2$s</string>
+    <string name="today_row_next">Next</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="back">Back</string>
+    <string name="settings_surfaces">Where prayer shows</string>
+    <string name="settings_live_update">Live Update chip</string>
+    <string name="settings_live_update_hint">Countdown in the status bar and on the lock screen. Works with TalkBack.</string>
+    <string name="settings_overlay">Island overlay</string>
+    <string name="settings_overlay_hint">A small island at the camera, over other apps.</string>
+    <string name="settings_overlay_hint_needs_permission">Needs permission to display over other apps. Off by default.</string>
+    <string name="settings_location">Location</string>
+    <string name="settings_use_my_location">Use my location</string>
+    <string name="settings_my_location">My location</string>
+    <string name="settings_location_finding">Finding your location…</string>
+    <string name="settings_location_failed">Could not get your location. Choose a city instead.</string>
+    <string name="settings_method">Calculation method</string>
+    <string name="method_kemenag">Kemenag</string>
+    <string name="method_mwl">Muslim World League</string>
+    <string name="method_umm_al_qura">Umm al-Qura</string>
+    <string name="method_custom">Custom</string>
+    <string name="settings_lead">Adhan peek lead time</string>
+    <string name="settings_minutes">%1$d min</string>
+    <string name="settings_lead_hint">How long before the adhan the island shows a heads-up.</string>
+
+    <!-- Overlay permission explanation -->
+    <string name="overlay_title">Show the island over other apps</string>
+    <string name="overlay_what">The island is a small black pill at your camera that shows the next prayer, and opens into a card when you tap it.</string>
+    <string name="overlay_why">To draw over other apps, Android asks for the permission “Display over other apps”. Ufuq uses it for the island and nothing else.</string>
+    <string name="overlay_privacy">Ufuq does not read what is on your screen.</string>
+    <string name="overlay_alternative">You can turn it off any time in Settings. The Live Update chip shows the same countdown without this permission, and is the best choice with a screen reader.</string>
+    <string name="overlay_continue">Open Android settings</string>
+    <string name="overlay_cancel">Not now</string>
+
+    <!-- A7: other apps in the island (Beta) -->
+    <string name="other_section">Other apps in the island (Beta)</string>
+    <string name="other_switch">Other apps in the island</string>
+    <string name="other_switch_hint">Rides, deliveries and timers from apps you choose. Off by default.</string>
+    <string name="other_switch_on_hint">Only the apps you tick below show here.</string>
+    <string name="other_learn_more">What this reads</string>
+    <string name="other_needs_access">Needs notification access to see ongoing notifications.</string>
+    <string name="other_grant">Grant notification access</string>
+    <string name="other_apps_heading">Apps allowed in the island</string>
+    <string name="other_apps_empty">None yet. An app appears here after it shows a ride, delivery, timer or progress notification.</string>
+    <string name="other_title">Show other apps in the island</string>
+    <string name="other_beta">Beta</string>
+    <string name="other_read">Ufuq reads the title and progress of ongoing notifications, such as a ride, a delivery, a timer or a download, from the apps you choose.</string>
+    <string name="other_not_read">It does not read messages, chats or any other notification, and ignores apps you have not chosen, media (shown separately) and calls.</string>
+    <string name="other_stored">Nothing is sent, and the only thing stored is the list of apps you chose.</string>
+    <string name="other_choose">This uses Android’s notification access, the same permission the media page needs. After you grant it, tick the apps to show in Settings. You can turn it off any time.</string>
+    <string name="other_continue">Grant notification access</string>
+    <string name="other_turn_on">Turn on</string>
+    <string name="other_minutes">%1$d min</string>
+    <plurals name="other_minutes_left_spoken">
+        <item quantity="one">%1$d minute left</item>
+        <item quantity="other">%1$d minutes left</item>
+    </plurals>
+    <plurals name="other_minutes_elapsed_spoken">
+        <item quantity="one">%1$d minute elapsed</item>
+        <item quantity="other">%1$d minutes elapsed</item>
+    </plurals>
+    <string name="other_open">Open %1$s</string>
+    <!-- A4: prayer silence -->
+    <string name="silence_title">Prayer silence</string>
+    <string name="silence_switch">Silence after adhan</string>
+    <string name="silence_switch_hint">Do Not Disturb for a few minutes after each adhan, then back to how it was. Off by default.</string>
+    <string name="silence_switch_needs_access">Needs Do Not Disturb access. Tap to set it up.</string>
+    <string name="silence_for">Silence for</string>
+    <string name="silence_exact_hint">Android is not allowing exact alarms, so silence may start a few minutes late.</string>
+    <string name="silence_exact_button">Allow exact alarms</string>
+    <string name="mosques_title">Saved mosques</string>
+    <string name="mosques_hint">Silence while you are within 100 m of a saved mosque, and restore when you leave.</string>
+    <string name="mosques_empty">No saved mosques yet.</string>
+    <string name="mosque_name">Mosque name</string>
+    <string name="mosque_add">Add my current location</string>
+    <string name="mosque_row">%1$s · %2$d m</string>
+    <string name="mosque_remove">Remove %1$s</string>
+    <string name="mosque_needs_location">Adding a mosque needs precise location.</string>
+    <string name="mosque_background_title">Background location</string>
+    <string name="mosque_background_hint">Optional. Lets Android tell Ufuq you reached a mosque while the app is closed.</string>
+    <string name="mosque_background_button">Explain and allow</string>
+    <string name="mosque_added">Saved %1$s</string>
+    <string name="mosque_failed">Could not get your location. Try again outdoors.</string>
+    <string name="silence_explain_title">Silence for prayer</string>
+    <string name="silence_explain_what">After each adhan, Ufuq turns on Do Not Disturb for the time you choose, then puts your phone back exactly as it was.</string>
+    <string name="silence_explain_why">Android keeps this behind a special permission, “Do Not Disturb access”. Ufuq uses it only to switch Do Not Disturb on and off for this.</string>
+    <string name="silence_explain_safe">If you had Do Not Disturb on yourself, Ufuq leaves it alone. If you change it during the silence, Ufuq steps aside. Alarms are never blocked.</string>
+    <string name="silence_explain_continue">Open Android settings</string>
+    <string name="silence_explain_cancel">Not now</string>
+    <string name="background_explain_title">Reach a mosque while the app is closed</string>
+    <string name="background_explain_what">Saved mosques work by watching for you coming within 100 m. For this to work when Ufuq is not open, Android needs “Allow all the time” location.</string>
+    <string name="background_explain_why">Ufuq only compares your position with the places you saved. Your location never leaves your phone. Without it, saved mosques only work while Ufuq is open; the timed silence after each adhan works either way.</string>
+    <string name="background_explain_continue">Continue</string>
+    <string name="background_explain_cancel">Not now</string>
+
+    <!-- A4: Ramadan -->
+    <string name="ramadan_title">Ramadan</string>
+    <string name="ramadan_switch">Ramadan mode</string>
+    <string name="ramadan_switch_hint">Shows when sahur ends (Subuh) and counts down to iftar (Maghrib), with a progress bar. It also turns on by itself during Ramadan.</string>
+
+    <!-- A4: travel -->
+    <string name="travel_title">Travel</string>
+    <string name="travel_switch">Follow my location</string>
+    <string name="travel_switch_hint">After you move 25 km or more, Ufuq updates the city and time zone. Coarse location, nothing leaves your phone.</string>
+    <string name="travel_current_location">Current location</string>
+    <string name="travel_updated">Prayer times updated for %1$s</string>
+    <string name="channel_travel">Location changes</string>
+    <string name="channel_travel_description">A quiet notice when prayer times move with you.</string>
+    <!-- Mac sync (page B states, pairing) -->
+    <string name="sync_connecting_title">Connecting to your Mac</string>
+    <string name="sync_connecting_hint">One moment</string>
+    <string name="sync_connecting_description">AI usage. Connecting to your Mac.</string>
+    <string name="sync_pair_again_title">Pair again</string>
+    <string name="sync_pair_again_hint">Mac forgot this phone</string>
+    <string name="sync_pair_again_description">AI usage. Your Mac no longer recognises this phone. Pair again to see your limits.</string>
+    <string name="sync_pair_button">Pair again</string>
+    <string name="sync_unreachable_title">Mac not on this network</string>
+    <string name="sync_unreachable_hint">Retrying</string>
+    <string name="sync_unreachable_description">AI usage. Your Mac is not on this network. Ufuq keeps trying.</string>
+    <string name="sync_stale_trailing">Offline</string>
+    <string name="sync_stale_description">%1$s. Mac not on this network. Updated %2$s.</string>
+    <string name="sync_problem_description">Mac sync problem: %1$s.</string>
+    <string name="sync_just_now">just now</string>
+    <plurals name="sync_minutes_ago_spoken">
+        <item quantity="one">%1$d minute ago</item>
+        <item quantity="other">%1$d minutes ago</item>
+    </plurals>
+    <plurals name="sync_hours_ago_spoken">
+        <item quantity="one">%1$d hour ago</item>
+        <item quantity="other">%1$d hours ago</item>
+    </plurals>
+    <string name="sync_agent_working">Working</string>
+    <string name="sync_agent_needs_input">Needs input</string>
+    <string name="sync_agent_working_label">Agent task running on your Mac: %1$s</string>
+    <string name="sync_agent_needs_input_label">Agent needs input on your Mac: %1$s</string>
+    <string name="sync_peek_needs_input">Claude needs input</string>
+    <string name="sync_peek_task_done">Task done</string>
+
+    <string name="sync_settings_section">Mac</string>
+    <string name="sync_settings_pair">Pair with your Mac</string>
+    <string name="sync_settings_pair_hint">See your AI limits and agent status on this phone, over your Wi-Fi.</string>
+    <string name="sync_settings_paired">Paired with %1$s</string>
+    <string name="sync_settings_paired_unnamed">your Mac</string>
+    <string name="sync_settings_forget">Forget this Mac</string>
+
+    <string name="pair_title">Pair with your Mac</string>
+    <string name="pair_intro">On your Mac, open Ufuq in the menu bar and choose Pair phone…. A QR code appears. Keep both devices on the same Wi-Fi.</string>
+    <string name="pair_step_scan">Scan the QR code</string>
+    <string name="pair_camera_why">Ufuq uses the camera only on this screen, to read the QR code. Nothing is recorded or saved.</string>
+    <string name="pair_scan_button">Scan with camera</string>
+    <string name="pair_camera_allow">Allow camera and scan</string>
+    <string name="pair_camera_denied">Camera access is off. Allow it in Android settings, or paste the pairing code below.</string>
+    <string name="pair_camera_preview_description">Camera view. Hold your phone so the QR code on your Mac is inside it.</string>
+    <string name="pair_camera_stop">Stop scanning</string>
+    <string name="pair_step_paste">Or paste the pairing code</string>
+    <string name="pair_paste_hint">On the Mac, choose Copy pairing code, then paste it here.</string>
+    <string name="pair_paste_label">Pairing code</string>
+    <string name="pair_paste_button">Pair</string>
+    <string name="pair_paste_from_clipboard">Paste from clipboard</string>
+    <string name="pair_error_invalid">That is not a Ufuq pairing code.</string>
+    <string name="pair_error_unsupported">This code is from a different version of Ufuq. Update both apps.</string>
+    <string name="pair_done_title">Paired with %1$s</string>
+    <string name="pair_done_hint">Your AI limits and agent status now show in the island.</string>
+    <string name="pair_done_button">Done</string>
+
+    <!-- Updates (sideload self-updater) -->
+    <string name="settings_about">About</string>
+    <string name="settings_updates">Updates</string>
+    <string name="update_title">Updates</string>
+    <string name="update_version">Version %1$s</string>
+    <string name="update_off_dev">Updates are off in development builds. Install the APK from Ufuq\'s GitHub releases to get updates.</string>
+    <string name="update_never_checked">Not checked yet</string>
+    <string name="update_last_checked">Last checked %1$s</string>
+    <string name="update_check">Check for updates</string>
+    <string name="update_checking">Checking…</string>
+    <string name="update_up_to_date">Ufuq is up to date.</string>
+    <string name="update_available">Version %1$s is available</string>
+    <string name="update_prompt_body">A new version of Ufuq is ready to download.</string>
+    <string name="update_download">Download</string>
+    <string name="update_downloading">Downloading…</string>
+    <string name="update_downloading_percent">Downloading… %1$d%%</string>
+    <string name="update_ready">Version %1$s is downloaded. Install it to finish.</string>
+    <string name="update_install">Install</string>
+    <string name="update_failed">Couldn\'t reach GitHub or the download didn\'t verify. Check your connection and try again.</string>
+    <string name="update_retry">Try again</string>
+    <string name="update_later">Later</string>
+    <string name="update_auto">Check automatically</string>
+    <string name="update_auto_hint">Ufuq checks GitHub once a day for a new version. Turn this off to check only when you ask.</string>
+    <string name="update_beta">Beta versions</string>
+    <string name="update_beta_hint">Also offer test versions before they\'re final.</string>
+    <string name="update_privacy">Updates come from github.com/hystericmoon/ufuq. Ufuq sends nothing about you; Android checks that each update is signed with the same key as this app.</string>
+</resources>

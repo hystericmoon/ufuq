@@ -20,3 +20,24 @@ One phase per Claude Code session. Phases marked **cloud** run in a Linux cloud 
    Done when: a screenshot lands on the shelf instead of the Desktop, and an event with a Meet link shows Join 5 min before.
 9. **Release (Mac).** Onboarding (permissions per module), Sparkle feed, DMG, app icon, website.
    Done when: a fresh Mac installs from the DMG and updates via Sparkle.
+
+## Android track
+
+Decided 2026-11-26. Lives in `android/` (Kotlin 2.3, Compose, minSdk 26, Adwam's toolchain). Ufuq replaces Adwam's island; Adwam keeps duas, routines, Qibla and its widget. Island design: [Android island mockup](https://claude.ai/artifact/6NrWnbG85x91mBkvknu2Uc) (option A Prayer first, B AI usage and C Media as swipe pages). All phases run in cloud sessions (Android SDK + Robolectric); each ends with tests and screenshots green on CI.
+
+A1. **Core (cloud).** `:core` Kotlin/JVM port of `UfuqCore` (Swift tests are the spec) + Adwam's prayer domain.
+A2. **App shell.** Island overlay (ported from Adwam) with collapsed pill and the expanded design above; Live Update chip (promoted ongoing notification, status bar + lock screen + AOD) as the accessible default; Quick Settings tile; settings; prayer wired in.
+   Done when: Robolectric screenshots of pill, expanded A/B/C, chip and tile match the mockup; TalkBack labels tested.
+A3. **Media.** Media page in the island (MediaSession via notification listener, seek + play/pause).
+A4. **Prayer extras.** Prayer silence (DND for N min after adhan; geofenced saved mosques), Ramadan imsak→iftar progress Live Update, travel mode (city follows GPS).
+A5. ~~Wear OS~~ — skipped by the owner (2026-11-26).
+A6. **Mac → phone sync.** AI usage page (B) and agent status ("needs input", "done") on the phone. Transport (decided 2026-11-26): local network first — the Mac app serves usage and agent events on the LAN (Bonjour/NSD discovery), paired once by QR code with a shared key, encrypted; no backend. Later, opt-in: a push relay the user hosts (e.g. self-hosted ntfy) for away-from-desk agent alerts.
+A7. **Other apps' live activities (opt-in, beta).** Rides/deliveries from ongoing notifications in the island; shares the notification-listener permission with A3; nothing stored or sent.
+
+## Windows track
+
+Decided 2026-11-26. Kotlin + Compose Multiplatform Desktop in `android/` as a `:desktop` module, sharing `:core` and the island UI with Android (two codebases total: Swift for Mac, Kotlin for Android + Windows). Starts after Android A2.
+
+W1. **Desktop shell.** Floating pill top-centre (no notch), collapsed / peek / expanded from the shared island UI; hotkey Win+Alt+Space (Alt+Space is the window menu); Esc closes and returns focus; tray icon; launch at login; Narrator labels.
+W2. **Local AI usage.** Port the Claude and Codex parsers to Kotlin (Swift tests as spec) and read `%USERPROFILE%\.claude*` and `.codex` directly; no sync needed.
+W3. **Release.** MSI/MSIX via a Windows CI runner, signed; auto-update.

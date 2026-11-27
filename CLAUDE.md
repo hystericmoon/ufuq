@@ -25,10 +25,25 @@ Core package (Linux or Mac), from `UfuqCore/`:
 - Build: `swift build`
 - Test: `swift test`
 
-Mac app (Xcode required). Fill in once the Mac phase creates the project:
+Android (from `android/`; JDK 17 or newer, `export ANDROID_HOME=/opt/android-sdk` once the app module exists):
 
+- Test the Kotlin core: `./gradlew :core:test`
+- App checks (what CI runs): `./gradlew :core:test :app:testDebugUnitTest :app:lintDebug :app:assembleDebug :app:assembleRelease`
+- Release and self-update: `docs/release-android.md` (tag `v*` → `release-android.yml`)
+- Re-record screenshots (Linux renders, `android/app/src/test/screenshots`): `./gradlew :app:recordRoborazziDebug`; compare with `:app:verifyRoborazziDebug`
+
+Windows (from `android/`; JDK 21, `export ANDROID_HOME=/opt/android-sdk` because the build includes `:app`):
+
+- Test (headless, also on Linux; writes PNGs to `android/desktop/build/screenshots`): `./gradlew :desktop:test`
+- Run the island on a dev machine: `./gradlew :desktop:run`
+- MSI (needs a Windows runner with WiX): `./gradlew :desktop:packageMsi`; CI is `.github/workflows/windows.yml`
+
+Mac app (Xcode required). The Xcode project is generated from `project.yml` and not committed. From the repo root:
+
+- Generate: `brew install xcodegen && xcodegen generate` (rerun after adding or removing files)
 - Build: `xcodebuild -scheme Ufuq -configuration Debug build`
 - Test: `xcodebuild -scheme Ufuq test`
+- CI (`.github/workflows/mac.yml`, macos-15) runs `xcodebuild -scheme Ufuq -destination 'platform=macOS' -configuration Debug CODE_SIGNING_ALLOWED=NO build test`; `CODE_SIGNING_ALLOWED=NO` is for CI only. Snapshot PNGs are written to `$SNAPSHOT_DIR` (CI passes it as `TEST_RUNNER_SNAPSHOT_DIR`) and uploaded as the `snapshots` artifact.
 
 ## Pointers
 

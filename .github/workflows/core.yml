@@ -1,0 +1,16 @@
+name: UfuqCore
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    container: swift:6.2-noble
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test
+        working-directory: UfuqCore
+        run: swift test

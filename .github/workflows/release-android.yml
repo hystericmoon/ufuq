@@ -1,0 +1,80 @@
+name: Release Android
+
+# Builds the release APK, signs it with the Ufuq release key and attaches ufuq-<version>.apk to the tag's
+# GitHub Release, where the in-app updater finds it. The Mac and Windows workflows add their files to the
+# same release. See docs/release-android.md.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  apk:
+    name: Signed APK
+    runs-on: ubuntu-24.04
+    env:
+      UFUQ_KEYSTORE_BASE64: ${{ secrets.UFUQ_KEYSTORE_BASE64 }}
+      UFUQ_KEYSTORE_PASSWORD: ${{ secrets.UFUQ_KEYSTORE_PASSWORD }}
+      UFUQ_KEY_ALIAS: ${{ secrets.UFUQ_KEY_ALIAS }}
+      UFUQ_KEY_PASSWORD: ${{ secrets.UFUQ_KEY_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check version and signing key
+        run: |
+          VERSION="$(tr -d '[:space:]' < VERSION)"
+          if [ "${GITHUB_REF_TYPE}" = "tag" ] && [ "${GITHUB_REF_NAME}" != "v${VERSION}" ]; then
+            echo "::error::Tag ${GITHUB_REF_NAME} does not match VERSION (${VERSION}); bump VERSION first"; exit 1
+          fi
+          echo "VERSION=${VERSION}" >> "$GITHUB_ENV"
+          if [ -n "$UFUQ_KEYSTORE_BASE64" ] && [ -n "$UFUQ_KEYSTORE_PASSWORD" ] && [ -n "$UFUQ_KEY_ALIAS" ] && [ -n "$UFUQ_KEY_PASSWORD" ]; then
+            echo "$UFUQ_KEYSTORE_BASE64" | base64 -d > "$RUNNER_TEMP/ufuq-release.jks"
+            echo "UFUQ_KEYSTORE_FILE=$RUNNER_TEMP/ufuq-release.jks" >> "$GITHUB_ENV"
+            echo "SIGNED=true" >> "$GITHUB_ENV"
+          elif [ "${GITHUB_REF_TYPE}" = "tag" ]; then
+            # A debug-signed APK on a release would strand every phone that installs it: the real key could
+            # never update it. So a tag without the key fails instead.
+            echo "::error::Signing secrets UFUQ_KEYSTORE_* / UFUQ_KEY_* are missing. Run tools/setup_release_keys.sh (docs/release-android.md)."; exit 1
+          else
+            echo "::warning::Signing secrets are missing: this APK is signed with the DEBUG key, kept as a workflow artifact only and not attached to a release."
+            echo "SIGNED=false" >> "$GITHUB_ENV"
+          fi
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Android SDK 37
+        run: (yes || true) | "$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager" "platforms;android-37.0" "build-tools;37.0.0" > /dev/null
+
+      - name: Build release APK
+        working-directory: android
+        run: ./gradlew :app:assembleRelease --stacktrace
+
+      - name: Name it ufuq-<version>.apk and check its signer
+        run: |
+          mkdir -p dist
+          cp android/app/build/outputs/apk/release/app-release.apk "dist/ufuq-${VERSION}.apk"
+          APKSIGNER="$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -n 1)"
+          "$APKSIGNER" verify --print-certs "dist/ufuq-${VERSION}.apk" | tee dist/signer.txt
+          if [ "$SIGNED" = "true" ] && grep -q "CN=Android Debug" dist/signer.txt; then
+            echo "::error::The APK is debug-signed although the release key was provided"; exit 1
+          fi
+          rm -f "$RUNNER_TEMP/ufuq-release.jks"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ufuq-release-apk
+          path: dist/ufuq-*.apk
+
+      - name: Attach to the GitHub Release
+        if: ${{ env.SIGNED == 'true' }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.VERSION }}
+          prerelease: ${{ contains(env.VERSION, '-') }}
+          files: dist/ufuq-${{ env.VERSION }}.apk

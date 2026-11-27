@@ -17,7 +17,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 ## Non-goals
 
 - No Mac App Store build (sandbox blocks reading `~/.claude*` and `~/.codex`).
-- No Windows or Linux version.
+- No Linux version. (Windows and Android were added 2026-11-26; see `docs/plan.md`.)
 - No cloud backend or account system; everything runs locally.
 - Not a full clipboard manager or file manager: 10 clipboard items, a simple shelf.
 
@@ -99,6 +99,7 @@ protocol UfuqModule: Identifiable {
 }
 ```
 
+- In `UfuqCore` the protocol is UI-free (no `AnyView`): `refresh()` and `collapsedActivity(at:)` throw, and the Mac app adds the two view methods in a SwiftUI protocol that refines it.
 - **NotchController**: the `NSPanel`, its state, and positioning per screen
 - **ActivityArbiter**: chooses what goes in each wing and rotates a third activity
 - **PeekQueue**: one peek at a time; critical alerts jump the queue
@@ -127,6 +128,7 @@ protocol UfuqModule: Identifiable {
 | accent.prayer | #4FD1A5 |
 | provider.claude / codex / antigravity | #D97757 / #E5E5EA / #6E9BFF |
 | state.warning / critical | #FFB340 / #FF6B5E |
+| android.accent.container / on-accent / track | #A8D8B9 / #0F3D25 / #26302A (Android expanded island) |
 | Radius | 14 collapsed, 22 peek, 28 expanded |
 | Type | SF Pro: 13/600 collapsed, 26/700 title, 44/600 countdown, tabular numbers |
 
@@ -137,3 +139,4 @@ protocol UfuqModule: Identifiable {
 - Does Claude Code run only on this Mac, or also on the Windows machine (for agent status)?
 - Hijri source: calculated (Umm al-Qura) or Kemenag announcements?
 - App icon and wordmark.
+- Android version (later). Decided 2026-11-26: Ufuq replaces Adwam's island/notch on Android; Adwam keeps duas, routines and its widget. Order: ship Ufuq for Android first, then an Adwam release removes its island and points users to Ufuq. Open: AI usage on Android needs a sync from the Mac (the logs live there); prayer settings are set in both apps unless Ufuq reads Adwam's. Leaning: port `UfuqCore` to Kotlin using its Swift tests as the spec, rather than KMP or the Swift SDK for Android.

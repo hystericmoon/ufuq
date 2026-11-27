@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The pairing key is wrapped by a Keystore key that never leaves this phone, so a restored copy is useless: keep it out of backups. -->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="file" path="datastore/ufuq_sync.preferences_pb" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="file" path="datastore/ufuq_sync.preferences_pb" />
+    </device-transfer>
+</data-extraction-rules>
