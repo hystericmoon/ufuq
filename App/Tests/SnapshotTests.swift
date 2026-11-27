@@ -53,6 +53,45 @@ final class SnapshotTests: XCTestCase {
         try renderBento(name: "expanded-bento-empty-ai", content: BentoContent(snapshot: jakarta, now: fixedNow))
     }
 
+    /// Claude token counts only (no Codex installed): plain tracks, no percent, never amber or red.
+    func testExpandedBentoClaudeTokens() throws {
+        let rows = [
+            AIUsageRow(id: "c1", provider: .claude, name: "Claude", fraction: 0, detail: "Resets in 2 h 10 min", tokens: 4_200_000),
+            AIUsageRow(id: "c2", provider: .claude, name: "Claude · Work", fraction: 0, detail: "No session running", tokens: 0),
+        ]
+        try renderBento(name: "expanded-bento-claude-tokens", content: BentoContent(snapshot: jakarta, now: fixedNow, ai: rows))
+    }
+
+    func testAIUsageRowsMapping() {
+        let now = fixedNow
+        let lines = [
+            AIUsageLine(id: "c1", provider: .claude, name: "Claude",
+                        value: .tokens(count: 4_200_000, resetsAt: now.addingTimeInterval(130 * 60))),
+            AIUsageLine(id: "c2", provider: .claude, name: "Claude · Work", value: .tokens(count: 0, resetsAt: nil)),
+            AIUsageLine(id: "cx", provider: .codex, name: "Codex", value: .limits([
+                UsageWindowReading(kind: .session5h, snapshot: UsageSnapshot(fraction: 0.2, capturedAt: now)),
+                UsageWindowReading(kind: .weekly, snapshot: UsageSnapshot(
+                    fraction: 0.41, capturedAt: now, resetsAt: now.addingTimeInterval(130 * 60)), isEstimated: true),
+            ])),
+            AIUsageLine(id: "x", provider: .codex, name: "Codex 2", value: .unavailable(reason: "no snapshot")),
+        ]
+        let rows = AIUsageRows.rows(from: lines, now: now)
+        XCTAssertEqual(rows.count, 4)
+        XCTAssertEqual(rows[0].tokens, 4_200_000)
+        XCTAssertEqual(rows[0].fraction, 0)
+        XCTAssertEqual(rows[0].detail, "Resets in 2 h 10 min")
+        XCTAssertEqual(rows[0].accessibilityValue, "4.2 million tokens used in this 5-hour session, resets in 2 hours 10 minutes")
+        XCTAssertEqual(rows[1].tokens, 0)
+        XCTAssertEqual(rows[1].detail, "No session running")
+        XCTAssertEqual(rows[2].fraction, 0.41, accuracy: 0.0001)
+        XCTAssertNil(rows[2].tokens)
+        XCTAssertEqual(rows[2].detail, "Week 41% est. · resets in 2 h 10 min")
+        XCTAssertTrue(rows[3].isUnavailable)
+        XCTAssertEqual(rows[3].detail, "Unavailable")
+        XCTAssertEqual(AIUsageRows.duration(38 * 60), "38 min")
+        XCTAssertEqual(AIUsageRows.duration(20), "under 1 min")
+    }
+
     func testExpandedBentoUnavailable() throws {
         try renderBento(name: "expanded-bento-unavailable", content: BentoContent(
             snapshot: nil, now: fixedNow,

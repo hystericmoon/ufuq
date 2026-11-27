@@ -34,6 +34,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
 
         let registry = ModuleRegistry()
         try? registry.register(PrayerModule(location: AppSettings.defaultLocation))
+        try? registry.register(AIUsageModule(
+            claudeDirs: ClaudeAccounts.configDirs(), codexSessionsDir: CodexParser.defaultSessionsDir()))
         let controller = NotchController(registry: registry)
         controller.start()
         self.controller = controller

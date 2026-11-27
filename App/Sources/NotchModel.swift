@@ -17,6 +17,12 @@ struct AIUsageRow: Equatable, Identifiable {
     /// e.g. "Week 41% · resets in 2 h 10 min".
     var detail: String
     var isBetaSource = false
+    /// Non-nil for a Claude token-count row: tokens in the current 5-hour block, no percent.
+    var tokens: Int? = nil
+    /// The source could not be read; the row shows a dash.
+    var isUnavailable = false
+    /// Spoken value for VoiceOver; empty falls back to `detail`.
+    var accessibilityValue = ""
 }
 
 /// What the open panel shows. A small tile appears only while its module has something live.

@@ -232,6 +232,7 @@ final class NotchController: NSObject {
             island.model.now = now
             if island.displayID == activeID, machine.isExpanded {
                 island.model.snapshot = snapshot
+                updateAIRows(island, now: now)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
                 if tickCount % 30 == 0 { refreshBattery(island) }
             }
@@ -262,6 +263,7 @@ final class NotchController: NSObject {
                 if newState.kind == .expanded {
                     snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: Date())
                     island.model.snapshot = snapshot
+                    updateAIRows(island, now: Date())
                     island.model.battery = BatteryReader.read()
                     island.model.focusedTile = focusedTile
                 }
@@ -277,6 +279,13 @@ final class NotchController: NSObject {
         } else if wasExpanded, !isExpanded {
             leftExpanded(restoreFocus: restoreFocus)
         }
+    }
+
+    /// Rows for the AI tile from the module's last refresh; assigned only when they changed.
+    private func updateAIRows(_ island: ScreenIsland, now: Date) {
+        guard let module = registry.module(id: "ai") as? AIUsageModule else { return }
+        let rows = AIUsageRows.rows(from: module.lines(at: now), now: now)
+        if island.model.ai != rows { island.model.ai = rows }
     }
 
     private func becameExpanded() {
