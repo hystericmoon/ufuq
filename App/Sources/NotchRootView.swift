@@ -73,7 +73,7 @@ struct NotchRootView: View {
 
     private func contentSize(_ kind: NotchState.Kind) -> CGSize {
         guard gooOn else { return shownSize }
-        return kind == .peek ? budSize : gooBase
+        return (kind == .peek || kind == .hud) ? budSize : gooBase
     }
 
     @ViewBuilder
@@ -132,6 +132,9 @@ struct NotchRootView: View {
         case .peek(let event):
             PeekView(event: event, topInset: model.topInset)
                 .transition(transition)
+        case .hud(let reading):
+            HUDCapsuleView(reading: reading, topInset: model.topInset)
+                .transition(transition)
         case .expanded:
             ExpandedView(
                 content: model.content,
@@ -168,10 +171,11 @@ struct NotchRootView: View {
             return
         }
 
-        let involvesPeek = old != kind && (old == .peek || kind == .peek)
+        let isBudKind: (NotchState.Kind) -> Bool = { $0 == .peek || $0 == .hud }
+        let involvesPeek = old != kind && (isBudKind(old) || isBudKind(kind))
             && old != .expanded && kind != .expanded
         if involvesPeek, !lowPower {
-            startBud(appearing: kind == .peek, current: current, target: target, radius: radius)
+            startBud(appearing: isBudKind(kind), current: current, target: target, radius: radius)
             return
         }
 
@@ -283,7 +287,7 @@ struct NotchRootView: View {
     static func radius(for kind: NotchState.Kind) -> CGFloat {
         switch kind {
         case .collapsed: return Tokens.Radius.collapsed
-        case .peek: return Tokens.Radius.peek
+        case .peek, .hud: return Tokens.Radius.peek
         case .expanded: return Tokens.Radius.expanded
         }
     }

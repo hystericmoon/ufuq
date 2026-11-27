@@ -20,6 +20,7 @@ enum NotchGeometry {
     /// `minWingWidth` beside the camera housing (300 pt alone leaves ~56 pt per wing).
     static let collapsedSize = CGSize(width: 300, height: 32)
     static let peekSize = CGSize(width: 352, height: 92)
+    static let hudSize = CGSize(width: 248, height: 54)
     static let minWingWidth: CGFloat = 90
     /// Smallest collapsed height on a screen without a notch (also used when the menu bar is
     /// auto-hidden and reports 0).
@@ -70,6 +71,9 @@ enum NotchGeometry {
             return CGSize(width: width, height: max(collapsedSize.height, m.safeAreaTop))
         case .peek:
             return CGSize(width: max(peekSize.width, notch), height: peekSize.height)
+        case .hud:
+            let height = m.hasNotch ? max(hudSize.height, m.safeAreaTop + 26) : hudSize.height
+            return CGSize(width: max(hudSize.width, notch), height: height)
         case .expanded:
             return BentoLayout.size(smallTiles: smallTiles, stripHeight: stripHeight(m), trayRow: trayRow)
         }

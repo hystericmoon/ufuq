@@ -23,6 +23,20 @@ enum AppSettings {
         UserDefaults.standard.bool(forKey: syncKey)
     }
 
+    /// Show system HUDs (volume, brightness, keyboard backlight) as a notch capsule. Default on.
+    static let hudKey = "systemHUDsEnabled"
+
+    static var hudEnabled: Bool {
+        UserDefaults.standard.object(forKey: hudKey) as? Bool ?? true
+    }
+
+    /// Keep recent text copies in memory in the Clipboard tile. Default on.
+    static let clipboardKey = "clipboardHistoryEnabled"
+
+    static var clipboardEnabled: Bool {
+        UserDefaults.standard.object(forKey: clipboardKey) as? Bool ?? true
+    }
+
     /// Sparkle keeps its own automatic-check preference; this only names the feed host
     /// shown in the privacy line in Settings.
     static let updateDisclosure = "Ufuq contacts GitHub to check for new versions."

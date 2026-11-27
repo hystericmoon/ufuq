@@ -176,6 +176,8 @@ final class NotchController: NSObject {
     private var trayHotkey: Hotkey?
     private var trayDrag: TrayDragMonitor?
     private var floatingTray: FloatingTrayController?
+    private var hudMonitor: SystemHUDMonitor?
+    private var hudDismissTask: Task<Void, Never>?
 
     private var layout = WingLayout()
     private var snapshot: PrayerSnapshot?
@@ -226,6 +228,12 @@ final class NotchController: NSObject {
         }
         if hotkey == nil { NSLog("Ufuq: could not register the Option+Space hotkey") }
         startTray()
+
+        let hud = SystemHUDMonitor()
+        hud.onReading = { [weak self] reading in self?.showHUD(reading) }
+        hud.start()
+        self.hudMonitor = hud
+        ClipboardMonitor.shared.start()
 
         for module in registry.enabledModules {
             let stream = module.peekEvents()
@@ -283,8 +291,27 @@ final class NotchController: NSObject {
         case .dismissedPeek:
             queue.dismissCurrent(at: now)
             machine.setPeek(queue.current)
+            machine.setHUD(nil)
             announceIfNew()
             applyState(restoreFocus: false)
+        }
+    }
+
+    private func showHUD(_ reading: HUDReading) {
+        machine.setHUD(reading)
+        applyState(restoreFocus: false)
+        if NSWorkspace.shared.isVoiceOverEnabled {
+            NSAccessibility.post(
+                element: NSApp as Any,
+                notification: .announcementRequested,
+                userInfo: [.announcement: reading.accessibilityLabel])
+        }
+        hudDismissTask?.cancel()
+        hudDismissTask = Task { @MainActor [weak self] in
+            try? await Task.sleep(nanoseconds: 1_600_000_000)
+            guard !Task.isCancelled, let self else { return }
+            self.machine.setHUD(nil)
+            self.applyState(restoreFocus: false)
         }
     }
 
@@ -356,6 +383,7 @@ final class NotchController: NSObject {
                 refreshAgents(island, now: now)
                 refreshActions(island, now: now)
                 refreshNowPlaying(island)
+                refreshClipboard(island)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
                 if tickCount % 30 == 0 { refreshBattery(island) }
             }
@@ -379,7 +407,9 @@ final class NotchController: NSObject {
         if machine.isExpanded, activeIsland?.displayID != activeID { activeID = activeIsland?.displayID }
 
         for island in islands {
-            let newState = NotchState.shown(machine.state, onActiveDisplay: island.displayID == activeID, peek: machine.currentPeek)
+            let newState = NotchState.shown(
+                machine.state, onActiveDisplay: island.displayID == activeID,
+                peek: machine.currentPeek, hud: machine.currentHUD)
             let oldState = island.model.state
             guard newState != oldState else { continue }
             if oldState.kind != newState.kind {
@@ -391,6 +421,7 @@ final class NotchController: NSObject {
                     island.model.actions = githubBuilds(at: Date())
                     island.model.battery = BatteryReader.read()
                     refreshNowPlaying(island)
+                    island.model.clipboard = AppSettings.clipboardEnabled ? ClipboardMonitor.shared.items : []
                     island.model.focusedTile = focusedTile
                 }
                 updateFrame(island, for: newState.kind)
@@ -471,6 +502,14 @@ final class NotchController: NSObject {
         guard builds != island.model.actions else { return }
         let resized = builds.isEmpty != island.model.actions.isEmpty
         island.model.actions = builds
+        if resized { updateFrame(island, for: island.model.state.kind) }
+    }
+
+    private func refreshClipboard(_ island: ScreenIsland) {
+        let items = AppSettings.clipboardEnabled ? ClipboardMonitor.shared.items : []
+        guard items != island.model.clipboard else { return }
+        let resized = items.isEmpty != island.model.clipboard.isEmpty
+        island.model.clipboard = items
         if resized { updateFrame(island, for: island.model.state.kind) }
     }
 

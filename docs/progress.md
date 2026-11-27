@@ -9,10 +9,15 @@ Last updated: 2026-11-27, 22:25 WIB
 - Carries PR #24 (Phase 7 gaps + Swift 6 concurrency fixes) and PR #25 (7a AI Tile Upgrade: Claude pace via `BurnRate`, estimated `$` cost, and read-only Antigravity `"Beta source"` provider).
 - Verified locally: `UfuqCore` **277/277** tests, Mac app **83/83** tests.
 
-**7a follow-up — 5-hour + Weekly (7-day) AI usage on the AI tile**:
+**7a follow-up — 5-hour + Weekly (7-day) AI usage on the AI tile** (PR #27 merged):
 - Added 7-day rolling totals + estimated `$` cost to Claude (`7d 18.4M · ~$14.20`) and 7-day rolling totals to Antigravity (`7d 6.2M`), plus secondary window line for Codex (`5-hour 20%`).
 - Updated `AIRowView` in `ExpandedView.swift` to render `secondaryDetail` cleanly below `detail` with full VoiceOver labels.
 - Verified locally: `UfuqCore` **279/279** tests, Mac app **83/83** tests.
+
+**Phase 7b — System HUDs + Clipboard History**:
+- Added `SystemHUD` (`HUDKind`, `HUDReading`, `HUDStateTracker`) and `ClipboardHistory` (`ClipboardItem`, pin/dedupe/trim, concealed/transient password-manager pasteboard filtering) in `UfuqCore`.
+- Added `SystemHUDMonitor` (CoreAudio volume/mute listeners + `DisplayServices` brightness + `CoreBrightness` keyboard backlight without Accessibility), `HUDCapsuleView` (jelly capsule budding from the notch), `ClipboardMonitor`, and `ClipboardTile` + Settings toggles.
+- Verified locally: `UfuqCore` **282/282** tests, Mac app **84/84** tests.
 
 **Phase 7a (AI Tile Upgrade — SessionWatcher Option 1) implemented & verified on Mac**:
 - **Claude pace & estimated `$` cost (`UfuqCore/Sources/UfuqCore/ClaudeCost.swift`, `AIUsageModule.swift`, `AIUsageRows.swift`):**
