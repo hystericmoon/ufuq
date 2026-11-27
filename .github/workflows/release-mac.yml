@@ -79,7 +79,7 @@ jobs:
             CURRENT_PROJECT_VERSION="${{ github.run_number }}" \
             SPARKLE_PUBLIC_KEY="$SPARKLE_PUBLIC_KEY" \
             CODE_SIGN_IDENTITY="$IDENTITY" \
-            "${EXTRA[@]}" \
+            ${EXTRA[@]+"${EXTRA[@]}"} \
             build
           test -d build/Build/Products/Release/Ufuq.app
 

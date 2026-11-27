@@ -18,6 +18,10 @@ A macOS notch app (Dynamic Island-style) with native polish and a small core. Ma
 - **Hotkey always opens the panel; hover is optional.** Keyboard and VoiceOver users must never depend on the pointer.
 - **Antigravity is an isolated plugin labelled "Beta source".** No public API; its source is the most fragile.
 
+## Working with the owner
+
+- If you can do it yourself (merge, run workflows, fix CI, publish), do it; never hand the owner a step you can run. Only device checks, local keys and decisions are theirs.
+
 ## Commands
 
 Core package (Linux or Mac), from `UfuqCore/`:
