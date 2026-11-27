@@ -278,6 +278,7 @@ struct PrayerTile: View {
                 .font(Tokens.Typography.caption)
                 .foregroundStyle(isNext ? Tokens.accentPrayer : Tokens.textSecondary)
                 .lineLimit(1)
+                .fixedSize()
             Spacer(minLength: 0)
             Text(time)
                 .font(Tokens.Typography.value)
@@ -285,7 +286,7 @@ struct PrayerTile: View {
                 .foregroundStyle(Tokens.textPrimary)
         }
         .padding(.horizontal, 4)
-        .frame(height: 20)
+        .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
         .background(
             RoundedRectangle(cornerRadius: 4, style: .continuous)
                 .fill(isNext ? Tokens.accentPrayer.opacity(0.18) : Color.clear))

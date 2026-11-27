@@ -32,7 +32,7 @@ final class NotchGeometryTests: XCTestCase {
             CGRect(x: 580, y: 890, width: 352, height: 92))
         XCTAssertEqual(
             NotchGeometry.windowFrame(for: .expanded, metrics: notchScreen),
-            CGRect(x: 508, y: 670, width: 496, height: 312))
+            CGRect(x: 508, y: 694, width: 496, height: 288))
     }
 
     func testExpandedPanelIsSizedToItsTiles() {
@@ -42,12 +42,12 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(BentoLayout.width(smallTiles: 1), 648)
         XCTAssertEqual(BentoLayout.width(smallTiles: 2), 648)
         XCTAssertEqual(BentoLayout.width(smallTiles: 6), 952)
-        XCTAssertEqual(BentoLayout.bodyHeight, 256)
+        XCTAssertEqual(BentoLayout.bodyHeight, 232)
         XCTAssertEqual(BentoLayout.tileRadius, 16)
         let frame = NotchGeometry.windowFrame(for: .expanded, metrics: notchScreen, smallTiles: 6)
         XCTAssertEqual(frame.midX, 756)
         XCTAssertEqual(frame.maxY, notchScreen.frame.maxY)
-        XCTAssertEqual(frame.size, CGSize(width: 952, height: 312))
+        XCTAssertEqual(frame.size, CGSize(width: 952, height: 288))
     }
 
     func testPlainScreenIslandIsFlushWithTopOverMenuBar() {
@@ -61,7 +61,7 @@ final class NotchGeometryTests: XCTestCase {
         XCTAssertEqual(peek, CGRect(x: 784, y: 988, width: 352, height: 92))
 
         let expanded = NotchGeometry.windowFrame(for: .expanded, metrics: plainScreen)
-        XCTAssertEqual(expanded, CGRect(x: 712, y: 768, width: 496, height: 312))
+        XCTAssertEqual(expanded, CGRect(x: 712, y: 792, width: 496, height: 288))
     }
 
     func testPlainScreenCollapsedHeightIsClampedWhenMenuBarIsHiddenOrShort() {

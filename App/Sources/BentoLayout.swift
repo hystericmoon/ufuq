@@ -8,7 +8,7 @@ enum BentoLayout {
     static let padding: CGFloat = 12
     static let gap: CGFloat = 8
     static let tilePadding: CGFloat = 12
-    static let rowHeight: CGFloat = 124
+    static let rowHeight: CGFloat = 112
     static let prayerWidth: CGFloat = 216
     static let aiWidth: CGFloat = 248
     static let smallWidth: CGFloat = 144
