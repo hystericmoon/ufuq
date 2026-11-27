@@ -37,7 +37,6 @@ interface IslandStrings {
     val dismiss: String
 
     /** "Page 2 of 3" for the screen reader. */
-    fun pageOf(index: Int, count: Int): String
 
     /** "82%" for a label. */
     fun percent(value: Int): String
@@ -78,6 +77,8 @@ data class IslandPageModel(
     val buttonIcon: IslandIcon,
     val buttonLabel: String,
     val buttonAction: ButtonAction,
+    /** A message row (no data yet): the hint leads, the message follows, no value or line. */
+    val message: Boolean = false,
 )
 
 /** One account's worst limit window for page B. */
@@ -132,6 +133,7 @@ object IslandPages {
                     buttonIcon = IslandIcon.SETTINGS,
                     buttonLabel = s.openSettings,
                     buttonAction = ButtonAction.OPEN_SETTINGS,
+                    message = true,
                 ),
             )
         }

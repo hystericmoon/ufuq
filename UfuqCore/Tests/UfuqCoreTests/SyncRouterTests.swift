@@ -167,4 +167,51 @@ final class SyncRouterTests: XCTestCase {
         let latest = await log.latestSeq
         XCTAssertEqual(latest, 5)
     }
+
+    func testOnAuthenticatedReportsClientNameOnlyForAdmittedRequests() async throws {
+        let seen = Recorder()
+        let r = SyncRouter(sealer: FakeSealer(key: 0x5A), log: SyncEventLog(pollInterval: .milliseconds(10)),
+                           content: { SyncSnapshotContent() }, now: { [now] in now },
+                           onAuthenticated: { name, at in seen.add(name, at) })
+
+        var named = try request("/v1/snapshot")
+        named.headers["x-ufuq-client"] = "  Samsung SM-S928B\n"
+        let first = await r.handle(named)
+        XCTAssertEqual(first.status, 200)
+
+        // Unpaired, wrong key and replayed requests are not reported.
+        _ = await r.handle(try request("/v1/snapshot", token: .some(nil)))
+        _ = await r.handle(try request("/v1/snapshot", key: 0x11))
+        _ = await r.handle(named)
+
+        // No header (older phones) reports nil.
+        _ = await r.handle(try request("/v1/snapshot", at: now.addingTimeInterval(1)))
+
+        XCTAssertEqual(seen.calls.map { $0.0 }, ["Samsung SM-S928B", nil])
+        XCTAssertEqual(seen.calls.map { $0.1 }, [now, now])
+    }
+
+    func testClientNameIsTrimmedAndCut() {
+        XCTAssertNil(SyncRouter.clientName(from: [:]))
+        XCTAssertNil(SyncRouter.clientName(from: ["x-ufuq-client": "   "]))
+        let long = String(repeating: "a", count: 100)
+        XCTAssertEqual(SyncRouter.clientName(from: ["x-ufuq-client": long])?.count, SyncProtocol.maxClientNameLength)
+        XCTAssertEqual(SyncProtocol.clientHeader, "X-Ufuq-Client")
+    }
+}
+
+/// Collects `onAuthenticated` calls from the router's `@Sendable` closure.
+private final class Recorder: @unchecked Sendable {
+    private let lock = NSLock()
+    private var stored: [(String?, Date)] = []
+
+    func add(_ name: String?, _ at: Date) {
+        lock.lock(); defer { lock.unlock() }
+        stored.append((name, at))
+    }
+
+    var calls: [(String?, Date)] {
+        lock.lock(); defer { lock.unlock() }
+        return stored
+    }
 }

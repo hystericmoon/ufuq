@@ -28,6 +28,7 @@ interface IslandStrings {
     val pairTitle: String
     val pairHint: String
     val pairDescription: String
+    val mediaTitle: String
     val mediaEmpty: String
     val mediaEmptyDescription: String
     val allowAccess: String
@@ -83,6 +84,8 @@ data class IslandPageModel(
     val buttonIcon: IslandIcon,
     val buttonLabel: String,
     val buttonAction: ButtonAction,
+    /** False for a message row (no data yet): the island shows the message and no progress line. */
+    val showBar: Boolean = true,
 )
 
 /** The AI usage that page B shows. The data arrives with the Mac sync (phase A6). */
@@ -129,6 +132,7 @@ object IslandPages {
                 buttonIcon = IslandIcon.PHONE,
                 buttonLabel = s.openApp,
                 buttonAction = ButtonAction.OPEN_APP,
+                showBar = false,
             )
         }
         val fraction = sample.fraction.coerceIn(0.0, 1.0)
@@ -158,10 +162,11 @@ object IslandPages {
         if (state == null) {
             return IslandPageModel(
                 id = IslandPageId.MEDIA,
-                slider = SliderModel(0f, s.mediaEmpty, description = s.mediaEmptyDescription, stateText = ""),
+                slider = SliderModel(0f, s.mediaEmpty, s.mediaTitle, description = s.mediaEmptyDescription, stateText = ""),
                 buttonIcon = IslandIcon.PHONE,
                 buttonLabel = if (accessGranted) s.openApp else s.allowAccess,
                 buttonAction = if (accessGranted) ButtonAction.OPEN_APP else ButtonAction.ALLOW_MEDIA_ACCESS,
+                showBar = false,
             )
         }
         val position = state.positionAt(elapsedNowMs)
@@ -208,8 +213,10 @@ data class PillModel(
 
 object PillMapper {
     /**
-     * Left = the prayer wing, right = the AI wing; with no AI activity the right wing shows the
-     * rotating activity, and failing that the prayer countdown (so the pill is never lopsided).
+     * Left = the prayer countdown only ("0:27"; owner, 27 Nov: the time is not needed collapsed),
+     * or the prayer's own text while it is an alert ("Ashar now"). Right = the AI wing, else the
+     * rotating activity, else empty: the wings are drawn equally wide, so the pill stays centred
+     * on the camera. The full sentence stays in [PillModel.description].
      */
     fun from(
         layout: WingLayout,
@@ -219,13 +226,13 @@ object PillMapper {
         val left = layout.left
         val right = layout.right ?: layout.rotating
         if (left == null && right == null) return null
-        val countdown = left?.deadline?.takeIf { right == null && !left.isAlert }
+        val countdown = left?.deadline?.takeIf { !left.isAlert }
             ?.let { app.ufuq.android.prayer.Countdown.format(Duration.between(now, it)) }
-        val rightText = right?.text ?: countdown.orEmpty()
+        val rightText = right?.text.orEmpty()
         val level = right?.takeIf { it.source == ActivitySource.AI_USAGE }?.usageFraction?.let(thresholds::level) ?: UsageLevel.NORMAL
         val description = listOfNotNull(left?.accessibilityLabel, right?.accessibilityLabel).joinToString(". ")
         return PillModel(
-            left = left?.text.orEmpty(),
+            left = countdown ?: left?.text.orEmpty(),
             right = rightText,
             rightLevel = level,
             isAlert = left?.isAlert == true || right?.isAlert == true,
@@ -241,5 +248,25 @@ object IslandGeometry {
     fun gapDp(cutoutWidthPx: Int?, density: Float): Int {
         if (cutoutWidthPx == null || cutoutWidthPx <= 0 || density <= 0f) return 0
         return Math.ceil((cutoutWidthPx / density).toDouble()).toInt() + 2 * GAP_PADDING_DP
+    }
+
+    /** The collapsed pill: the camera hole plus 4 dp above and below, 24 to 30 dp tall. */
+    const val PILL_PADDING_DP = 4
+    const val MIN_PILL_DP = 24
+    const val MAX_PILL_DP = 30
+    const val DEFAULT_PILL_DP = 26
+
+    /** Where the pill sits: centred on the camera hole, or 4 dp from the top without one. */
+    data class Placement(val topDp: Int, val heightDp: Int)
+
+    fun placement(cutoutTopPx: Int?, cutoutBottomPx: Int?, density: Float): Placement {
+        if (cutoutTopPx == null || cutoutBottomPx == null || cutoutBottomPx <= cutoutTopPx || density <= 0f) {
+            return Placement(PILL_PADDING_DP, DEFAULT_PILL_DP)
+        }
+        val holeTop = cutoutTopPx / density
+        val holeHeight = (cutoutBottomPx - cutoutTopPx) / density
+        val height = (holeHeight + 2 * PILL_PADDING_DP).toInt().coerceIn(MIN_PILL_DP, MAX_PILL_DP)
+        val centre = holeTop + holeHeight / 2
+        return Placement((centre - height / 2f).toInt().coerceAtLeast(0), height)
     }
 }

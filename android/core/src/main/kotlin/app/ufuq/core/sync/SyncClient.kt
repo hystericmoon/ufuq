@@ -54,7 +54,11 @@ class HttpSyncClient(
     private val host: String = pairing.host,
     private val clock: Clock = Clock.systemUTC(),
     private val transport: SyncTransport = HttpUrlTransport(),
+    /** Sent as `X-Ufuq-Client` so the Mac can show which phone is paired; null sends nothing. */
+    clientName: String? = null,
 ) : SyncClient {
+    private val clientHeader: String? = SyncProtocol.clientHeaderValue(clientName)
+
     override suspend fun snapshot(): UsageResult<SyncSnapshot> =
         fetch("/v1/snapshot", SNAPSHOT_TIMEOUT_MS) { text ->
             val snapshot = SyncJson.decodeFromString(SyncSnapshot.serializer(), text)
@@ -76,7 +80,11 @@ class HttpSyncClient(
             val token = Base64.getUrlEncoder().withoutPadding().encodeToString(
                 sealer.seal("${SyncProtocol.AUTH_PREFIX}${clock.instant().epochSecond}".toByteArray(Charsets.UTF_8)),
             )
-            transport.get("http://${hostForUrl(host)}:${pairing.port}$path", mapOf(SyncProtocol.AUTH_HEADER to token), timeoutMillis)
+            val headers = buildMap {
+                put(SyncProtocol.AUTH_HEADER, token)
+                clientHeader?.let { put(SyncProtocol.CLIENT_HEADER, it) }
+            }
+            transport.get("http://${hostForUrl(host)}:${pairing.port}$path", headers, timeoutMillis)
         } catch (e: CancellationException) {
             throw e
         } catch (e: IOException) {

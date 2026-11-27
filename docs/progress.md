@@ -2,20 +2,23 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27 02:30 WIB)
+## Resume here (2026-11-27 afternoon WIB)
 
-Auto-update is done on all three platforms: Mac (Sparkle), Windows (signed MSI), Android (sideload APK,
-`docs/release-android.md`). Only owner steps remain:
+Released: v0.1.0, v0.1.1, v0.1.2 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
+pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
+bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release. (The `v0.1.0` tag
+points at the kickoff commit; harmless.)
 
-1. On the Mac: `bash tools/setup_release_keys.sh` (sets every signing secret), then back up `~/UfuqKeys`.
-2. Merge PR #1.
-3. Tag `v0.1.0` (`git tag v0.1.0 && git push origin v0.1.0`). The three release workflows attach the DMG/zip/appcast, MSI + .sig and `ufuq-0.1.0.apk` to one release.
-4. Install `ufuq-0.1.0.apk` (not the debug APK: debug builds have the updater off) and run the device checks below.
+0.1.2 (PR #4) carries:
+- Android open island = **option C** (owner pick, 27 Nov): one black card under the status bar, one row per module (heading, large value, 4 dp progress line, 40 dp action in a 48 dp target), no pages. Rows without data show their message, no line. Media seek drags on the line; TalkBack reads each row as one node with progress (and the seek action), then its button. `IslandSlider`/pager removed. Windows follows (owner, 27 Nov): same card, 72 dp rows, window height grows with the rows (`IslandSizes.expandedHeight`), Tab between buttons, Esc closes; no arrow-key pages any more.
+- Android pill: countdown only, 24–30 dp, centred on the camera hole.
+- Mac: sync key in `~/Library/Application Support/Ufuq/sync-key` (not Keychain); island on non-notch screens sits in the menu bar; "Paired with <phone> · seen …"; "Forget phone…" confirms. macOS CI green.
 
-Android updater notes: release builds only (`SELF_UPDATE`); Settings → About → Updates; daily check on open
-(20 h min), dialog only when newer; verifies size, GitHub SHA-256 digest and package name, then the system
-installer checks the signing key. `versionCode` = `MAJOR*1000000 + MINOR*1000 + PATCH` from `VERSION`.
-A tag push without the keystore secrets fails on purpose. CI now also runs `:app:assembleRelease` so R8 breaks show before a tag.
+Next:
+1. Owner checks on 0.1.2: Android open island (all three rows, swipe up closes, TalkBack order); last Keychain prompt during migration (click Allow), external-monitor island in the menu bar, paired-phone line, Forget phone.
+2. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
+
+Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 
 ## Status (2026-11-26, overnight)
 
@@ -47,7 +50,7 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 ### Known issues to decide or fix
 - Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
 - Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
-- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. Check on the Mac: after a Sparkle update, does the Keychain ask again for the sync key (ad-hoc signatures change each build)? If so, move the key out of the Keychain.
+- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. The Keychain asked again after each update (owner, v0.1.1), so the sync key now lives in `~/Library/Application Support/Ufuq/sync-key` (0600); the old Keychain item is moved once and deleted.
 - Windows code-signing certificate: optional, removes the SmartScreen warning.
 
 ## Next up
@@ -58,7 +61,7 @@ Check on the Mac (about 15 min), then fix what fails:
 1. `brew install xcodegen && xcodegen generate && open Ufuq.xcodeproj`, run.
 2. Panel sits over the notch, above the menu bar; left wing shows the real next prayer.
 3. ⌥Space opens it, VoiceOver focus lands inside, Tab reaches the tabs with a visible ring, Esc closes and returns focus to the previous app.
-4. External display: floating pill 8 pt below the menu bar.
+4. External display: the island hangs from the top edge, centred over the menu bar, as tall as the menu bar (changed 27 Nov after the owner's v0.1.1 check; was 8 pt below it).
 5. Reduce Motion cross-fade; Increase Contrast border; hover toggle; launch at login (may refuse on an unsigned debug build).
 6. Compare the `snapshots` artifact PNGs with `refs/` and the design canvas.
 
@@ -112,6 +115,10 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - Pairing QR is now a `ufuq://pair#<base64url JSON>` link: the phone camera opens Ufuq with the code filled in; the user still taps Pair. Bare JSON still parses.
 
 ## History
+
+- 2026-11-27 (afternoon): v0.1.2 released: Android and Windows open island option C, pill countdown, Mac sync key file, menu-bar island on external screens, paired-phone line.
+
+- 2026-11-27 (morning): v0.1.1 released (Mac every-display island, faster Settings, pairing link; Windows tokens; reset caption). Owner tested 0.1.1; feedback fixes in PR #4. CI: Robolectric runtimes now resolved by Gradle, tests run offline.
 
 - 2026-11-27: v0.1.0 released (DMG, MSI, APK; release workflows started by hand because tags cannot be pushed from cloud sessions, so the `v0.1.0` tag still points at the kickoff commit). v0.1.1 carries the four decisions and the Mac release-script fix.
 

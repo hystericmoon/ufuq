@@ -27,3 +27,4 @@ Package.resolved
 # XcodeGen output (generate with `xcodegen generate`)
 *.xcodeproj
 App/Info.plist
+.claude/worktrees/

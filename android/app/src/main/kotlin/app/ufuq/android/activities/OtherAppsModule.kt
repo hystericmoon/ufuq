@@ -64,6 +64,7 @@ object ActivityPages {
             buttonIcon = IslandIcon.PHONE,
             buttonLabel = s.open(n.appLabel),
             buttonAction = ButtonAction.OPEN_SOURCE,
+            showBar = fraction != null,
         )
     }
 }

@@ -28,7 +28,7 @@ import org.robolectric.annotation.GraphicsMode
 import kotlin.test.assertEquals
 import kotlin.test.assertTrue
 
-/** TalkBack contract: one node per slider with progress semantics, a labelled 48 dp button, order pill -> page -> button. */
+/** TalkBack contract: one node per row with progress semantics, a labelled 48 dp button, rows in order. */
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(qualifiers = "w360dp-h640dp-xhdpi")
@@ -47,8 +47,7 @@ class IslandSemanticsTest {
         assertEquals(0f..1f, range.range)
         val state = config[SemanticsProperties.StateDescription]
         assertTrue("65 percent" in state, state)
-        assertTrue("Page 1 of 3" in state, state)
-        // The label text inside the track is not a second node.
+        // The heading and value inside the row are not separate nodes.
         compose.onNodeWithText("Ashar", substring = true).assertDoesNotExist()
         compose.onNodeWithText("1:12", substring = true).assertDoesNotExist()
     }
@@ -62,14 +61,8 @@ class IslandSemanticsTest {
         assertEquals(ButtonAction.TOGGLE_MUTE, action)
     }
 
-    @Test fun everyPageHasASliderAndALabelledButton() {
-        compose.setContent {
-            PhoneWall {
-                androidx.compose.foundation.layout.Column {
-                    for (page in pages) ExpandedIsland(listOf(page), onAction = {}, onDismiss = {})
-                }
-            }
-        }
+    @Test fun everyModuleIsVisibleAtOnceWithALabelledButton() {
+        compose.setContent { PhoneWall { ExpandedIsland(pages, onAction = {}, onDismiss = {}) } }
         for ((label, count) in pages.groupingBy { it.buttonLabel }.eachCount()) {
             compose.onAllNodes(hasContentDescription(label)).assertCountEquals(count)
         }
@@ -152,5 +145,12 @@ class IslandSemanticsTest {
         compose.setContent { PhoneWall { ExpandedIsland(listOf(IslandPages.media(state, true, TestStrings, 0)), onAction = { action = it }, onDismiss = {}) } }
         compose.onNodeWithContentDescription("Pause").assertHasClickAction().assertWidthIsAtLeast(48.dp).performClick()
         assertEquals(ButtonAction.PLAY_PAUSE, action)
+    }
+
+    @Test fun messageRowHasNoProgress() {
+        val empty = IslandPages.aiUsage(null, TestStrings)
+        compose.setContent { PhoneWall { ExpandedIsland(listOf(empty), onAction = {}, onDismiss = {}) } }
+        val config = compose.onNode(hasContentDescription(TestStrings.pairDescription)).fetchSemanticsNode().config
+        assertTrue(SemanticsProperties.ProgressBarRangeInfo !in config)
     }
 }

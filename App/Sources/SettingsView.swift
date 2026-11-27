@@ -38,6 +38,7 @@ struct SettingsView: View {
     @AppStorage(AppSettings.allDisplaysKey) private var allDisplays = true
 
     @ObservedObject private var updater = UpdaterController.shared
+    @ObservedObject private var sync = SyncService.shared
 
     var body: some View {
         Form {
@@ -46,6 +47,9 @@ struct SettingsView: View {
             LaunchAtLoginToggle()
             Toggle("Share with phone on this network", isOn: $shareWithPhone)
                 .onChange(of: shareWithPhone) { _, _ in SyncService.shared.apply() }
+            if shareWithPhone {
+                PhoneStatusRow(service: sync)
+            }
             Text("Off by default. Choose Pair phone… in the menu bar to link a phone; data is encrypted and never leaves your network.")
                 .font(.callout)
                 .foregroundStyle(.secondary)

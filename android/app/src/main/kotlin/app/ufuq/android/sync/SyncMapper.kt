@@ -133,6 +133,7 @@ object SyncMapper {
         buttonIcon = if (action == ButtonAction.REFRESH) IslandIcon.REFRESH else IslandIcon.PHONE,
         buttonLabel = buttonLabel,
         buttonAction = action,
+        showBar = false,
     )
 
     /** The collapsed right-wing activity: worst session %, hidden when there is nothing fresh to say. */

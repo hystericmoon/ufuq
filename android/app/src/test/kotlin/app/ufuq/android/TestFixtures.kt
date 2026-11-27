@@ -14,6 +14,7 @@ object TestStrings : IslandStrings {
     override val pairTitle = "Pair with your Mac"
     override val pairHint = "AI usage"
     override val pairDescription = "AI usage. Pair with your Mac to see your limits here."
+    override val mediaTitle = "Media"
     override val mediaEmpty = "Play something to control it here"
     override val mediaEmptyDescription = "Media. Play something to control it here."
     override val allowAccess = "Allow access"

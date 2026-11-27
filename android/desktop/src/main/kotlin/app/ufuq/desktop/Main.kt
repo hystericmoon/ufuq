@@ -86,7 +86,8 @@ private fun trayImage(): BufferedImage {
 private fun ApplicationScope.IslandWindow(controller: IslandController, reduceMotion: Boolean) {
     val ui by controller.state.collectAsState()
     val kind = ui.mode.kind
-    val placement = remember(kind) { WindowGeometry.place(primaryScreen(), kind) }
+    val rows = ui.pages.size
+    val placement = remember(kind, rows) { WindowGeometry.place(primaryScreen(), kind, rows) }
     val windowState = rememberWindowState(
         position = WindowPosition(placement.x.dp, placement.y.dp),
         size = DpSize(placement.width.dp, placement.height.dp),
@@ -123,10 +124,8 @@ private fun ApplicationScope.IslandWindow(controller: IslandController, reduceMo
                 mode = ui.mode,
                 pill = ui.pill,
                 pages = ui.pages,
-                pageIndex = ui.pageIndex,
                 strings = EnglishIslandStrings,
                 onPillClick = controller::pillClicked,
-                onPage = controller::selectPage,
                 onAction = controller::onAction,
                 onClose = controller::escape,
                 onPeekDismiss = controller::peekDismiss,

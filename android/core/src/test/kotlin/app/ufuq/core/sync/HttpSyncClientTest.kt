@@ -11,6 +11,7 @@ import java.util.Base64
 import kotlin.test.Test
 import kotlin.test.assertEquals
 import kotlin.test.assertIs
+import kotlin.test.assertNull
 import kotlin.test.assertTrue
 import kotlinx.coroutines.runBlocking
 
@@ -102,5 +103,28 @@ class HttpSyncClientTest {
         } finally {
             server.stop(0)
         }
+    }
+
+    @Test fun sendsClientNameHeaderOnlyWhenGiven(): Unit = runBlocking {
+        var seen: Map<String, String> = emptyMap()
+        val capture = SyncTransport { _, headers, _ ->
+            seen = headers
+            TransportResponse(200, sealer.seal(snapshotJson.toByteArray()))
+        }
+        HttpSyncClient(pairing, sealer, "10.0.0.5", clock, capture, clientName = "Samsung SM-S928B").snapshot()
+        assertEquals("Samsung SM-S928B", seen[SyncProtocol.CLIENT_HEADER])
+        HttpSyncClient(pairing, sealer, "10.0.0.5", clock, capture).events(0)
+        assertNull(seen[SyncProtocol.CLIENT_HEADER])
+        assertTrue(SyncProtocol.AUTH_HEADER in seen)
+    }
+
+    @Test fun phoneNameIsReadableAndHeaderSafe() {
+        assertEquals("Samsung SM-S928B", SyncProtocol.phoneName("samsung", "SM-S928B"))
+        assertEquals("Google Pixel 8", SyncProtocol.phoneName("Google", "Pixel 8"))
+        assertEquals("Xiaomi 14", SyncProtocol.phoneName("Xiaomi", "xiaomi 14"))
+        assertEquals("Nokia", SyncProtocol.phoneName("nokia", " "))
+        assertNull(SyncProtocol.phoneName(null, null))
+        assertEquals("Ab", SyncProtocol.clientHeaderValue("A\u00e9b\n"))
+        assertEquals(SyncProtocol.MAX_CLIENT_NAME_LENGTH, SyncProtocol.clientHeaderValue("x".repeat(100))?.length)
     }
 }

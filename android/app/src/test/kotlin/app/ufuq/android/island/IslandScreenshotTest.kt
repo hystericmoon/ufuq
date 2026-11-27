@@ -27,13 +27,13 @@ class IslandScreenshotTest {
     private val prayerPage get() = IslandPages.prayer(Fixtures.oneHourTwelve, muted = false, TestStrings)
     private val allPages get() = IslandPages.all(Fixtures.oneHourTwelve, false, null, TestStrings)
 
-    private fun page(index: Int, pages: List<IslandPageModel>, fontScale: Float = 1f, name: String) =
-        capture(name) { PhoneWall(fontScale) { ExpandedIsland(pages, onAction = {}, onDismiss = {}, initialPage = index) } }
+    private fun page(pages: List<IslandPageModel>, fontScale: Float = 1f, name: String) =
+        capture(name) { PhoneWall(fontScale) { ExpandedIsland(pages, onAction = {}, onDismiss = {}) } }
 
     @Test fun collapsedPill() = capture("island-01-collapsed-pill") {
         PhoneWall {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                IslandPill(PillModel("Ashar 15:12", "1:12", UsageLevel.NORMAL, false, "Ashar in 1 hour 12 minutes"), gapDp = 46, onClick = {})
+                IslandPill(PillModel("1:12", "", UsageLevel.NORMAL, false, "Ashar in 1 hour 12 minutes"), gapDp = 46, onClick = {}, placement = IslandGeometry.Placement(8, 26))
             }
         }
     }
@@ -41,29 +41,27 @@ class IslandScreenshotTest {
     @Test fun collapsedPillWithAiAmber() = capture("island-02-collapsed-pill-ai") {
         PhoneWall {
             Box(Modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
-                IslandPill(PillModel("Ashar 15:12", "82%", UsageLevel.WARNING, false, "Ashar in 1 hour 12 minutes. Claude 82 percent"), gapDp = 46, onClick = {})
+                IslandPill(PillModel("1:12", "82%", UsageLevel.WARNING, false, "Ashar in 1 hour 12 minutes. Claude 82 percent"), gapDp = 46, onClick = {}, placement = IslandGeometry.Placement(8, 26))
             }
         }
     }
 
-    @Test fun expandedPrayerNormal() = page(0, allPages, name = "island-03-expanded-a-prayer")
+    @Test fun expandedPrayerNormal() = page(allPages, name = "island-03-expanded-a-prayer")
 
     @Test fun expandedPrayerUnderTenMinutes() =
-        page(0, listOf(IslandPages.prayer(Fixtures.underTen, false, TestStrings)), name = "island-04-expanded-a-under-10min")
+        page(listOf(IslandPages.prayer(Fixtures.underTen, false, TestStrings)), name = "island-04-expanded-a-under-10min")
 
     @Test fun expandedPrayerMuted() =
-        page(0, listOf(IslandPages.prayer(Fixtures.oneHourTwelve, true, TestStrings)), name = "island-05-expanded-a-muted")
+        page(listOf(IslandPages.prayer(Fixtures.oneHourTwelve, true, TestStrings)), name = "island-05-expanded-a-muted")
 
-    @Test fun expandedPrayerFont200() = page(0, allPages, fontScale = 2f, name = "island-06-expanded-a-font200")
+    @Test fun expandedPrayerFont200() = page(allPages, fontScale = 2f, name = "island-06-expanded-a-font200")
 
-    @Test fun expandedUsageEmpty() = page(1, allPages, name = "island-07-expanded-b-empty")
+    @Test fun expandedUsageEmpty() = page(listOf(IslandPages.aiUsage(null, TestStrings)), name = "island-07-expanded-b-empty")
 
-    @Test fun expandedUsage82() = page(
-        0, listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72)), TestStrings)), name = "island-08-expanded-b-82",
+    @Test fun expandedUsage82() = page(listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72)), TestStrings)), name = "island-08-expanded-b-82",
     )
 
-    @Test fun expandedUsage96() = page(
-        0, listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.96, Duration.ofMinutes(25)), TestStrings)), name = "island-09-expanded-b-96-red",
+    @Test fun expandedUsage96() = page(listOf(IslandPages.aiUsage(AiUsageSample("Claude", 0.96, Duration.ofMinutes(25)), TestStrings)), name = "island-09-expanded-b-96-red",
     )
 
     private val track = app.ufuq.android.media.MediaState(
@@ -73,13 +71,22 @@ class IslandScreenshotTest {
     private fun media(state: app.ufuq.android.media.MediaState?, access: Boolean = false) =
         listOf(IslandPages.media(state, access, TestStrings, 0))
 
-    @Test fun expandedMediaPlaying() = page(0, media(track), name = "island-10-expanded-c-media-playing")
+    @Test fun expandedMediaPlaying() = page(media(track), name = "island-10-expanded-c-media-playing")
 
-    @Test fun expandedMediaPaused() = page(0, media(track.copy(playing = false)), name = "island-13-expanded-c-media-paused")
+    @Test fun expandedMediaPaused() = page(media(track.copy(playing = false)), name = "island-13-expanded-c-media-paused")
 
-    @Test fun expandedMediaEmpty() = page(0, media(null), name = "island-14-expanded-c-media-empty")
+    @Test fun expandedMediaEmpty() = page(media(null), name = "island-14-expanded-c-media-empty")
 
-    @Test fun expandedMediaFont200() = page(0, media(track), fontScale = 2f, name = "island-15-expanded-c-media-font200")
+    @Test fun expandedMediaFont200() = page(media(track), fontScale = 2f, name = "island-15-expanded-c-media-font200")
+
+    @Test fun expandedEverythingLive() = page(
+        listOf(
+            prayerPage,
+            IslandPages.aiUsage(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72)), TestStrings),
+            IslandPages.media(track, true, TestStrings, 0),
+        ),
+        name = "island-16-expanded-all-live",
+    )
 
     @Test fun peek() = capture("island-11-peek") {
         PhoneWall {

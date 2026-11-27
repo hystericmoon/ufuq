@@ -35,16 +35,34 @@ final class NotchGeometryTests: XCTestCase {
             CGRect(x: 436, y: 622, width: 640, height: 360))
     }
 
-    func testFloatingPillIsEightPointsBelowMenuBar() {
+    func testPlainScreenIslandIsFlushWithTopOverMenuBar() {
+        // Menu bar = 1080 - 1055 = 25 pt.
         let collapsed = NotchGeometry.windowFrame(for: .collapsed, metrics: plainScreen)
-        XCTAssertEqual(collapsed, CGRect(x: 810, y: 1015, width: 300, height: 32))
-        XCTAssertEqual(plainScreen.visibleFrame.maxY - collapsed.maxY, 8)
+        XCTAssertEqual(collapsed, CGRect(x: 810, y: 1055, width: 300, height: 25))
+        XCTAssertEqual(collapsed.maxY, plainScreen.frame.maxY)
+        XCTAssertEqual(collapsed.minY, plainScreen.visibleFrame.maxY)
 
         let peek = NotchGeometry.windowFrame(for: .peek, metrics: plainScreen)
-        XCTAssertEqual(peek, CGRect(x: 784, y: 955, width: 352, height: 92))
+        XCTAssertEqual(peek, CGRect(x: 784, y: 988, width: 352, height: 92))
 
         let expanded = NotchGeometry.windowFrame(for: .expanded, metrics: plainScreen)
-        XCTAssertEqual(expanded, CGRect(x: 640, y: 687, width: 640, height: 360))
+        XCTAssertEqual(expanded, CGRect(x: 640, y: 720, width: 640, height: 360))
+    }
+
+    func testPlainScreenCollapsedHeightIsClampedWhenMenuBarIsHiddenOrShort() {
+        let hidden = ScreenMetrics(
+            frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            safeAreaTop: 0, auxLeftWidth: 0, auxRightWidth: 0)
+        XCTAssertEqual(
+            NotchGeometry.windowFrame(for: .collapsed, metrics: hidden),
+            CGRect(x: 810, y: 1056, width: 300, height: 24))
+
+        let short = ScreenMetrics(
+            frame: CGRect(x: 0, y: 0, width: 1920, height: 1080),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1920, height: 1060),
+            safeAreaTop: 0, auxLeftWidth: 0, auxRightWidth: 0)
+        XCTAssertEqual(NotchGeometry.size(for: .collapsed, metrics: short).height, 24)
     }
 
     func testPillOnSecondaryDisplayWithOffsetOrigin() {
@@ -54,7 +72,8 @@ final class NotchGeometryTests: XCTestCase {
             safeAreaTop: 0, auxLeftWidth: 0, auxRightWidth: 0)
         let f = NotchGeometry.windowFrame(for: .collapsed, metrics: m)
         XCTAssertEqual(f.midX, 1512 + 960)
-        XCTAssertEqual(f.maxY, 100 + 1055 - 8)
+        XCTAssertEqual(f.maxY, 100 + 1080)
+        XCTAssertEqual(f.height, 25)
     }
 
     func testNotchWithoutAuxiliaryAreasFallsBack() {
@@ -68,6 +87,6 @@ final class NotchGeometryTests: XCTestCase {
 
     func testCollapsedNeverSmallerThanSpecSize() {
         XCTAssertGreaterThanOrEqual(NotchGeometry.size(for: .collapsed, metrics: notchScreen).width, 300)
-        XCTAssertEqual(NotchGeometry.size(for: .collapsed, metrics: plainScreen), CGSize(width: 300, height: 32))
+        XCTAssertEqual(NotchGeometry.size(for: .collapsed, metrics: plainScreen), CGSize(width: 300, height: 25))
     }
 }
