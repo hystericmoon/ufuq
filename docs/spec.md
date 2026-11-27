@@ -12,7 +12,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 | Bundle ID | `app.ufuq.mac` (placeholder until the domain is confirmed) |
 | Platform | macOS 14+, Apple Silicon and Intel |
 | Stack | Swift, SwiftUI, AppKit `NSPanel` |
-| Distribution | Notarized DMG + Sparkle; not sandboxed |
+| Distribution | Ad-hoc signed DMG + Sparkle (no Apple Developer account); not sandboxed |
 
 ## Non-goals
 

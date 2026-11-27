@@ -50,7 +50,8 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 - Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
 - Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
 - Ramadan: Adwam has no Imsak (owner decision 19 Nov); Android shows "Sahur" at Subuh. Add a Kemenag Imsak offset only if you want it.
-- Code-signing: Windows needs a certificate; Mac needs Developer ID + notarization (Phase 9).
+- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. Check on the Mac: after a Sparkle update, does the Keychain ask again for the sync key (ad-hoc signatures change each build)? If so, move the key out of the Keychain.
+- Windows code-signing certificate: optional, removes the SmartScreen warning.
 
 ## Next up
 

@@ -1,6 +1,6 @@
 # Plan
 
-One phase per Claude Code session. Phases marked **cloud** run in a Linux cloud session (no Xcode): Foundation-only code in `UfuqCore`, verified with `swift test`. Phases marked **Mac** need Xcode and end with a notarized debug build that launches on a clean Mac.
+One phase per Claude Code session. Phases marked **cloud** run in a Linux cloud session (no Xcode): Foundation-only code in `UfuqCore`, verified with `swift test`. Phases marked **Mac** need Xcode and end with a debug build that launches on a clean Mac.
 
 1. **Core skeleton (cloud).** `UfuqCore` Swift package: `UfuqModule` protocol and UI-free `ModuleStatus`, `LiveActivity`, `PeekEvent`; `ModuleRegistry` (catches module errors), `ActivityArbiter` (wing priority + 8 s rotation), `PeekQueue` (critical jumps the queue). Usage thresholds (80/95) and burn-rate estimate.
    Done when: `swift test` passes on Linux with tests for arbiter priority, rotation, peek ordering, thresholds and burn rate.
