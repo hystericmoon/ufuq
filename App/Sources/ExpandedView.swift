@@ -284,6 +284,8 @@ struct PrayerTile: View {
                 .font(Tokens.Typography.value)
                 .monospacedDigit()
                 .foregroundStyle(Tokens.textPrimary)
+                .lineLimit(1)
+                .fixedSize() // a time must never truncate ("17:…"); the 94 pt cell fits name + time
         }
         .padding(.horizontal, 4)
         .frame(maxWidth: .infinity, minHeight: 20, maxHeight: 20)
