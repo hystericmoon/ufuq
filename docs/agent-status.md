@@ -21,7 +21,7 @@ Why the hook runs the state machine and writes one small state file per session 
 |---|---|---|
 | SessionStart | | `idle` (not shown); also prunes state files untouched for 24 h |
 | UserPromptSubmit | | `running`, `runningSince = now` |
-| PreToolUse, PostToolUse, PostToolUseFailure | state is not `ended` | `running` (keeps `runningSince`; sets it if missing) |
+| PreToolUse, PostToolUse, PostToolUseFailure | session file exists (else unchanged: no ghost after SessionEnd) | `running` (keeps `runningSince`; sets it if missing) |
 | PermissionRequest | | `waiting` |
 | Notification | `notification_type` is `permission_prompt` or `elicitation_dialog` | `waiting` |
 | Notification | any other type (`idle_prompt`, `auth_success`, …) | unchanged |
