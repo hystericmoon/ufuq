@@ -147,7 +147,7 @@ final class SnapshotTests: XCTestCase {
     private static let sampleRuns = """
     {"workflow_runs":[
      {"id":1,"name":"Mac app","status":"completed","conclusion":"failure","head_sha":"aaa","head_branch":"main","event":"push","html_url":"https://github.com/o/ufuq/actions/runs/1","run_started_at":"2026-11-26T07:50:00Z","updated_at":"2026-11-26T07:55:00Z","pull_requests":[],"triggering_actor":{"login":"me"}},
-     {"id":2,"name":"CI","status":"in_progress","conclusion":null,"head_sha":"bbb","head_branch":"feature","event":"push","html_url":"https://github.com/o/adwam/actions/runs/2","run_started_at":"2026-11-26T07:56:00Z","updated_at":"2026-11-26T07:58:00Z","pull_requests":[],"triggering_actor":{"login":"me"}}
+     {"id":2,"name":"CI","status":"in_progress","conclusion":null,"head_sha":"bbb","head_branch":"feature","event":"pull_request","html_url":"https://github.com/o/adwam/actions/runs/2","run_started_at":"2026-11-26T07:56:00Z","updated_at":"2026-11-26T07:58:00Z","pull_requests":[{"number":12}],"triggering_actor":{"login":"me"}}
     ]}
     """
 

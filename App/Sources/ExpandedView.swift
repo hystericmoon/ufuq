@@ -587,8 +587,14 @@ enum ActionsTileFormat {
         }
     }
 
+    /// "PR #12", else the branch.
+    static func context(_ build: GitHubBuild) -> String? {
+        if let pr = build.prNumber { return "PR #\(pr)" }
+        return build.branch
+    }
+
     static func label(_ build: GitHubBuild) -> String {
-        ([build.repoName, build.branch].compactMap { $0 } + [spokenState(build), "opens in browser"])
+        ([build.repoName, context(build)].compactMap { $0 } + [spokenState(build), "opens in browser"])
             .joined(separator: ", ")
     }
 
@@ -627,23 +633,33 @@ private struct ActionsRow: View {
         Button {
             ActionsTileFormat.open(build)
         } label: {
-            HStack(spacing: 4) {
-                Text(build.repoName)
-                    .font(Tokens.Typography.value)
-                    .foregroundStyle(Tokens.textPrimary)
-                    .lineLimit(1)
-                Spacer(minLength: 4)
-                HStack(spacing: 2) {
-                    Image(systemName: ActionsTileFormat.symbol(build))
-                        .imageScale(.small)
-                        .accessibilityHidden(true)
-                    Text(ActionsTileFormat.stateWord(build, now: now))
-                        .monospacedDigit()
+            VStack(alignment: .leading, spacing: 0) {
+                HStack(spacing: 4) {
+                    Text(build.repoName)
+                        .font(Tokens.Typography.value)
+                        .foregroundStyle(Tokens.textPrimary)
                         .lineLimit(1)
+                    Spacer(minLength: 4)
+                    HStack(spacing: 2) {
+                        Image(systemName: ActionsTileFormat.symbol(build))
+                            .imageScale(.small)
+                            .accessibilityHidden(true)
+                        Text(ActionsTileFormat.stateWord(build, now: now))
+                            .monospacedDigit()
+                            .lineLimit(1)
+                    }
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(build.state == .failed ? Tokens.stateCritical : Tokens.textSecondary)
+                    .fixedSize()
                 }
-                .font(Tokens.Typography.caption)
-                .foregroundStyle(build.state == .failed ? Tokens.stateCritical : Tokens.textSecondary)
-                .fixedSize()
+                // Two builds of one repo must be told apart: PR number, else branch.
+                if let context = ActionsTileFormat.context(build) {
+                    Text(context)
+                        .font(Tokens.Typography.caption)
+                        .foregroundStyle(Tokens.textSecondary)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                }
             }
             .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
             .contentShape(Rectangle())
