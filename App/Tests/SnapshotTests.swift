@@ -232,6 +232,32 @@ final class SnapshotTests: XCTestCase {
             snapshot: jakarta, now: fixedNow, ai: Self.aiRows, agents: sessions, actions: builds))
     }
 
+    func testPhase7bHUDAndClipboard() throws {
+        var machine = NotchStateMachine()
+        let reading = HUDReading(kind: .volume, level: 0.72, timestamp: fixedNow)
+        machine.setHUD(reading)
+        XCTAssertEqual(machine.state, .hud(reading))
+        XCTAssertEqual(machine.escape(), .dismissedPeek)
+        XCTAssertEqual(machine.state, .collapsed)
+
+        let screen = ScreenMetrics(
+            frame: CGRect(x: 0, y: 0, width: 1512, height: 982),
+            visibleFrame: CGRect(x: 0, y: 0, width: 1512, height: 944),
+            safeAreaTop: 38, auxLeftWidth: 660, auxRightWidth: 660)
+        let hudSize = NotchGeometry.size(for: .hud, metrics: screen)
+        XCTAssertGreaterThanOrEqual(hudSize.width, NotchGeometry.hudSize.width)
+        XCTAssertGreaterThanOrEqual(hudSize.height, NotchGeometry.hudSize.height)
+
+        try render(HUDCapsuleView(reading: reading, topInset: 38), size: hudSize, name: "hud-capsule")
+
+        let clips = [
+            ClipboardItem(text: "xcodegen generate", copiedAt: fixedNow, sourceApp: "Terminal", isPinned: true),
+            ClipboardItem(text: "https://github.com/hystericmoon/ufuq", copiedAt: fixedNow, sourceApp: "Safari"),
+        ]
+        try renderBento(name: "expanded-bento-clipboard", content: BentoContent(
+            snapshot: jakarta, now: fixedNow, ai: Self.aiRows, clipboard: clips))
+    }
+
     private var jakarta: PrayerSnapshot? { PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation) }
 
     private static let aiRows = [

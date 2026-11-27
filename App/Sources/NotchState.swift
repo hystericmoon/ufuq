@@ -5,16 +5,18 @@ import UfuqCore
 enum NotchState: Equatable {
     case collapsed
     case peek(PeekEvent)
+    case hud(HUDReading)
     case expanded
 
     enum Kind: Equatable {
-        case collapsed, peek, expanded
+        case collapsed, peek, hud, expanded
     }
 
     var kind: Kind {
         switch self {
         case .collapsed: return .collapsed
         case .peek: return .peek
+        case .hud: return .hud
         case .expanded: return .expanded
         }
     }
@@ -22,10 +24,12 @@ enum NotchState: Equatable {
 
 extension NotchState {
     /// What one display's island shows: the full state on the active display; elsewhere an
-    /// expanded panel stays a collapsed pill (the peek, if one is waiting, still shows).
-    static func shown(_ state: NotchState, onActiveDisplay: Bool, peek: PeekEvent? = nil) -> NotchState {
+    /// expanded panel stays a collapsed pill (the peek or HUD, if one is waiting, still shows).
+    static func shown(_ state: NotchState, onActiveDisplay: Bool, peek: PeekEvent? = nil, hud: HUDReading? = nil) -> NotchState {
         guard state == .expanded, !onActiveDisplay else { return state }
-        return peek.map { .peek($0) } ?? .collapsed
+        if let peek { return .peek(peek) }
+        if let hud { return .hud(hud) }
+        return .collapsed
     }
 }
 
@@ -55,17 +59,23 @@ struct NotchStateMachine: Equatable {
     private(set) var isExpanded = false
     private(set) var origin: ExpandOrigin?
     private(set) var currentPeek: PeekEvent?
+    private(set) var currentHUD: HUDReading?
 
     init() {}
 
     var state: NotchState {
         if isExpanded { return .expanded }
         if let currentPeek { return .peek(currentPeek) }
+        if let currentHUD { return .hud(currentHUD) }
         return .collapsed
     }
 
     mutating func setPeek(_ event: PeekEvent?) {
         currentPeek = event
+    }
+
+    mutating func setHUD(_ reading: HUDReading?) {
+        currentHUD = reading
     }
 
     mutating func open(origin: ExpandOrigin) {
@@ -93,6 +103,10 @@ struct NotchStateMachine: Equatable {
         }
         if currentPeek != nil {
             currentPeek = nil
+            return .dismissedPeek
+        }
+        if currentHUD != nil {
+            currentHUD = nil
             return .dismissedPeek
         }
         return .ignored

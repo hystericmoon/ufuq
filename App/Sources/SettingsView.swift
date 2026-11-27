@@ -37,6 +37,8 @@ struct SettingsView: View {
     @AppStorage(AppSettings.hoverKey) private var hoverToOpen = false
     @AppStorage(AppSettings.syncKey) private var shareWithPhone = false
     @AppStorage(AppSettings.allDisplaysKey) private var allDisplays = true
+    @AppStorage(AppSettings.hudKey) private var systemHUDs = true
+    @AppStorage(AppSettings.clipboardKey) private var clipboardHistory = true
 
     @ObservedObject private var updater = UpdaterController.shared
     @ObservedObject private var sync = SyncService.shared
@@ -45,6 +47,11 @@ struct SettingsView: View {
         Form {
             Toggle("Open the panel when the pointer enters the notch", isOn: $hoverToOpen)
             Toggle("Show the island on every display", isOn: $allDisplays)
+            Toggle("System HUDs (volume, brightness, keyboard)", isOn: $systemHUDs)
+            Toggle("Clipboard history", isOn: $clipboardHistory)
+            Text("Keeps recent text copies in memory only; skips passwords.")
+                .font(.callout)
+                .foregroundStyle(.secondary)
             LaunchAtLoginToggle()
             Toggle("Share with phone on this network", isOn: $shareWithPhone)
                 .onChange(of: shareWithPhone) { _, _ in SyncService.shared.apply() }

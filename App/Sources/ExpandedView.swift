@@ -110,6 +110,8 @@ struct ExpandedView: View {
             ActionsTile(builds: content.actions, now: content.now)
         case .nowPlaying:
             if let nowPlaying = content.nowPlaying { NowPlayingTile(track: nowPlaying, now: content.now) }
+        case .clipboard:
+            ClipboardTile(items: content.clipboard)
         case .prayer, .ai:
             EmptyView()
         }
@@ -501,6 +503,57 @@ struct BatteryTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Battery")
         .accessibilityValue("\(status.percent) percent, \(status.stateText)")
+    }
+}
+
+// MARK: - Clipboard
+
+struct ClipboardTile: View {
+    let items: [ClipboardItem]
+    @ObservedObject private var monitor = ClipboardMonitor.shared
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TileLabel(title: "Clipboard", trailing: items.isEmpty ? nil : "\(items.count)")
+            ForEach(items.prefix(3)) { item in
+                Button {
+                    monitor.copy(item)
+                } label: {
+                    HStack(spacing: 4) {
+                        if item.isPinned {
+                            Image(systemName: "pin.fill")
+                                .font(.system(size: 8))
+                                .foregroundStyle(Tokens.accentPrayer)
+                                .accessibilityHidden(true)
+                        }
+                        Text(item.preview)
+                            .font(Tokens.Typography.caption)
+                            .foregroundStyle(Tokens.textPrimary)
+                            .lineLimit(1)
+                        Spacer(minLength: 4)
+                        if monitor.copiedItemID == item.id {
+                            Text("Copied")
+                                .font(.system(size: 9, weight: .semibold))
+                                .foregroundStyle(Tokens.accentPrayer)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, minHeight: 22, alignment: .leading)
+                    .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .contextMenu {
+                    Button(item.isPinned ? "Unpin" : "Pin") { monitor.togglePin(item.id) }
+                    Button("Delete", role: .destructive) { monitor.remove(item.id) }
+                    Divider()
+                    Button("Clear unpinned") { monitor.clearUnpinned() }
+                }
+                .accessibilityLabel(item.preview)
+                .accessibilityHint(item.isPinned ? "Pinned, press to copy" : "Press to copy")
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Clipboard")
     }
 }
 
