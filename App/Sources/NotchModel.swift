@@ -47,14 +47,6 @@ struct JellyPointer: Equatable {
     var pressed = false
 }
 
-/// A file being dragged toward the notch. `distance` is points from the screen's top edge;
-/// `x` is points from the body's centre. The neck shows under 160 pt, the drop zone under 60 pt.
-struct FileDragState: Equatable {
-    var distance: CGFloat
-    var x: CGFloat
-    var overDropZone: Bool { distance < 60 }
-}
-
 /// What the SwiftUI views observe. The controller writes it; views never write state directly.
 @MainActor
 final class NotchModel: ObservableObject {
@@ -78,12 +70,6 @@ final class NotchModel: ObservableObject {
     @Published var centerGap: CGFloat = 16
     /// Bumped each time the panel opens, so the expanded view moves keyboard and VoiceOver focus in.
     @Published var focusToken = 0
-    /// A file drag near the top edge of this display; nil when none (written by the tray code).
-    @Published var fileDrag: FileDragState?
-    /// Bumped each time the tray swallows a drop, so the body can bulge.
-    @Published var swallowToken = 0
-    /// The tray's items, mirrored for the views that animate around them.
-    @Published var tray: [TrayItem] = []
 
     // MARK: Phase 7 contract (set in the main session; each field has one writer)
 
