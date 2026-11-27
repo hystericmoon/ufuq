@@ -344,7 +344,13 @@ private struct AIRowView: View {
     let row: AIUsageRow
 
     private var percent: Int { Int((min(max(row.fraction, 0), 1) * 100).rounded(.down)) }
-    private var level: UsageLevel { UsageThresholds.default.level(for: row.fraction) }
+    /// Token and unavailable rows never use the amber or red levels.
+    private var level: UsageLevel { showsArc ? UsageThresholds.default.level(for: row.fraction) : .normal }
+
+    private var ringText: String {
+        if let tokens = row.tokens { return TokenFormat.compact(tokens) }
+        return row.isUnavailable ? "—" : "\(percent)"
+    }
 
     private var ringColor: Color {
         switch level {
@@ -359,18 +365,31 @@ private struct AIRowView: View {
         }
     }
 
+    private var isTokenRow: Bool { row.tokens != nil }
+    private var showsArc: Bool { !isTokenRow && !row.isUnavailable }
+
+    private var accessibilityValueText: String {
+        if !row.accessibilityValue.isEmpty { return row.accessibilityValue }
+        return "\(percent) percent of the 5-hour limit. \(row.detail)"
+    }
+
     var body: some View {
         HStack(spacing: 8) {
             ZStack {
                 Circle().stroke(Tokens.Fill.track, lineWidth: 3.5)
-                Circle()
-                    .trim(from: 0, to: min(max(row.fraction, 0), 1))
-                    .stroke(ringColor, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
-                    .rotationEffect(.degrees(-90))
-                Text("\(percent)")
+                if showsArc {
+                    Circle()
+                        .trim(from: 0, to: min(max(row.fraction, 0), 1))
+                        .stroke(ringColor, style: StrokeStyle(lineWidth: 3.5, lineCap: .round))
+                        .rotationEffect(.degrees(-90))
+                }
+                Text(ringText)
                     .font(Tokens.Typography.ring)
                     .monospacedDigit()
-                    .foregroundStyle(Tokens.textPrimary)
+                    .minimumScaleFactor(0.6)
+                    .lineLimit(1)
+                    .foregroundStyle(row.isUnavailable ? Tokens.textMuted : Tokens.textPrimary)
+                    .padding(.horizontal, 4)
             }
             .frame(width: 32, height: 32)
 
@@ -392,7 +411,7 @@ private struct AIRowView: View {
                 Text(row.detail)
                     .font(Tokens.Typography.caption)
                     .monospacedDigit()
-                    .foregroundStyle(level >= .warning ? ringColor : Tokens.textSecondary)
+                    .foregroundStyle(level >= .warning ? ringColor : (row.isUnavailable ? Tokens.textMuted : Tokens.textSecondary))
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
@@ -400,7 +419,7 @@ private struct AIRowView: View {
         .frame(height: 36)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.name + (row.isBetaSource ? ", beta source" : ""))
-        .accessibilityValue("\(percent) percent of the 5-hour limit. \(row.detail)")
+        .accessibilityValue(accessibilityValueText)
     }
 }
 
