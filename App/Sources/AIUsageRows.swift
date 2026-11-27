@@ -55,8 +55,8 @@ enum AIUsageRows {
 
     /// "2 h 10 min", "38 min", "2 h", "under 1 min". Rounds up to the minute.
     static func duration(_ interval: TimeInterval) -> String {
-        let minutes = Int((max(0, interval) / 60).rounded(.up))
-        if minutes == 0 { return "under 1 min" }
+        if interval < 60 { return "under 1 min" }
+        let minutes = Int((interval / 60).rounded(.up))
         let h = minutes / 60, m = minutes % 60
         if h == 0 { return "\(m) min" }
         return m == 0 ? "\(h) h" : "\(h) h \(m) min"
