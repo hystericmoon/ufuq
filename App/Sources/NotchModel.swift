@@ -16,6 +16,8 @@ struct AIUsageRow: Equatable, Identifiable {
     var fraction: Double
     /// e.g. "Week 41% · resets in 2 h 10 min".
     var detail: String
+    /// Optional second line (e.g. "7d 18.4M · ~$14.20" or secondary Codex window).
+    var secondaryDetail: String? = nil
     var isBetaSource = false
     /// Non-nil for a Claude token-count row: tokens in the current 5-hour block, no percent.
     var tokens: Int? = nil

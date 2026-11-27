@@ -17,6 +17,8 @@ public struct AIUsageLine: Equatable, Sendable, Identifiable {
     public var isBetaSource: Bool
     public var paceTokensPerHour: Int?
     public var estimatedCostUSD: Double?
+    public var weeklyTokens: Int?
+    public var weeklyEstimatedCostUSD: Double?
 
     public init(
         id: String,
@@ -25,7 +27,9 @@ public struct AIUsageLine: Equatable, Sendable, Identifiable {
         value: Value,
         isBetaSource: Bool = false,
         paceTokensPerHour: Int? = nil,
-        estimatedCostUSD: Double? = nil
+        estimatedCostUSD: Double? = nil,
+        weeklyTokens: Int? = nil,
+        weeklyEstimatedCostUSD: Double? = nil
     ) {
         self.id = id
         self.provider = provider
@@ -34,6 +38,8 @@ public struct AIUsageLine: Equatable, Sendable, Identifiable {
         self.isBetaSource = isBetaSource
         self.paceTokensPerHour = paceTokensPerHour
         self.estimatedCostUSD = estimatedCostUSD
+        self.weeklyTokens = weeklyTokens
+        self.weeklyEstimatedCostUSD = weeklyEstimatedCostUSD
     }
 }
 
@@ -139,13 +145,19 @@ public final class AIUsageModule: UfuqModule {
                     pace = nil
                     cost = nil
                 }
+                let weekStart = now.addingTimeInterval(-ClaudeLogParser.weekLength)
+                let weeklyEntries = report.entries.filter { $0.timestamp > weekStart && $0.timestamp <= now }
+                let weeklyTotal = weeklyEntries.reduce(TokenCounts()) { $0 + $1.tokens }.total
+                let weeklyUSD = ClaudeCost.estimateUSD(entries: weeklyEntries)
                 out.append(AIUsageLine(
                     id: id,
                     provider: .claude,
                     name: account.name,
                     value: .tokens(count: block?.tokens.total ?? 0, resetsAt: block?.end),
                     paceTokensPerHour: pace,
-                    estimatedCostUSD: cost
+                    estimatedCostUSD: cost,
+                    weeklyTokens: weeklyTotal > 0 ? weeklyTotal : nil,
+                    weeklyEstimatedCostUSD: weeklyUSD > 0 ? weeklyUSD : nil
                 ))
             case .unavailable(let reason):
                 out.append(AIUsageLine(id: id, provider: .claude, name: account.name, value: .unavailable(reason: reason)))
@@ -166,7 +178,8 @@ public final class AIUsageModule: UfuqModule {
                 provider: .antigravity,
                 name: "Antigravity",
                 value: .tokens(count: report.tokens, resetsAt: report.resetsAt),
-                isBetaSource: true
+                isBetaSource: true,
+                weeklyTokens: report.weeklyTokens > 0 ? report.weeklyTokens : nil
             ))
         case .unavailable(let reason):
             out.append(AIUsageLine(

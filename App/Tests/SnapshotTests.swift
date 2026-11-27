@@ -86,6 +86,7 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(rows[2].fraction, 0.41, accuracy: 0.0001)
         XCTAssertNil(rows[2].tokens)
         XCTAssertEqual(rows[2].detail, "Week 41% est. · resets in 2 h 10 min")
+        XCTAssertEqual(rows[2].secondaryDetail, "5-hour 20%")
         XCTAssertTrue(rows[3].isUnavailable)
         XCTAssertEqual(rows[3].detail, "Unavailable")
         XCTAssertEqual(AIUsageRows.duration(38 * 60), "38 min")
@@ -95,7 +96,18 @@ final class SnapshotTests: XCTestCase {
             AIUsageLine(
                 id: "c3", provider: .claude, name: "Claude",
                 value: .tokens(count: 4_200_000, resetsAt: now.addingTimeInterval(130 * 60)),
-                paceTokensPerHour: 1_800_000, estimatedCostUSD: 4.20
+                paceTokensPerHour: 1_800_000, estimatedCostUSD: 4.20,
+                weeklyTokens: 18_400_000, weeklyEstimatedCostUSD: 14.20
+            ),
+            AIUsageLine(
+                id: "c4", provider: .claude, name: "Claude · Idle",
+                value: .tokens(count: 0, resetsAt: nil),
+                weeklyTokens: 6_200_000, weeklyEstimatedCostUSD: 5.10
+            ),
+            AIUsageLine(
+                id: "ag-ok", provider: .antigravity, name: "Antigravity",
+                value: .tokens(count: 1_200_000, resetsAt: now.addingTimeInterval(60 * 60)),
+                isBetaSource: true, weeklyTokens: 6_200_000
             ),
             AIUsageLine(
                 id: "ag", provider: .antigravity, name: "Antigravity",
@@ -103,10 +115,15 @@ final class SnapshotTests: XCTestCase {
             ),
         ], now: now)
         XCTAssertEqual(paced[0].detail, "1.8M/h · ~$4.20 · 2 h 10 m")
+        XCTAssertEqual(paced[0].secondaryDetail, "7d 18.4M · ~$14.20")
         XCTAssertTrue(paced[0].accessibilityValue.contains("pace 1.8 million tokens per hour"))
         XCTAssertTrue(paced[0].accessibilityValue.contains("estimated cost 4 dollars 20 cents"))
-        XCTAssertTrue(paced[1].isBetaSource)
-        XCTAssertTrue(paced[1].isUnavailable)
+        XCTAssertTrue(paced[0].accessibilityValue.contains("7-day total"))
+        XCTAssertEqual(paced[1].detail, "No session running")
+        XCTAssertEqual(paced[1].secondaryDetail, "7d 6.2M · ~$5.10")
+        XCTAssertEqual(paced[2].secondaryDetail, "7d 6.2M")
+        XCTAssertTrue(paced[3].isBetaSource)
+        XCTAssertTrue(paced[3].isUnavailable)
     }
 
     func testExpandedBentoUnavailable() throws {

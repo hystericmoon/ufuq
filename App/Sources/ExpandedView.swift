@@ -371,7 +371,7 @@ struct AITile: View {
                 .accessibilityElement(children: .combine)
                 Spacer(minLength: 0)
             } else {
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: rows.contains(where: { $0.secondaryDetail != nil }) ? 6 : 8) {
                     ForEach(rows.prefix(4)) { row in
                         AIRowView(row: row)
                     }
@@ -455,10 +455,17 @@ private struct AIRowView: View {
                     .monospacedDigit()
                     .foregroundStyle(level >= .warning ? ringColor : (row.isUnavailable ? Tokens.textMuted : Tokens.textSecondary))
                     .lineLimit(1)
+                if let secondary = row.secondaryDetail, !secondary.isEmpty {
+                    Text(secondary)
+                        .font(Tokens.Typography.caption)
+                        .monospacedDigit()
+                        .foregroundStyle(Tokens.textMuted)
+                        .lineLimit(1)
+                }
             }
             Spacer(minLength: 0)
         }
-        .frame(height: 36)
+        .frame(minHeight: 36)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(row.name + (row.isBetaSource ? ", beta source" : ""))
         .accessibilityValue(accessibilityValueText)
