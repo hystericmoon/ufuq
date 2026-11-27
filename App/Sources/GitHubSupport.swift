@@ -26,11 +26,14 @@ enum GitHubSupport {
 
     static func tokenSource() -> GitHubTokenSource {
         GitHubTokenSource(
-            runCommand: { run($0, $1) },
+            runCommand: { ghCache.value(for: $0, $1) },
             readFile: { try? String(contentsOfFile: $0, encoding: .utf8) },
             fileExists: { FileManager.default.fileExists(atPath: $0) },
             tokenPath: tokenPath)
     }
+
+    /// `gh auth token` launches a process; polls run every 15–60 s, so reuse the answer for 10 min.
+    static let ghCache = CommandCache(ttl: 600) { run($0, $1) }
 
     /// Runs an executable with a 5 s timeout; nil if it does not exist or cannot start.
     static func run(_ path: String, _ arguments: [String]) -> (status: Int32, stdout: String)? {
@@ -106,5 +109,40 @@ final class AutoRepoStore: @unchecked Sendable {
         for repo in found { lastSeen[repo] = time }
         lastSeen = lastSeen.filter { time.timeIntervalSince($0.value) < Self.retention }
         return lastSeen.sorted { $0.value != $1.value ? $0.value > $1.value : $0.key < $1.key }.map(\.key)
+    }
+}
+
+/// Caches a command's result per path + arguments for `ttl` seconds.
+final class CommandCache: @unchecked Sendable {
+    typealias Result = (status: Int32, stdout: String)?
+    private let ttl: TimeInterval
+    private let runner: (String, [String]) -> Result
+    private let lock = NSLock()
+    private var entries: [String: (at: Date, result: Result)] = [:]
+
+    init(ttl: TimeInterval, runner: @escaping (String, [String]) -> Result) {
+        self.ttl = ttl
+        self.runner = runner
+    }
+
+    func value(for path: String, _ arguments: [String]) -> Result {
+        let key = ([path] + arguments).joined(separator: "\u{0}")
+        lock.lock()
+        if let entry = entries[key], Date().timeIntervalSince(entry.at) < ttl {
+            lock.unlock()
+            return entry.result
+        }
+        lock.unlock()
+        let result = runner(path, arguments)
+        lock.lock()
+        entries[key] = (Date(), result)
+        lock.unlock()
+        return result
+    }
+
+    func clear() {
+        lock.lock()
+        entries.removeAll()
+        lock.unlock()
     }
 }
