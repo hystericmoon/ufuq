@@ -135,9 +135,15 @@ private final class ScreenIsland {
         self.displayID = displayID
         self.metrics = metrics
         panel = NotchPanel(contentRect: NotchGeometry.paddedWindowFrame(for: .collapsed, metrics: metrics))
+        let container = NSView(frame: panel.contentRect(forFrameRect: panel.frame))
+        container.autoresizingMask = [.width, .height]
         hostingView = NotchHostingView(rootView: NotchRootView(model: model))
         hostingView.sizingOptions = []
-        panel.contentView = hostingView
+        hostingView.translatesAutoresizingMaskIntoConstraints = true
+        hostingView.frame = container.bounds
+        hostingView.autoresizingMask = [.width, .height]
+        container.addSubview(hostingView)
+        panel.contentView = container
     }
 
     func close() {
@@ -640,6 +646,7 @@ final class NotchController: NSObject {
             neck: neck ?? (island.model.fileDrag != nil))
         let current = island.panel.frame
         island.shrinkTask?.cancel()
+        guard target != current else { return }
         let shrinking = target.width < current.width || target.height < current.height
         if shrinking {
             island.shrinkTask = Task { [weak island] in

@@ -19,7 +19,7 @@ settings:
     CODE_SIGN_IDENTITY: "-"
     CODE_SIGN_STYLE: Manual
     # Release workflow overrides these from VERSION and the run number.
-    MARKETING_VERSION: "0.4.0"
+    MARKETING_VERSION: "0.4.1"
     CURRENT_PROJECT_VERSION: "1"
     # Sparkle EdDSA public key. Empty in dev/CI builds: the updater stays off.
     # The release workflow passes it from the repo variable SPARKLE_PUBLIC_KEY.
