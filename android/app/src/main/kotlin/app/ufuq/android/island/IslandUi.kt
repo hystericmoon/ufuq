@@ -28,6 +28,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -286,7 +287,7 @@ private fun SliderLabel(model: SliderModel, secondary: String?, ink: Color, ink2
 fun SliderCaption(text: String?, modifier: Modifier = Modifier) {
     Text(
         text.orEmpty(),
-        modifier.fillMaxWidth().height(16.dp).clearAndSetSemantics { },
+        modifier.fillMaxWidth().heightIn(min = 16.dp).clearAndSetSemantics { },
         color = IslandColors.Ink2,
         fontFamily = IslandFont,
         fontSize = 12.sp,

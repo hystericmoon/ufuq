@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -200,14 +201,14 @@ fun IslandSlider(model: SliderModel, modifier: Modifier = Modifier, pageHint: St
 
 /**
  * The trailing text (reset time) on its own line under the track, ending where the track ends, so
- * the handle never covers it. Always 16 dp tall, empty or not, so pages line up. Hidden from the
+ * the handle never covers it. At least 16 dp tall, empty or not, so pages line up. Hidden from the
  * screen reader: the slider's description already says it.
  */
 @Composable
 fun SliderCaption(text: String?, modifier: Modifier = Modifier) {
     Text(
         text.orEmpty(),
-        modifier.fillMaxWidth().height(16.dp).clearAndSetSemantics { },
+        modifier.fillMaxWidth().heightIn(min = 16.dp).clearAndSetSemantics { },
         color = IslandColors.Ink2,
         fontFamily = IslandFont,
         fontSize = 12.sp,
