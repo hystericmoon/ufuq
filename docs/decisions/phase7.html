@@ -1,0 +1,128 @@
+<title>Ufuq Phase 7 Choices</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: one column of decisions; each = context line, option cards with a notch mockup, recommendation chip */
+:root{
+  --bg:#f5f5f7;--surface:#ffffff;--fg:#1d1d1f;--muted:#5e5e63;--line:#d9d9de;
+  --rec:#0a7a3b;--recbg:#e3f4ea;--risk-h:#b3261e;--risk-m:#8a5a00;
+  --notch:#000;--n1:#fff;--n2:#a1a1a6;--n3:#8e8e93;--ring:#30d158;
+  --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Inter",system-ui,sans-serif;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#111113;--surface:#1c1c1f;--fg:#f2f2f4;--muted:#a1a1a6;--line:#333338;--rec:#4ade80;--recbg:#12301f;--risk-h:#ff8a80;--risk-m:#f5c065;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#111113;--surface:#1c1c1f;--fg:#f2f2f4;--muted:#a1a1a6;--line:#333338;--rec:#4ade80;--recbg:#12301f;--risk-h:#ff8a80;--risk-m:#f5c065;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:var(--sans);line-height:1.5}
+.wrap{max-width:980px;margin:0 auto;padding-block:32px 64px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:40px}
+h1{font-size:28px;margin:0;text-wrap:balance}
+h2{font-size:20px;margin:0 0 4px;text-wrap:balance}
+p{margin:0;max-width:68ch}
+.lede{color:var(--muted)}
+.summary{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 20px;display:grid;gap:6px}
+.summary b{color:var(--rec)}
+section{display:grid;gap:14px}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px}
+.opt{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:10px;align-content:start;min-width:0}
+.opt.rec{border:2px solid var(--rec)}
+.opt h3{font-size:15px;margin:0;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.chip{font-size:11px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;padding:2px 8px;border-radius:99px;background:var(--recbg);color:var(--rec)}
+.risk{font-size:12px;font-weight:600}
+.risk.h{color:var(--risk-h)}.risk.m{color:var(--risk-m)}.risk.l{color:var(--rec)}
+ul{margin:0;padding-left:18px;font-size:13px;color:var(--muted);display:grid;gap:2px}
+.stage{background:linear-gradient(160deg,#5b6b8c,#a7b4c9);border-radius:10px;padding:14px 10px;display:flex;justify-content:center;overflow-x:auto}
+/* notch mockups, tokens from .claude/rules/ui.md */
+.notch{background:var(--notch);color:var(--n1);border-radius:0 0 14px 14px;font:600 13px/1 var(--sans);display:flex;align-items:center;gap:10px;padding:8px 12px;white-space:nowrap}
+.notch .cam{width:110px;height:14px}
+.dim{color:var(--n2)}
+.art{width:16px;height:16px;border-radius:4px;background:linear-gradient(135deg,#ff6a3d,#c1306b)}
+.bars{display:flex;gap:2px;align-items:end;height:12px}.bars i{width:2px;background:#30d158;border-radius:1px}
+.panel{background:#111;border-radius:0 0 22px 22px;padding:10px;display:flex;gap:8px;color:var(--n1);font-family:var(--sans)}
+.tile{background:#1f1f22;border-radius:14px;padding:10px;display:grid;gap:6px;align-content:start}
+.tile .lbl{font:600 11px/1 var(--sans);color:var(--n2);text-transform:uppercase;letter-spacing:.04em}
+.tile .val{font:600 12px/1.25 var(--sans)}
+.tile .cap{font:400 11px/1.2 var(--sans);color:var(--n3)}
+.btns{display:flex;gap:6px}.btns span{width:28px;height:28px;border-radius:8px;background:#2c2c30;display:grid;place-items:center;font-size:11px}
+.scrub{height:4px;border-radius:2px;background:#3a3a3e;position:relative}.scrub::after{content:"";position:absolute;inset:0 62% 0 0;background:#fff;border-radius:2px}
+.ghost{opacity:.45}
+.a11y{font-size:13px;border-left:3px solid var(--line);padding-left:12px;color:var(--muted)}
+code{font-size:12px}
+</style>
+
+<div class="wrap">
+  <header style="display:grid;gap:8px">
+    <h1>Phase 7: Media and Shelf, three calls</h1>
+    <p class="lede">Since macOS 15.4, third-party apps can't read Now Playing directly, and macOS 26 moved the volume HUD. Those two facts change what Phase 7 can promise. Pick one option per section; the green border is my recommendation.</p>
+  </header>
+
+  <div class="summary">
+    <div><b>1 · Source:</b> adapter + Spotify fallback (C)</div>
+    <div><b>2 · Open panel:</b> small media tile beside Battery (B)</div>
+    <div><b>3 · Scope:</b> Now Playing + Shelf now; HUD and clipboard after a Mac spike (B)</div>
+  </div>
+
+  <section>
+    <div><h2>1. Where Now Playing comes from</h2>
+    <p class="lede">Every source is undocumented, so the module must report "unavailable" when one breaks, not crash.</p></div>
+    <div class="opts">
+      <div class="opt">
+        <h3>A · MediaRemote adapter</h3>
+        <span class="risk m">Risk: medium</span>
+        <ul><li>Every player: Spotify, Music, browsers, podcasts</li><li>A bundled helper run through the system Perl, which Apple still allows; BSD-3 licence</li><li>Not confirmed on macOS 26; its own <code>test</code> command checks it at launch</li></ul>
+      </div>
+      <div class="opt">
+        <h3>B · AppleScript only</h3>
+        <span class="risk h">Risk: high</span>
+        <ul><li>Spotify and Music.app only, no browsers</li><li>An Automation prompt per player</li><li>Music.app's track and position are reported broken on macOS 26</li></ul>
+      </div>
+      <div class="opt rec">
+        <h3>C · Adapter, Spotify fallback <span class="chip">Recommended</span></h3>
+        <span class="risk l">Risk: low overall</span>
+        <ul><li>Adapter first; if its self-test fails, Spotify via AppleScript</li><li>If both fail, the tile shows "Now Playing unavailable"</li><li>Settings shows which source is in use, like "Using gh (login)"</li></ul>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div><h2>2. Media in the open panel</h2>
+    <p class="lede">Collapsed is already decided: media is a third activity in the right wing and takes 8 s turns with AI.</p></div>
+    <div class="stage"><div class="notch"><span>Asr 15:12</span><span class="cam"></span><span class="art"></span><span class="bars"><i style="height:6px"></i><i style="height:11px"></i><i style="height:8px"></i></span><span class="dim">Nadin Amizah</span></div></div>
+    <div class="opts">
+      <div class="opt">
+        <h3>A · Tall tile</h3>
+        <div class="stage"><div class="panel"><div class="tile ghost" style="width:60px;height:150px"><span class="lbl">Prayer</span></div><div class="tile ghost" style="width:64px;height:150px"><span class="lbl">AI</span></div><div class="tile" style="width:110px;height:150px"><span class="lbl">Now Playing</span><div class="art" style="width:56px;height:56px;border-radius:8px"></div><span class="val">Bertaut</span><div class="scrub"></div><div class="btns"><span>◀◀</span><span>❚❚</span><span>▶▶</span></div></div></div></div>
+        <ul><li>Room for artwork and a scrubber</li><li>Panel grows from 648 to about 870 pt, too wide on a 13" screen</li></ul>
+      </div>
+      <div class="opt rec">
+        <h3>B · Small tile <span class="chip">Recommended</span></h3>
+        <div class="stage"><div class="panel"><div class="tile ghost" style="width:60px;height:150px"><span class="lbl">Prayer</span></div><div class="tile ghost" style="width:64px;height:150px"><span class="lbl">AI</span></div><div style="display:grid;gap:8px"><div class="tile ghost" style="width:120px;height:58px"><span class="lbl">Battery</span></div><div class="tile" style="width:120px"><div style="display:flex;gap:6px;align-items:center"><div class="art" style="width:24px;height:24px"></div><div style="min-width:0"><div class="val">Bertaut</div><div class="cap">Nadin Amizah</div></div></div><div class="btns"><span>◀◀</span><span>❚❚</span><span>▶▶</span></div></div></div></div></div>
+        <ul><li>Fits the 144×112 grid next to Battery; width stays 648 pt</li><li>No scrubber; seek with ←→ when the tile has focus</li></ul>
+      </div>
+      <div class="opt">
+        <h3>C · Strip under the notch</h3>
+        <div class="stage"><div class="panel" style="flex-direction:column"><div style="display:flex;gap:8px"><div class="tile ghost" style="width:60px;height:90px"><span class="lbl">Prayer</span></div><div class="tile ghost" style="width:64px;height:90px"><span class="lbl">AI</span></div></div><div class="tile" style="display:flex;gap:8px;align-items:center"><div class="art" style="width:24px;height:24px"></div><span class="val">Bertaut</span><div class="btns"><span>❚❚</span></div></div></div></div>
+        <ul><li>Familiar from other notch apps</li><li>Breaks the bento grid; the panel gets taller for everyone</li></ul>
+      </div>
+    </div>
+    <p class="a11y">Accessibility for any option: buttons at 28 pt with labels ("Pause, Bertaut by Nadin Amizah"); the tile is one VoiceOver element with the play state as its value; Space toggles play and ←→ seek 10 s; the bars stay still under Reduce Motion; artwork is decorative.</p>
+  </section>
+
+  <section>
+    <div><h2>3. What Phase 7 ships</h2>
+    <p class="lede">Replacing the HUD and clipboard history both depend on how macOS 26 behaves, and that can only be tested on your Mac.</p></div>
+    <div class="opts">
+      <div class="opt">
+        <h3>A · Everything in the plan</h3>
+        <span class="risk h">Risk: high</span>
+        <ul><li>Now Playing, Shelf + AirDrop, HUD replacement, clipboard history</li><li>The HUD needs Accessibility access to intercept the media keys; brightness uses private APIs</li><li>Clipboard history may trigger macOS's "paste from other apps" prompt every time it reads</li></ul>
+      </div>
+      <div class="opt rec">
+        <h3>B · Ship the safe half, test the rest <span class="chip">Recommended</span></h3>
+        <span class="risk l">Risk: low</span>
+        <ul><li>Phase 7: Now Playing + file Shelf with AirDrop</li><li>Phase 7b: a small debug build checks the HUD key interception and clipboard reads on your Mac, then we decide</li><li>Done-when becomes: Spotify and a browser show with controls; a file dropped on the shelf can be AirDropped</li></ul>
+      </div>
+      <div class="opt">
+        <h3>C · Now Playing only</h3>
+        <span class="risk l">Risk: low</span>
+        <ul><li>Fastest</li><li>Shelf waits, though it carries little risk</li></ul>
+      </div>
+    </div>
+  </section>
+</div>

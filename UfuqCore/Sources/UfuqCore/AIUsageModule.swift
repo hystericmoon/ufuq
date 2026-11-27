@@ -50,6 +50,7 @@ public final class AIUsageModule: UfuqModule {
     private let codexSessionsDir: String?
     private let fileSource: FileSource
     private let directoryExists: @Sendable (String) -> Bool
+    private let cache = ClaudeLogCache()
     private let lock = NSLock()
     private var state: State
 
@@ -76,8 +77,9 @@ public final class AIUsageModule: UfuqModule {
         let (dirs, codexDir) = withLock { ($0.claude.map(\.dir), codexSessionsDir) }
         let source = fileSource
         let exists = directoryExists
+        let cache = cache
         let (claude, codex) = await Task.detached { () -> ([UsageResult<ClaudeUsageReport>], UsageResult<CodexRateLimits>?) in
-            let claude = dirs.map { ClaudeLogParser.parse(configDir: $0, source: source) }
+            let claude = dirs.map { ClaudeLogParser.parse(configDir: $0, source: source, cache: cache) }
             var codex: UsageResult<CodexRateLimits>?
             if let codexDir, exists(codexDir) {
                 codex = CodexParser.parse(sessionsDir: codexDir, source: source, now: Date())

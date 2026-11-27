@@ -138,3 +138,112 @@ final class AIUsageModuleTests: XCTestCase {
         XCTAssertNil(try m.collapsedActivity(at: utc("2026-11-27T14:00:00Z")))
     }
 }
+
+/// Records reads; modification dates and sizes are settable (absent mtime = unknown).
+private final class CacheTestSource: FileSource, @unchecked Sendable {
+    private let lock = NSLock()
+    private var files: [String: String]
+    private var mtimes: [String: Date] = [:]
+    private var log: [String] = []
+
+    init(_ files: [String: String]) {
+        self.files = files
+        for path in files.keys { mtimes[path] = Date(timeIntervalSince1970: 1_000) }
+    }
+
+    var reads: [String] { lock.lock(); defer { lock.unlock() }; return log.sorted() }
+    func resetReads() { lock.lock(); log = []; lock.unlock() }
+    func setMtime(_ path: String, _ date: Date?) { lock.lock(); mtimes[path] = date; lock.unlock() }
+    func remove(_ path: String) { lock.lock(); files[path] = nil; mtimes[path] = nil; lock.unlock() }
+
+    func files(under directory: String, suffix: String) throws -> [String] {
+        lock.lock(); defer { lock.unlock() }
+        return files.keys.filter { $0.hasPrefix(directory + "/") && $0.hasSuffix(suffix) }.sorted()
+    }
+
+    func read(_ path: String) throws -> Data {
+        lock.lock(); defer { lock.unlock() }
+        log.append(path)
+        guard let text = files[path] else { throw FileSourceError("missing") }
+        return Data(text.utf8)
+    }
+
+    func modificationDate(_ path: String) -> Date? { lock.lock(); defer { lock.unlock() }; return mtimes[path] }
+    func size(_ path: String) -> Int? { lock.lock(); defer { lock.unlock() }; return files[path]?.utf8.count }
+}
+
+final class ClaudeLogCacheTests: XCTestCase {
+    private let dir = "/h/.claude"
+    private let a = "/h/.claude/projects/p/a.jsonl"
+    private let b = "/h/.claude/projects/p/b.jsonl"
+
+    private func line(_ id: String, _ time: String, input: Int) -> String {
+        #"{"type":"assistant","timestamp":"\#(time)","requestId":"r_\#(id)","message":{"id":"m_\#(id)","usage":{"input_tokens":\#(input),"output_tokens":0}}}"# + "\n"
+    }
+
+    private func report(_ r: UsageResult<ClaudeUsageReport>) throws -> ClaudeUsageReport {
+        guard case .available(let report) = r else { throw FileSourceError("unavailable") }
+        return report
+    }
+
+    private func total(_ r: ClaudeUsageReport) -> Int { r.entries.reduce(0) { $0 + $1.tokens.total } }
+
+    private func makeSource() -> CacheTestSource {
+        CacheTestSource([a: line("1", "2026-11-26T13:00:00Z", input: 10), b: line("2", "2026-11-26T13:10:00Z", input: 20)])
+    }
+
+    func testUnchangedFilesAreNotReadAgain() throws {
+        let source = makeSource()
+        let cache = ClaudeLogCache()
+        let first = try report(ClaudeLogParser.parse(configDir: dir, source: source, cache: cache))
+        XCTAssertEqual(source.reads, [a, b])
+        source.resetReads()
+        let second = try report(ClaudeLogParser.parse(configDir: dir, source: source, cache: cache))
+        XCTAssertEqual(source.reads, [])
+        XCTAssertEqual(first, second)
+        XCTAssertEqual(total(second), 30)
+    }
+
+    func testChangedMtimeRereadsOnlyThatFile() throws {
+        let source = makeSource()
+        let cache = ClaudeLogCache()
+        _ = ClaudeLogParser.parse(configDir: dir, source: source, cache: cache)
+        source.resetReads()
+        source.setMtime(b, Date(timeIntervalSince1970: 2_000))
+        _ = ClaudeLogParser.parse(configDir: dir, source: source, cache: cache)
+        XCTAssertEqual(source.reads, [b])
+    }
+
+    func testUnknownMtimeIsAlwaysRead() throws {
+        let source = makeSource()
+        source.setMtime(a, nil)
+        let cache = ClaudeLogCache()
+        _ = ClaudeLogParser.parse(configDir: dir, source: source, cache: cache)
+        source.resetReads()
+        _ = ClaudeLogParser.parse(configDir: dir, source: source, cache: cache)
+        XCTAssertEqual(source.reads, [a])
+    }
+
+    func testDedupeAcrossFilesWithOneFromCache() throws {
+        let dup = line("1", "2026-11-26T13:00:00Z", input: 10)
+        let source = CacheTestSource([a: dup, b: dup])
+        let cache = ClaudeLogCache()
+        _ = ClaudeLogParser.parse(configDir: dir, source: source, cache: cache)
+        source.resetReads()
+        source.setMtime(b, Date(timeIntervalSince1970: 2_000))
+        let r = try report(ClaudeLogParser.parse(configDir: dir, source: source, cache: cache))
+        XCTAssertEqual(source.reads, [b])
+        XCTAssertEqual(r.entries.count, 1)
+        XCTAssertEqual(total(r), 10)
+        XCTAssertEqual(r.duplicatesDropped, 1)
+    }
+
+    func testRemovedFileDropsOut() throws {
+        let source = makeSource()
+        let cache = ClaudeLogCache()
+        _ = ClaudeLogParser.parse(configDir: dir, source: source, cache: cache)
+        source.remove(b)
+        let r = try report(ClaudeLogParser.parse(configDir: dir, source: source, cache: cache))
+        XCTAssertEqual(total(r), 10)
+    }
+}

@@ -79,7 +79,10 @@ public enum ClaudeLogParser {
     }
 
     /// Reads every `projects/**/*.jsonl` under `configDir` (`~` is expanded), one file at a time.
-    public static func parse(configDir: String, source: FileSource = LocalFileSource()) -> UsageResult<ClaudeUsageReport> {
+    /// With a `cache`, a file whose modification date (known) and size are unchanged is not read
+    /// again; the result is identical to parsing everything.
+    public static func parse(configDir: String, source: FileSource = LocalFileSource(),
+                             cache: ClaudeLogCache? = nil) -> UsageResult<ClaudeUsageReport> {
         let projects = ((configDir as NSString).expandingTildeInPath as NSString).appendingPathComponent("projects")
         let paths: [String]
         do {
@@ -90,9 +93,22 @@ public enum ClaudeLogParser {
 
         var acc = Accumulator()
         var failed = 0
+        var kept: [String: ClaudeLogCache.Entry] = [:]
         for path in paths {
-            if let data = try? source.read(path) { acc.ingest(data) } else { failed += 1 }
+            let mtime = source.modificationDate(path)
+            let size = source.size(path)
+            if let mtime, let cached = cache?.entry(for: path), cached.mtime == mtime, cached.size == size {
+                acc.merge(cached.parsed)
+                kept[path] = cached
+            } else if let data = try? source.read(path) {
+                let parsed = FileParse(data)
+                acc.merge(parsed)
+                if let mtime { kept[path] = ClaudeLogCache.Entry(mtime: mtime, size: size, parsed: parsed) }
+            } else {
+                failed += 1
+            }
         }
+        cache?.update(directory: projects, kept: kept)
         if !paths.isEmpty, acc.filesRead == 0 {
             return .unavailable(reason: "No Claude log file could be read (\(failed) failed)")
         }
@@ -102,21 +118,17 @@ public enum ClaudeLogParser {
     /// Parses raw JSONL file contents.
     public static func parse(files: [Data], filesFailed: Int = 0) -> UsageResult<ClaudeUsageReport> {
         var acc = Accumulator()
-        for data in files { acc.ingest(data) }
+        for data in files { acc.merge(FileParse(data)) }
         return acc.finish(filesFailed: filesFailed)
     }
 
-    /// Folds files in one at a time so only the deduplicated entries stay in memory.
-    private struct Accumulator {
-        var byKey: [String: ClaudeUsageEntry] = [:]
-        var keyless: [ClaudeUsageEntry] = []
+    /// What one file holds, before deduplication across files.
+    struct FileParse: Sendable {
+        var entries: [(key: String?, entry: ClaudeUsageEntry)] = []
         var skipped = 0
-        var duplicates = 0
         var validObjects = 0
-        var filesRead = 0
 
-        mutating func ingest(_ data: Data) {
-            filesRead += 1
+        init(_ data: Data) {
             JSONLines.forEachObject(in: data) { object in
                 guard let object else { skipped += 1; return }
                 validObjects += 1
@@ -135,8 +147,26 @@ public enum ClaudeLogParser {
                 // Prefixes keep a message id "x" apart from a request id "x".
                 let ids = [(message["id"] as? String).map { "m:" + $0 }, (object["requestId"] as? String).map { "r:" + $0 }]
                     .compactMap { $0 }
-                if ids.isEmpty { keyless.append(entry); return }
-                let key = ids.joined(separator: "|")
+                entries.append((ids.isEmpty ? nil : ids.joined(separator: "|"), entry))
+            }
+        }
+    }
+
+    /// Folds files in one at a time so only the deduplicated entries stay in memory.
+    private struct Accumulator {
+        var byKey: [String: ClaudeUsageEntry] = [:]
+        var keyless: [ClaudeUsageEntry] = []
+        var skipped = 0
+        var duplicates = 0
+        var validObjects = 0
+        var filesRead = 0
+
+        mutating func merge(_ file: FileParse) {
+            filesRead += 1
+            skipped += file.skipped
+            validObjects += file.validObjects
+            for (key, entry) in file.entries {
+                guard let key else { keyless.append(entry); continue }
                 if let existing = byKey[key] {
                     duplicates += 1
                     // Streamed duplicates grow as the message completes; keep the fullest.
@@ -182,5 +212,34 @@ public enum ClaudeLogParser {
             }
         }
         return result
+    }
+}
+
+/// Per-file parse results, keyed by full path, so unchanged log files are not read again.
+/// Shared across config dirs. A file with an unknown modification date is never cached.
+public final class ClaudeLogCache: @unchecked Sendable {
+    struct Entry: Sendable {
+        var mtime: Date
+        var size: Int?
+        var parsed: ClaudeLogParser.FileParse
+    }
+
+    private let lock = NSLock()
+    private var entries: [String: Entry] = [:]
+
+    public init() {}
+
+    func entry(for path: String) -> Entry? {
+        lock.lock(); defer { lock.unlock() }
+        return entries[path]
+    }
+
+    /// Stores `kept` and drops entries under `directory` that are no longer listed (or are not
+    /// cacheable now), so deleted files leave the cache.
+    func update(directory: String, kept: [String: Entry]) {
+        lock.lock(); defer { lock.unlock() }
+        let prefix = directory.hasSuffix("/") ? directory : directory + "/"
+        for path in entries.keys where path.hasPrefix(prefix) && kept[path] == nil { entries[path] = nil }
+        for (path, entry) in kept { entries[path] = entry }
     }
 }
