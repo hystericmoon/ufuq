@@ -23,7 +23,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 
 ## Notch states
 
-- **Collapsed** (300×32 pt; on notch screens `max(300, notch + 2×90)`, ≈368 pt): two wings beside the camera. Left = prayer, right = AI. A third activity rotates every 8 s.
+- **Collapsed** (300×32 pt; on notch screens `max(300, notch + 2×90)`, ≈368 pt): two wings beside the camera. Left = prayer, right = AI. A third activity shares the right wing with AI, taking 8 s turns (alerts pin).
 - **Peek** (352×92 pt): one alert at a time, auto-dismisses after 6 s, hover holds it. 95% limits and adhan jump the queue.
 - **Expanded** (bento, owner pick 27 Nov 2026, design canvas option A): the collapsed wings stay in a black strip at the notch; below it a Liquid Glass body (macOS 26; dark material on 14–15; solid black under Reduce Transparency or Increase Contrast) holds Prayer (216 pt) and AI (248 pt) as tall tiles and the small tiles (144 × 112 pt) in columns of two. Sized to content: only live tiles show, so the width is 496 pt with Prayer + AI and 952 pt with six small tiles. No tabs; Tab and ←/→ move between tiles. Opened by hover (optional) or the global hotkey (default ⌥Space).
 - Every state returns to collapsed: peek → 6 s or Esc; expanded → mouse leaves or Esc.
@@ -101,7 +101,7 @@ protocol UfuqModule: Identifiable {
 
 - In `UfuqCore` the protocol is UI-free (no `AnyView`): `refresh()` and `collapsedActivity(at:)` throw, and the Mac app adds the two view methods in a SwiftUI protocol that refines it.
 - **NotchController**: the `NSPanel`, its state, and positioning per screen
-- **ActivityArbiter**: chooses what goes in each wing and rotates a third activity
+- **ActivityArbiter**: chooses what goes in each wing and alternates AI with a third activity in the right wing
 - **PeekQueue**: one peek at a time; critical alerts jump the queue
 - **ModuleRegistry**: loads modules, catches their errors, reports status
 - **Settings**: one page with one collapsible section per module; `UserDefaults` for settings, Keychain for tokens

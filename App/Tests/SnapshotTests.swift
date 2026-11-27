@@ -20,7 +20,7 @@ final class SnapshotTests: XCTestCase {
             usageFraction: 0.82),
         rotating: LiveActivity(
             id: "agent.1", moduleID: "agent", source: .agent,
-            text: "Task", accessibilityLabel: "Agent task running"))
+            text: "ufuq · 4m", accessibilityLabel: "Claude Code, ufuq, running"))
 
     func testCollapsedNotch() throws {
         try render(CollapsedView(layout: wings, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-notch")
@@ -125,7 +125,7 @@ final class SnapshotTests: XCTestCase {
         XCTAssertTrue(activity.isAlert)
         var layout = wings
         layout.rotating = activity
-        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-agent-waiting")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-agent-waiting")
     }
 
     func testExpandedBentoAgents() async throws {
@@ -147,7 +147,7 @@ final class SnapshotTests: XCTestCase {
     private static let sampleRuns = """
     {"workflow_runs":[
      {"id":1,"name":"Mac app","status":"completed","conclusion":"failure","head_sha":"aaa","head_branch":"main","event":"push","html_url":"https://github.com/o/ufuq/actions/runs/1","run_started_at":"2026-11-26T07:50:00Z","updated_at":"2026-11-26T07:55:00Z","pull_requests":[],"triggering_actor":{"login":"me"}},
-     {"id":2,"name":"CI","status":"in_progress","conclusion":null,"head_sha":"bbb","head_branch":"feature","event":"push","html_url":"https://github.com/o/adwam/actions/runs/2","run_started_at":"2026-11-26T07:56:00Z","updated_at":"2026-11-26T07:58:00Z","pull_requests":[],"triggering_actor":{"login":"me"}}
+     {"id":2,"name":"CI","status":"in_progress","conclusion":null,"head_sha":"bbb","head_branch":"feature","event":"pull_request","html_url":"https://github.com/o/adwam/actions/runs/2","run_started_at":"2026-11-26T07:56:00Z","updated_at":"2026-11-26T07:58:00Z","pull_requests":[{"number":12}],"triggering_actor":{"login":"me"}}
     ]}
     """
 
@@ -179,7 +179,15 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(activity.text, "CI running")
         var layout = wings
         layout.rotating = activity
-        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 440, height: 32), name: "collapsed-ci-running")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-ci-running")
+    }
+
+    func testCollapsedLongTitle() throws {
+        var layout = wings
+        layout.rotating = LiveActivity(
+            id: "agent.long", moduleID: "agent", source: .agent,
+            text: "muslimdaily · 12m", accessibilityLabel: "Claude Code, muslimdaily, running")
+        try render(CollapsedView(layout: layout, centerGap: 188), size: CGSize(width: 368, height: 32), name: "collapsed-long-title")
     }
 
     func testExpandedBentoActions() async throws {

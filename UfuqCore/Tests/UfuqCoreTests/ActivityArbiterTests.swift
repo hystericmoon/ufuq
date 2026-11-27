@@ -54,7 +54,9 @@ final class ActivityArbiterTests: XCTestCase {
         let layout = arbiter.layout(for: [act("g", .agent), act("ai", .aiUsage, usage: 0.1), act("p", .prayer)], at: t0)
         XCTAssertEqual(layout.left?.id, "p")
         XCTAssertEqual(layout.right?.id, "ai")
-        XCTAssertEqual(layout.rotating?.id, "g")
+        XCTAssertNil(layout.rotating, "AI takes the first turn")
+        XCTAssertEqual(layout.rightWingShown?.id, "ai")
+        XCTAssertEqual(arbiter.layout(for: [act("g", .agent), act("ai", .aiUsage), act("p", .prayer)], at: t0 + 8).rotating?.id, "g")
     }
 
     func testEmptyHomeWingFilledByHighestPriority() {
@@ -62,7 +64,8 @@ final class ActivityArbiterTests: XCTestCase {
         let layout = arbiter.layout(for: [act("m", .nowPlaying), act("p", .prayer), act("g", .agent)], at: t0)
         XCTAssertEqual(layout.left?.id, "p")
         XCTAssertEqual(layout.right?.id, "g")
-        XCTAssertEqual(layout.rotating?.id, "m")
+        XCTAssertNil(layout.rotating)
+        XCTAssertEqual(arbiter.layout(for: [act("m", .nowPlaying), act("p", .prayer), act("g", .agent)], at: t0 + 8).rotating?.id, "m")
     }
 
     func testEmptyInput() {
@@ -72,43 +75,76 @@ final class ActivityArbiterTests: XCTestCase {
 
     // MARK: Rotation
 
-    func testRotatesEveryEightSecondsInPriorityOrder() {
+    func testSharedRightWingCycle() {
         var arbiter = ActivityArbiter()
         let all = [act("p", .prayer), act("ai", .aiUsage), act("m", .nowPlaying), act("o", .other), act("g", .agent)]
-        XCTAssertEqual(arbiter.layout(for: all, at: t0).rotating?.id, "g")
-        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 7.9).rotating?.id, "g")
-        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 8).rotating?.id, "m")
-        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 15).rotating?.id, "m")
-        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 16).rotating?.id, "o")
-        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 24).rotating?.id, "g", "wraps around")
+        XCTAssertNil(arbiter.layout(for: all, at: t0).rotating)
+        XCTAssertNil(arbiter.layout(for: all, at: t0 + 7.9).rotating)
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 8).rotating?.id, "g")
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 15).rotating?.id, "g")
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 16).rotating?.id, "m")
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 24).rotating?.id, "o")
+        let wrapped = arbiter.layout(for: all, at: t0 + 32)
+        XCTAssertNil(wrapped.rotating, "wraps back to AI")
+        XCTAssertEqual(wrapped.rightWingShown?.id, "ai")
     }
 
-    func testSingleRotatingItemStays() {
+    func testNoPoolMeansAIAlways() {
         var arbiter = ActivityArbiter()
-        let all = [act("p", .prayer), act("ai", .aiUsage), act("g", .agent)]
+        let all = [act("p", .prayer), act("ai", .aiUsage)]
         for s in stride(from: 0.0, through: 40, by: 4) {
-            XCTAssertEqual(arbiter.layout(for: all, at: t0 + s).rotating?.id, "g")
+            let layout = arbiter.layout(for: all, at: t0 + s)
+            XCTAssertNil(layout.rotating)
+            XCTAssertEqual(layout.rightWingShown?.id, "ai")
         }
+    }
+
+    func testWithoutAIPoolRotatesAlone() {
+        // No AI: the highest-priority leftover (g) fills the right wing and the pool cycles with it.
+        var arbiter = ActivityArbiter()
+        let all = [act("g", .agent), act("m", .nowPlaying), act("o", .other), act("p", .prayer)]
+        XCTAssertNil(arbiter.layout(for: all, at: t0).rotating)
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 8).rotating?.id, "m")
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 16).rotating?.id, "o")
+        XCTAssertNil(arbiter.layout(for: all, at: t0 + 24).rotating)
+        // Only a pinned alert and no right wing: the pool is just the alert.
+        var b = ActivityArbiter()
+        let layout = b.layout(for: [act("p", .prayer), act("bat", .other, alert: true)], at: t0)
+        XCTAssertNil(layout.right)
+        XCTAssertEqual(layout.rightWingShown?.id, "bat")
     }
 
     func testRemovedRotatingItemIsReplaced() {
         var arbiter = ActivityArbiter()
         let p = act("p", .prayer), ai = act("ai", .aiUsage)
-        XCTAssertEqual(arbiter.layout(for: [p, ai, act("g", .agent), act("m", .nowPlaying)], at: t0).rotating?.id, "g")
-        XCTAssertEqual(arbiter.layout(for: [p, ai, act("m", .nowPlaying)], at: t0 + 2).rotating?.id, "m")
-        XCTAssertEqual(arbiter.layout(for: [p, ai], at: t0 + 3).rotating, nil)
+        XCTAssertNil(arbiter.layout(for: [p, ai, act("g", .agent), act("m", .nowPlaying)], at: t0).rotating)
+        XCTAssertEqual(arbiter.layout(for: [p, ai, act("g", .agent), act("m", .nowPlaying)], at: t0 + 8).rotating?.id, "g")
+        // g goes away mid-turn: the cycle restarts without resetting to a stale item.
+        XCTAssertNotEqual(arbiter.layout(for: [p, ai, act("m", .nowPlaying)], at: t0 + 10).rotating?.id, "g")
+        XCTAssertNil(arbiter.layout(for: [p, ai], at: t0 + 11).rotating)
     }
 
-    func testAlertPinsRotatingSlot() {
+    func testNewItemDoesNotResetTurn() {
+        var arbiter = ActivityArbiter()
+        let p = act("p", .prayer), ai = act("ai", .aiUsage), g = act("g", .agent)
+        XCTAssertNil(arbiter.layout(for: [p, ai, g], at: t0).rotating)
+        let m = act("m", .nowPlaying)
+        XCTAssertNil(arbiter.layout(for: [p, ai, g, m], at: t0 + 5).rotating, "still AI's turn")
+        XCTAssertEqual(arbiter.layout(for: [p, ai, g, m], at: t0 + 8).rotating?.id, "g")
+    }
+
+    func testAlertPinsRightWingAndHidesAI() {
         var arbiter = ActivityArbiter()
         let base = [act("p", .prayer), act("ai", .aiUsage), act("g", .agent), act("m", .nowPlaying)]
         let withAlert = base + [act("bat", .other, alert: true)]
-        XCTAssertEqual(arbiter.layout(for: withAlert, at: t0).rotating?.id, "bat")
-        XCTAssertEqual(arbiter.layout(for: withAlert, at: t0 + 8).rotating?.id, "bat")
-        XCTAssertEqual(arbiter.layout(for: withAlert, at: t0 + 30).rotating?.id, "bat")
-        // Alert cleared: rotation resumes from the top.
-        XCTAssertEqual(arbiter.layout(for: base, at: t0 + 31).rotating?.id, "g")
-        XCTAssertEqual(arbiter.layout(for: base, at: t0 + 39).rotating?.id, "m")
+        for s in [0.0, 8, 30] {
+            let layout = arbiter.layout(for: withAlert, at: t0 + s)
+            XCTAssertEqual(layout.rotating?.id, "bat")
+            XCTAssertEqual(layout.rightWingShown?.id, "bat")
+        }
+        // Alert cleared: the cycle resumes from AI.
+        XCTAssertNil(arbiter.layout(for: base, at: t0 + 31).rotating)
+        XCTAssertEqual(arbiter.layout(for: base, at: t0 + 39).rotating?.id, "g")
     }
 
     func testAlertNeverTakesHomeWing() {
@@ -122,7 +158,8 @@ final class ActivityArbiterTests: XCTestCase {
     func testCustomInterval() {
         var arbiter = ActivityArbiter(rotationInterval: 2)
         let all = [act("p", .prayer), act("ai", .aiUsage), act("g", .agent), act("m", .nowPlaying)]
-        XCTAssertEqual(arbiter.layout(for: all, at: t0).rotating?.id, "g")
-        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 2).rotating?.id, "m")
+        XCTAssertNil(arbiter.layout(for: all, at: t0).rotating)
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 2).rotating?.id, "g")
+        XCTAssertEqual(arbiter.layout(for: all, at: t0 + 4).rotating?.id, "m")
     }
 }

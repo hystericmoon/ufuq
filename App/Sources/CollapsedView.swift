@@ -1,11 +1,12 @@
 import SwiftUI
 import UfuqCore
 
-/// Left wing = prayer, right wing = AI plus the rotating third activity.
+/// Left wing = prayer, right wing = AI and the third activity, taking turns.
 /// Each wing is one accessibility element.
 struct CollapsedView: View {
     let layout: WingLayout
     let centerGap: CGFloat
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
         HStack(spacing: 0) {
@@ -17,7 +18,7 @@ struct CollapsedView: View {
         }
         .padding(.horizontal, 12)
         .frame(maxHeight: .infinity)
-        .animation(.easeInOut(duration: 0.25), value: layout.rotating?.id)
+        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: layout.rightWingShown?.id)
     }
 
     @ViewBuilder
@@ -34,33 +35,31 @@ struct CollapsedView: View {
         }
     }
 
+    /// One element: shows `rotating ?? right`; the label always carries both so VoiceOver
+    /// never depends on the 8 s phase.
     @ViewBuilder
     private var rightWing: some View {
-        HStack(spacing: 6) {
-            if let right = layout.right {
-                Text(right.text)
+        if let shown = layout.rotating ?? layout.right {
+            HStack(spacing: 6) {
+                if shown.source == .agent, shown.isAlert { WaitingDot() }
+                Text(shown.text)
                     .font(Tokens.Typography.collapsed)
                     .monospacedDigit()
                     .foregroundStyle(Tokens.textPrimary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(right.accessibilityLabel)
-            }
-            if let rotating = layout.rotating {
-                if rotating.source == .agent, rotating.isAlert { WaitingDot() }
-                Text(rotating.text)
-                    .font(Tokens.Typography.collapsed)
-                    .monospacedDigit()
-                    .foregroundStyle(Tokens.textMuted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.8)
-                    .id(rotating.id)
+                    .truncationMode(.middle)
+                    .id(shown.id)
                     .transition(.opacity)
-                    .accessibilityElement(children: .ignore)
-                    .accessibilityLabel(rotating.accessibilityLabel)
             }
+            .accessibilityElement(children: .ignore)
+            .accessibilityLabel(rightWingLabel)
         }
+    }
+
+    private var rightWingLabel: String {
+        [layout.right?.accessibilityLabel, layout.rotating?.accessibilityLabel]
+            .compactMap { $0 }.joined(separator: ". ")
     }
 }
 

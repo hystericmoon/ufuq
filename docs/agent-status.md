@@ -8,7 +8,7 @@ Shows each Claude Code session as running / waiting for input / done in the notc
 Claude Code ──hook (stdin JSON)──▶ ufuq-hook ──flock + atomic write──▶ ~/Library/Application Support/Ufuq/agents/<session>.json
                                                                                     │ read every 1 s (tiny files)
                                                      AgentStatusModule (UfuqCore) ◀─┘
-                                                     ├─ LiveActivity (.agent) → rotation / pinned when waiting
+                                                     ├─ LiveActivity (.agent) → right wing, alternating with AI / pinned when waiting
                                                      ├─ PeekEvent "Claude needs input" (critical) / "Task done" (normal)
                                                      └─ [SyncAgent] → phone (SyncService.contentProvider)
 ```
@@ -41,7 +41,7 @@ File name: session_id with every character outside `[A-Za-z0-9._-]` replaced by 
 
 - Hidden: `idle`; any session not updated for 6 h (crashed sessions never send SessionEnd); `done` older than 5 min (wing only; tile and sync keep it until 6 h).
 - One collapsed activity, id `agent`, source `.agent`, aggregated:
-  - any waiting → text `Needs input` (`3 need input` when several; the slot fits ~11 characters, the title is in the peek, tile and label), `isAlert = true` (pins it in the rotation).
+  - any waiting → text `Needs input` (`3 need input` when several; the slot is ~66 pt, roughly 11 characters at 13/600 with 0.8 scaling, the title is in the peek, tile and label), `isAlert = true` (pins it in the right wing).
   - else any running → `<title> · 4m` (elapsed since `runningSince`, `TokenFormat`-style short), or `3 agents running`.
   - else a recent done → `<title> done`.
   - Accessibility label spells it out: "Claude Code, ufuq, needs input".
@@ -59,7 +59,7 @@ Explicit button per Claude account in Settings, never automatic. Pure function o
 ## Mac
 
 - `ufuq-hook`: executable target in the UfuqCore package (Foundation only), embedded in the app at `Contents/MacOS/ufuq-hook`.
-- Collapsed: the agent activity joins the rotation; waiting pins. A small dot before the text pulses (1.2 s opacity) when waiting; static under Reduce Motion.
+- Collapsed: the agent activity takes turns with AI in the right wing; waiting pins. A small dot before the text pulses (1.2 s opacity) when waiting; static under Reduce Motion.
 - Expanded: small tile "Agents" (144 × 112): up to two sessions, state as a word (never color alone), `+N more`. Click or Return on a row activates `appBundleID`'s app.
 - Settings: "Agent status" section: per account, Install / Remove hooks with the result line.
 - Sync: `contentProvider.agents = module.syncAgents(at:)`; peeks already flow through `enqueuePeek`.
