@@ -58,7 +58,7 @@ Check on the Mac (about 15 min), then fix what fails:
 1. `brew install xcodegen && xcodegen generate && open Ufuq.xcodeproj`, run.
 2. Panel sits over the notch, above the menu bar; left wing shows the real next prayer.
 3. ⌥Space opens it, VoiceOver focus lands inside, Tab reaches the tabs with a visible ring, Esc closes and returns focus to the previous app.
-4. External display: floating pill 8 pt below the menu bar.
+4. External display: the island hangs from the top edge, centred over the menu bar, as tall as the menu bar (changed 27 Nov after the owner's v0.1.1 check; was 8 pt below it).
 5. Reduce Motion cross-fade; Increase Contrast border; hover toggle; launch at login (may refuse on an unsigned debug build).
 6. Compare the `snapshots` artifact PNGs with `refs/` and the design canvas.
 

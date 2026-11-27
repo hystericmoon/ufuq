@@ -22,8 +22,9 @@ enum NotchGeometry {
     static let peekSize = CGSize(width: 352, height: 92)
     static let expandedSize = CGSize(width: 640, height: 360)
     static let minWingWidth: CGFloat = 90
-    /// Gap between the menu bar and the floating pill on screens without a notch.
-    static let pillGap: CGFloat = 8
+    /// Smallest collapsed height on a screen without a notch (also used when the menu bar is
+    /// auto-hidden and reports 0).
+    static let minMenuBarHeight: CGFloat = 24
     /// Fallback when the system reports a notch but no auxiliary areas.
     static let fallbackNotchWidth: CGFloat = 200
 
@@ -46,10 +47,19 @@ enum NotchGeometry {
         return CGRect(x: x, y: m.frame.maxY - m.safeAreaTop, width: width, height: m.safeAreaTop)
     }
 
+    /// Menu bar height on this screen, at least `minMenuBarHeight`.
+    static func menuBarHeight(_ m: ScreenMetrics) -> CGFloat {
+        max(minMenuBarHeight, m.frame.maxY - m.visibleFrame.maxY)
+    }
+
     static func size(for kind: NotchState.Kind, metrics m: ScreenMetrics) -> CGSize {
         let notch = notchWidth(m)
         switch kind {
         case .collapsed:
+            guard m.hasNotch else {
+                // No notch: a notch-like tab over the middle of the menu bar, as tall as the bar.
+                return CGSize(width: collapsedSize.width, height: menuBarHeight(m))
+            }
             let width = max(collapsedSize.width, notch + 2 * minWingWidth)
             return CGSize(width: width, height: max(collapsedSize.height, m.safeAreaTop))
         case .peek:
@@ -59,21 +69,14 @@ enum NotchGeometry {
         }
     }
 
-    /// Window frame for a state. Notch screen: centered on the notch, flush with the top edge.
-    /// Other screens: centered, `pillGap` below the menu bar.
+    /// Window frame for a state: always flush with the top edge of the screen. Notch screen:
+    /// centered on the notch. Other screens: centered, overlapping the middle of the menu bar.
     static func windowFrame(for kind: NotchState.Kind, metrics m: ScreenMetrics) -> CGRect {
         let size = size(for: kind, metrics: m)
-        if let notch = notchRect(m) {
-            return CGRect(
-                x: notch.midX - size.width / 2,
-                y: m.frame.maxY - size.height,
-                width: size.width,
-                height: size.height)
-        }
-        let top = m.visibleFrame.maxY - pillGap
+        let midX = notchRect(m)?.midX ?? m.frame.midX
         return CGRect(
-            x: m.frame.midX - size.width / 2,
-            y: top - size.height,
+            x: midX - size.width / 2,
+            y: m.frame.maxY - size.height,
             width: size.width,
             height: size.height)
     }
