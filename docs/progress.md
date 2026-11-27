@@ -2,20 +2,24 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27 02:30 WIB)
+## Resume here (2026-11-27 11:30 WIB)
 
-Auto-update is done on all three platforms: Mac (Sparkle), Windows (signed MSI), Android (sideload APK,
-`docs/release-android.md`). Only owner steps remain:
+Released: v0.1.0 and v0.1.1 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
+pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
+bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release. (The `v0.1.0` tag
+points at the kickoff commit; harmless.)
 
-1. On the Mac: `bash tools/setup_release_keys.sh` (sets every signing secret), then back up `~/UfuqKeys`.
-2. Merge PR #1.
-3. Tag `v0.1.0` (`git tag v0.1.0 && git push origin v0.1.0`). The three release workflows attach the DMG/zip/appcast, MSI + .sig and `ufuq-0.1.0.apk` to one release.
-4. Install `ufuq-0.1.0.apk` (not the debug APK: debug builds have the updater off) and run the device checks below.
+Open: **PR #4 → 0.1.2** (branch `claude/ufuqcore-phase-1-setup-php4yz`). In it:
+- Android pill: countdown only, 24–30 dp, centred on the camera hole (owner feedback on 0.1.1).
+- Mac: sync key moved from Keychain to `~/Library/Application Support/Ufuq/sync-key` (ad-hoc signature made every update prompt); island on non-notch screens sits in the menu bar (flush top, menu-bar height); pairing window and Settings show "Paired with <phone> · seen …" (phone sends `X-Ufuq-Client`); "Forget phone…" confirms, announces, cross-fades the new QR.
+- The Mac Swift in PR #4 was written without a compiler; check the macOS CI result on `f7fe540` first and fix anything red.
 
-Android updater notes: release builds only (`SELF_UPDATE`); Settings → About → Updates; daily check on open
-(20 h min), dialog only when newer; verifies size, GitHub SHA-256 digest and package name, then the system
-installer checks the signing key. `versionCode` = `MAJOR*1000000 + MINOR*1000 + PATCH` from `VERSION`.
-A tag push without the keystore secrets fails on purpose. CI now also runs `:app:assembleRelease` so R8 breaks show before a tag.
+Next:
+1. **Waiting on the owner: pick A, B or C** for the Android open island. Mockups: https://claude.ai/artifact/XeQ2Hkhqj2U2s9cDEMFAvq (recommended C: one card, a row per module, no pages). Build it in `android/app/.../island/IslandUi.kt` (`ExpandedIsland`), re-record screenshots, then bump to 0.1.2, merge PR #4, run the three release workflows.
+2. Owner checks on 0.1.2: last Keychain prompt during migration (click Allow), external-monitor island in the menu bar, paired-phone line, Forget phone.
+3. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
+
+Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 
 ## Status (2026-11-26, overnight)
 
@@ -112,6 +116,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - Pairing QR is now a `ufuq://pair#<base64url JSON>` link: the phone camera opens Ufuq with the code filled in; the user still taps Pair. Bare JSON still parses.
 
 ## History
+
+- 2026-11-27 (morning): v0.1.1 released (Mac every-display island, faster Settings, pairing link; Windows tokens; reset caption). Owner tested 0.1.1; feedback fixes in PR #4. CI: Robolectric runtimes now resolved by Gradle, tests run offline.
 
 - 2026-11-27: v0.1.0 released (DMG, MSI, APK; release workflows started by hand because tags cannot be pushed from cloud sessions, so the `v0.1.0` tag still points at the kickoff commit). v0.1.1 carries the four decisions and the Mac release-script fix.
 
