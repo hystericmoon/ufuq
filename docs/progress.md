@@ -2,9 +2,9 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27 afternoon WIB)
+## Resume here (2026-11-27, 13:50 WIB)
 
-Released: v0.1.0, v0.1.1, v0.1.2 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
+Released: v0.1.0 to v0.1.3 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
 pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
 bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release. (The `v0.1.0` tag
 points at the kickoff commit; harmless.)
