@@ -13,6 +13,8 @@ enum BentoLayout {
     static let aiWidth: CGFloat = 248
     static let smallWidth: CGFloat = 144
     static let smallTilesPerColumn = 2
+    /// The tray row under the tiles (file tray); present only while the tray is shown.
+    static let trayRowHeight: CGFloat = 76
 
     static var tileRadius: CGFloat { Tokens.Radius.expanded - padding }
     /// Two rows and the gap between them: the height of Prayer, AI and a lone small tile.
@@ -27,11 +29,11 @@ enum BentoLayout {
         2 * padding + prayerWidth + gap + aiWidth + CGFloat(columns(smallTiles: smallTiles)) * (gap + smallWidth)
     }
 
-    static func height(stripHeight: CGFloat) -> CGFloat {
-        stripHeight + 2 * padding + bodyHeight
+    static func height(stripHeight: CGFloat, trayRow: Bool = false) -> CGFloat {
+        stripHeight + 2 * padding + bodyHeight + (trayRow ? gap + trayRowHeight : 0)
     }
 
-    static func size(smallTiles: Int, stripHeight: CGFloat) -> CGSize {
-        CGSize(width: width(smallTiles: smallTiles), height: height(stripHeight: stripHeight))
+    static func size(smallTiles: Int, stripHeight: CGFloat, trayRow: Bool = false) -> CGSize {
+        CGSize(width: width(smallTiles: smallTiles), height: height(stripHeight: stripHeight, trayRow: trayRow))
     }
 }

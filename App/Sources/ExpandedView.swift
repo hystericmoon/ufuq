@@ -28,6 +28,8 @@ struct ExpandedView: View {
     @Environment(\.colorSchemeContrast) private var contrast
     @FocusState private var keyFocus: BentoTileID?
     @AccessibilityFocusState private var voiceOverFocus: BentoTileID?
+    @ObservedObject private var tray = TrayController.shared
+    @FocusState private var trayFocus: UUID?
 
     private var resolvedSurface: PanelSurface {
         if let surface { return surface }
@@ -37,14 +39,26 @@ struct ExpandedView: View {
     var body: some View {
         VStack(spacing: 0) {
             strip
-            tiles
-                .padding(BentoLayout.padding)
-                .background(PanelBody(surface: resolvedSurface, bordered: contrast == .increased))
+            VStack(spacing: BentoLayout.gap) {
+                tiles
+                if tray.isRowShown {
+                    TrayRow(tray: tray, focus: $trayFocus, focusable: focusable)
+                }
+            }
+            .padding(BentoLayout.padding)
+            .background(PanelBody(surface: resolvedSurface, bordered: contrast == .increased))
         }
         .environment(\.colorScheme, .dark)
+        .trayDrop(tray)
         .onAppear { requestFocus() }
+        .onDisappear { tray.wantsFocus = false; tray.revealed = false }
         .onChange(of: focusToken) { _, _ in requestFocus() }
-        .onChange(of: keyFocus) { _, tile in if let tile { focusedTile = tile } }
+        .onChange(of: keyFocus) { _, tile in
+            if let tile {
+                focusedTile = tile
+                tray.wantsFocus = false
+            }
+        }
         .onExitCommand { onEscape() }
     }
 
@@ -115,6 +129,11 @@ struct ExpandedView: View {
     }
 
     private func requestFocus() {
+        // ⌥⇧T and the Services item ask for the tray row; keep asking until the user picks a tile.
+        if tray.wantsFocus, tray.isRowShown, focusable {
+            trayFocus = tray.items.first?.id ?? TrayFocus.zoneID
+            return
+        }
         let tile = content.tileOrder.contains(focusedTile) ? focusedTile : .prayer
         keyFocus = tile
         voiceOverFocus = tile

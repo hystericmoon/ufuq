@@ -58,7 +58,7 @@ enum NotchGeometry {
     }
 
     /// `smallTiles`: how many small bento tiles are live (they set the open panel's width).
-    static func size(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0) -> CGSize {
+    static func size(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0, trayRow: Bool = false) -> CGSize {
         let notch = notchWidth(m)
         switch kind {
         case .collapsed:
@@ -71,14 +71,14 @@ enum NotchGeometry {
         case .peek:
             return CGSize(width: max(peekSize.width, notch), height: peekSize.height)
         case .expanded:
-            return BentoLayout.size(smallTiles: smallTiles, stripHeight: stripHeight(m))
+            return BentoLayout.size(smallTiles: smallTiles, stripHeight: stripHeight(m), trayRow: trayRow)
         }
     }
 
     /// Window frame for a state: always flush with the top edge of the screen. Notch screen:
     /// centered on the notch. Other screens: centered, overlapping the middle of the menu bar.
-    static func windowFrame(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0) -> CGRect {
-        let size = size(for: kind, metrics: m, smallTiles: smallTiles)
+    static func windowFrame(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0, trayRow: Bool = false) -> CGRect {
+        let size = size(for: kind, metrics: m, smallTiles: smallTiles, trayRow: trayRow)
         let midX = notchRect(m)?.midX ?? m.frame.midX
         return CGRect(
             x: midX - size.width / 2,

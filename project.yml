@@ -56,6 +56,13 @@ targets:
         NSLocalNetworkUsageDescription: "Ufuq shares usage and agent status with your paired phone over your local network."
         NSBonjourServices:
           - _ufuq._tcp
+        NSServices:
+          - NSMenuItem:
+              default: "Add to Ufuq Tray"
+            NSMessage: addToTray
+            NSPortName: Ufuq
+            NSSendTypes:
+              - public.file-url
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac
