@@ -3,7 +3,7 @@ import UfuqCore
 
 /// The tiles of the open panel, in reading and Tab order.
 enum BentoTileID: String, CaseIterable, Identifiable {
-    case prayer, ai, agents, actions, battery
+    case prayer, ai, agents, actions, nowPlaying, battery
 
     var id: String { rawValue }
 }
@@ -40,6 +40,21 @@ struct BentoContent: Equatable {
     var tileOrder: [BentoTileID] { [.prayer, .ai] + smallTiles }
 }
 
+/// Where the pointer is relative to the body. `x` is points from the body's centre.
+struct JellyPointer: Equatable {
+    var hovering = false
+    var x: CGFloat = 0
+    var pressed = false
+}
+
+/// A file being dragged toward the notch. `distance` is points from the screen's top edge;
+/// `x` is points from the body's centre. The neck shows under 160 pt, the drop zone under 60 pt.
+struct FileDragState: Equatable {
+    var distance: CGFloat
+    var x: CGFloat
+    var overDropZone: Bool { distance < 60 }
+}
+
 /// What the SwiftUI views observe. The controller writes it; views never write state directly.
 @MainActor
 final class NotchModel: ObservableObject {
@@ -63,6 +78,19 @@ final class NotchModel: ObservableObject {
     @Published var centerGap: CGFloat = 16
     /// Bumped each time the panel opens, so the expanded view moves keyboard and VoiceOver focus in.
     @Published var focusToken = 0
+
+    // MARK: Phase 7 contract (set in the main session; each field has one writer)
+
+    /// Pointer over the body. Writer: motion layer (NotchController hover tracking).
+    @Published var pointer = JellyPointer()
+    /// A file drag near the top edge, nil otherwise. Writer: File Tray. Reader: motion (the neck).
+    @Published var fileDrag: FileDragState?
+    /// Bumped once per accepted drop. Writer: File Tray. Reader: motion (the swallow bulge).
+    @Published var swallowToken = 0
+    /// Tray contents, in order. Writer: File Tray.
+    @Published var tray: [TrayItem] = []
+    /// Current track, nil when nothing is playing or the module is unavailable. Writer: Now Playing.
+    @Published var nowPlaying: NowPlaying?
 
     var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions) }
 
