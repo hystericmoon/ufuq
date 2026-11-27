@@ -1,0 +1,161 @@
+{
+ "total_count": 8,
+ "workflow_runs": [
+  {
+   "id": 45975889340,
+   "name": "Android",
+   "head_branch": "main",
+   "head_sha": "38350dc4f1a9e0b7c2d5a6e8f90b1c2d3e4f5a6b",
+   "event": "push",
+   "status": "completed",
+   "conclusion": "success",
+   "html_url": "https://github.com/o/r/actions/runs/45975889340",
+   "run_started_at": "2026-11-27T09:42:09Z",
+   "updated_at": "2026-11-27T09:46:30Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "me"
+   },
+   "triggering_actor": {
+    "login": "me"
+   }
+  },
+  {
+   "id": 45975889339,
+   "name": "Core",
+   "head_branch": "main",
+   "head_sha": "38350dc4f1a9e0b7c2d5a6e8f90b1c2d3e4f5a6b",
+   "event": "push",
+   "status": "completed",
+   "conclusion": "success",
+   "html_url": "https://github.com/o/r/actions/runs/45975889339",
+   "run_started_at": "2026-11-27T09:42:08Z",
+   "updated_at": "2026-11-27T09:44:02Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "me"
+   },
+   "triggering_actor": {
+    "login": "me"
+   }
+  },
+  {
+   "id": 45975889338,
+   "name": "Mac app",
+   "head_branch": "main",
+   "head_sha": "38350dc4f1a9e0b7c2d5a6e8f90b1c2d3e4f5a6b",
+   "event": "push",
+   "status": "completed",
+   "conclusion": "failure",
+   "html_url": "https://github.com/o/r/actions/runs/45975889338",
+   "run_started_at": "2026-11-27T09:42:07Z",
+   "updated_at": "2026-11-27T09:49:17Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "me"
+   },
+   "triggering_actor": {
+    "login": "me"
+   }
+  },
+  {
+   "id": 45975000001,
+   "name": "Mac app",
+   "head_branch": "feat/x",
+   "head_sha": "bbb2222",
+   "event": "pull_request",
+   "status": "completed",
+   "conclusion": "success",
+   "html_url": "https://github.com/o/r/actions/runs/45975000001",
+   "run_started_at": "2026-11-27T09:30:00Z",
+   "updated_at": "2026-11-27T09:33:40Z",
+   "pull_requests": [
+    {
+     "number": 12
+    }
+   ],
+   "actor": {
+    "login": "me"
+   },
+   "triggering_actor": {
+    "login": "me"
+   }
+  },
+  {
+   "id": 45974000001,
+   "name": "Mac app",
+   "head_branch": "main",
+   "head_sha": "ccc3333",
+   "event": "push",
+   "status": "completed",
+   "conclusion": "cancelled",
+   "html_url": "https://github.com/o/r/actions/runs/45974000001",
+   "run_started_at": "2026-11-27T08:00:00Z",
+   "updated_at": "2026-11-27T08:01:00Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "me"
+   },
+   "triggering_actor": {
+    "login": "me"
+   }
+  },
+  {
+   "id": 45970000001,
+   "name": "Mac app",
+   "head_branch": "main",
+   "head_sha": "ddd4444",
+   "event": "push",
+   "status": "completed",
+   "conclusion": "success",
+   "html_url": "https://github.com/o/r/actions/runs/45970000001",
+   "run_started_at": "2026-11-25T08:00:00Z",
+   "updated_at": "2026-11-25T08:05:00Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "me"
+   },
+   "triggering_actor": {
+    "login": "me"
+   }
+  },
+  {
+   "id": 45976000001,
+   "name": "Mac app",
+   "head_branch": "main",
+   "head_sha": "eee5555",
+   "event": "push",
+   "status": "in_progress",
+   "conclusion": null,
+   "html_url": "https://github.com/o/r/actions/runs/45976000001",
+   "run_started_at": "2026-11-27T09:57:00Z",
+   "updated_at": "2026-11-27T09:58:00Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "other"
+   },
+   "triggering_actor": {
+    "login": "other"
+   }
+  },
+  {
+   "id": 45976000002,
+   "name": "Core",
+   "head_branch": "main",
+   "head_sha": "eee5555",
+   "event": "push",
+   "status": "queued",
+   "conclusion": null,
+   "html_url": "https://github.com/o/r/actions/runs/45976000002",
+   "run_started_at": "2026-11-27T09:57:01Z",
+   "updated_at": "2026-11-27T09:57:02Z",
+   "pull_requests": [],
+   "actor": {
+    "login": "other"
+   },
+   "triggering_actor": {
+    "login": "other"
+   }
+  }
+ ]
+}
