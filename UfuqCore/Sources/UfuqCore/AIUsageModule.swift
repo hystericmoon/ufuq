@@ -50,7 +50,7 @@ public final class AIUsageModule: UfuqModule {
     private let codexSessionsDir: String?
     private let fileSource: FileSource
     private let directoryExists: @Sendable (String) -> Bool
-    private let now: @Sendable () -> Date
+    private let cache = ClaudeLogCache()
     private let lock = NSLock()
     private var state: State
 
@@ -58,17 +58,13 @@ public final class AIUsageModule: UfuqModule {
         claudeDirs: [String],
         codexSessionsDir: String?,
         fileSource: FileSource = LocalFileSource(),
-        directoryExists: @escaping @Sendable (String) -> Bool = AIUsageModule.defaultDirectoryExists,
-        now: @escaping @Sendable () -> Date = { Date() }
+        directoryExists: @escaping @Sendable (String) -> Bool = AIUsageModule.defaultDirectoryExists
     ) {
-        self.now = now
         self.codexSessionsDir = codexSessionsDir
         self.fileSource = fileSource
         self.directoryExists = directoryExists
         self.state = State(claude: claudeDirs.map { Account(dir: $0, name: ClaudeAccounts.label(forConfigDir: $0), result: nil) })
     }
-
-    static let fileAgeMargin: TimeInterval = 3600
 
     public static let defaultDirectoryExists: @Sendable (String) -> Bool = { path in
         var isDir: ObjCBool = false
@@ -81,12 +77,9 @@ public final class AIUsageModule: UfuqModule {
         let (dirs, codexDir) = withLock { ($0.claude.map(\.dir), codexSessionsDir) }
         let source = fileSource
         let exists = directoryExists
-        let clock = now
+        let cache = cache
         let (claude, codex) = await Task.detached { () -> ([UsageResult<ClaudeUsageReport>], UsageResult<CodexRateLimits>?) in
-            // The module shows only the 5-hour block, and a block's entries all lie within 5 hours
-            // of now; older files cannot change it. The margin covers clock and mtime slack.
-            let cutoff = clock().addingTimeInterval(-(ClaudeLogParser.blockLength + AIUsageModule.fileAgeMargin))
-            let claude = dirs.map { ClaudeLogParser.parse(configDir: $0, source: source, modifiedSince: cutoff) }
+            let claude = dirs.map { ClaudeLogParser.parse(configDir: $0, source: source, cache: cache) }
             var codex: UsageResult<CodexRateLimits>?
             if let codexDir, exists(codexDir) {
                 codex = CodexParser.parse(sessionsDir: codexDir, source: source, now: Date())
