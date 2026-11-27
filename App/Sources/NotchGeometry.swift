@@ -75,6 +75,26 @@ enum NotchGeometry {
         }
     }
 
+    /// Room around the body inside the window so a hover swell, lean, bulge or the drag neck is
+    /// not clipped. The body stays centered on the notch and flush with the top edge.
+    static let jellyMarginX: CGFloat = 12
+    static let jellyMarginBottom: CGFloat = 6
+    /// Extra room below the body while a file drag reaches for it (the neck).
+    static let jellyNeckReach: CGFloat = 64
+
+    /// `windowFrame` grown by the jelly margins (sides and bottom; never above the screen).
+    static func paddedWindowFrame(
+        for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0, trayRow: Bool = false, neck: Bool = false
+    ) -> CGRect {
+        let frame = windowFrame(for: kind, metrics: m, smallTiles: smallTiles, trayRow: trayRow)
+        let bottom = neck ? jellyNeckReach : jellyMarginBottom
+        return CGRect(
+            x: frame.minX - jellyMarginX,
+            y: frame.minY - bottom,
+            width: frame.width + 2 * jellyMarginX,
+            height: frame.height + bottom)
+    }
+
     /// Window frame for a state: always flush with the top edge of the screen. Notch screen:
     /// centered on the notch. Other screens: centered, overlapping the middle of the menu bar.
     static func windowFrame(for kind: NotchState.Kind, metrics m: ScreenMetrics, smallTiles: Int = 0, trayRow: Bool = false) -> CGRect {

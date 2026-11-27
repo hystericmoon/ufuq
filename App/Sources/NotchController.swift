@@ -1,19 +1,27 @@
 import AppKit
+import Combine
 import SwiftUI
 import UfuqCore
 
-/// Hosting view that reports the pointer entering and leaving the panel (for optional hover).
+/// Hosting view that reports the pointer over the body (for optional hover and the jelly's lean
+/// and squash). The window is a little larger than the body, so "inside" is the body rect only.
 final class NotchHostingView: NSHostingView<NotchRootView> {
     var onMouseEntered: (() -> Void)?
     var onMouseExited: (() -> Void)?
+    var onPointer: ((JellyPointer) -> Void)?
+    /// The black body's size; set by the controller. Zero means the whole view.
+    var bodySize: CGSize = .zero
     private var tracking: NSTrackingArea?
+    private var inside = false
+    private var pressed = false
+    private var lastX: CGFloat = 0
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let tracking { removeTrackingArea(tracking) }
         let area = NSTrackingArea(
             rect: .zero,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
             owner: self,
             userInfo: nil)
         addTrackingArea(area)
@@ -22,12 +30,55 @@ final class NotchHostingView: NSHostingView<NotchRootView> {
 
     override func mouseEntered(with event: NSEvent) {
         super.mouseEntered(with: event)
-        onMouseEntered?()
+        update(with: event)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        update(with: event)
     }
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
-        onMouseExited?()
+        pressed = false
+        if inside {
+            inside = false
+            onMouseExited?()
+        }
+        publish()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        pressed = true
+        publish()
+        super.mouseDown(with: event)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        pressed = false
+        publish()
+        super.mouseUp(with: event)
+    }
+
+    /// Window coordinates start bottom-left; the body hangs from the top, centered.
+    private func update(with event: NSEvent) {
+        let point = event.locationInWindow
+        let width = bounds.width
+        let height = bounds.height
+        let bodyWidth = bodySize.width > 0 ? bodySize.width : width
+        let bodyHeight = bodySize.height > 0 ? bodySize.height : height
+        let dx = point.x - width / 2
+        lastX = dx.rounded()
+        let isInside = abs(dx) <= bodyWidth / 2 && point.y >= height - bodyHeight
+        if isInside != inside {
+            inside = isInside
+            if isInside { onMouseEntered?() } else { onMouseExited?() }
+        }
+        publish()
+    }
+
+    private func publish() {
+        onPointer?(JellyPointer(hovering: inside, x: lastX, pressed: pressed && inside))
     }
 }
 
@@ -40,11 +91,12 @@ private final class ScreenIsland {
     let model = NotchModel()
     var metrics: ScreenMetrics
     var shrinkTask: Task<Void, Never>?
+    var cancellables = Set<AnyCancellable>()
 
     init(displayID: CGDirectDisplayID, metrics: ScreenMetrics) {
         self.displayID = displayID
         self.metrics = metrics
-        panel = NotchPanel(contentRect: NotchGeometry.windowFrame(for: .collapsed, metrics: metrics))
+        panel = NotchPanel(contentRect: NotchGeometry.paddedWindowFrame(for: .collapsed, metrics: metrics))
         hostingView = NotchHostingView(rootView: NotchRootView(model: model))
         hostingView.sizingOptions = []
         panel.contentView = hostingView
@@ -464,7 +516,7 @@ final class NotchController: NSObject {
             applyMetrics(island)
             island.shrinkTask?.cancel()
             island.panel.setFrame(
-                NotchGeometry.windowFrame(
+                NotchGeometry.paddedWindowFrame(
                     for: island.model.state.kind, metrics: island.metrics,
                     smallTiles: island.model.content.smallTiles.count,
                     trayRow: TrayController.shared.isRowShown),
@@ -481,6 +533,21 @@ final class NotchController: NSObject {
         island.panel.onCancel = { [weak self] in self?.handleEscape() }
         island.hostingView.onMouseEntered = { [weak self] in self?.pointerEntered(id) }
         island.hostingView.onMouseExited = { [weak self] in self?.pointerExited(id) }
+        island.hostingView.onPointer = { [weak island] pointer in
+            guard let island, island.model.pointer != pointer else { return }
+            island.model.pointer = pointer
+        }
+        // A file drag near the notch needs room below the body for the neck.
+        island.model.$fileDrag
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak self, weak island] active in
+                MainActor.assumeIsolated {
+                    guard let self, let island else { return }
+                    self.updateFrame(island, for: island.model.state.kind, neck: active)
+                }
+            }
+            .store(in: &island.cancellables)
         return island
     }
 
@@ -492,6 +559,7 @@ final class NotchController: NSObject {
         island.model.shapeSize = NotchGeometry.size(
             for: island.model.state.kind, metrics: m, smallTiles: island.model.content.smallTiles.count,
             trayRow: TrayController.shared.isRowShown)
+        island.hostingView.bodySize = island.model.shapeSize
     }
 
     /// A battery appearing or going away changes the open panel's width.
@@ -504,12 +572,15 @@ final class NotchController: NSObject {
     }
 
     /// Grow the window first, then let the shape morph; on shrink wait for the morph to finish.
-    private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind) {
+    private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind, neck: Bool? = nil) {
         applyMetrics(island)
         let smallTiles = island.model.content.smallTiles.count
         let trayRow = TrayController.shared.isRowShown
         island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow)
-        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow)
+        island.hostingView.bodySize = island.model.shapeSize
+        let target = NotchGeometry.paddedWindowFrame(
+            for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow,
+            neck: neck ?? (island.model.fileDrag != nil))
         let current = island.panel.frame
         island.shrinkTask?.cancel()
         let shrinking = target.width < current.width || target.height < current.height

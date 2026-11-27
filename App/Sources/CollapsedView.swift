@@ -18,7 +18,7 @@ struct CollapsedView: View {
         }
         .padding(.horizontal, 12)
         .frame(maxHeight: .infinity)
-        .animation(reduceMotion ? nil : .easeInOut(duration: 0.25), value: layout.rightWingShown?.id)
+        .animation(Jelly.resolved(Jelly.morph, reduceMotion: reduceMotion), value: layout.rightWingShown?.id)
     }
 
     @ViewBuilder
