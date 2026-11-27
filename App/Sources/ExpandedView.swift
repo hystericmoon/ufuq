@@ -20,6 +20,8 @@ struct ExpandedView: View {
     let focusToken: Int
     /// Nil follows the accessibility settings.
     var surface: PanelSurface?
+    /// False only in snapshot tests: `ImageRenderer` does not draw AppKit-backed focusable views.
+    var focusable = true
     var onEscape: () -> Void = {}
 
     @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
@@ -103,12 +105,9 @@ struct ExpandedView: View {
             .background(shape.fill(resolvedSurface == .solid ? Tokens.cardBg : Tokens.Fill.tile))
             .overlay(shape.stroke(Tokens.textPrimary, lineWidth: 2).opacity(keyFocus == id ? 1 : 0))
             .contentShape(shape)
-            .focusable()
-            .focusEffectDisabled()
-            .focused($keyFocus, equals: id)
-            .accessibilityFocused($voiceOverFocus, equals: id)
-            .onKeyPress(.rightArrow) { move(from: id, by: 1) }
-            .onKeyPress(.leftArrow) { move(from: id, by: -1) }
+            .modifier(TileFocus(
+                enabled: focusable, id: id, keyFocus: $keyFocus, voiceOverFocus: $voiceOverFocus,
+                move: { move(from: id, by: $0) }))
     }
 
     private func requestFocus() {
@@ -122,6 +121,29 @@ struct ExpandedView: View {
         guard let index = order.firstIndex(of: id) else { return .ignored }
         keyFocus = order[(index + delta + order.count) % order.count]
         return .handled
+    }
+}
+
+/// Keyboard and VoiceOver focus for one tile; ←/→ move to the neighbour.
+private struct TileFocus: ViewModifier {
+    let enabled: Bool
+    let id: BentoTileID
+    var keyFocus: FocusState<BentoTileID?>.Binding
+    var voiceOverFocus: AccessibilityFocusState<BentoTileID?>.Binding
+    let move: (Int) -> KeyPress.Result
+
+    func body(content: Content) -> some View {
+        if enabled {
+            content
+                .focusable()
+                .focusEffectDisabled()
+                .focused(keyFocus, equals: id)
+                .accessibilityFocused(voiceOverFocus, equals: id)
+                .onKeyPress(.rightArrow) { move(1) }
+                .onKeyPress(.leftArrow) { move(-1) }
+        } else {
+            content
+        }
     }
 }
 

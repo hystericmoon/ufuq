@@ -73,7 +73,7 @@ final class SnapshotTests: XCTestCase {
         let size = BentoLayout.size(smallTiles: content.smallTiles.count, stripHeight: 32)
         let view = ExpandedView(
             content: content, layout: wings, centerGap: 188, stripHeight: 32,
-            focusedTile: .constant(.prayer), focusToken: 0, surface: .solid)
+            focusedTile: .constant(.prayer), focusToken: 0, surface: .solid, focusable: false)
         try render(view, size: size, name: name, backdrop: Color(hex: 0x33445A))
     }
 
