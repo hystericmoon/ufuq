@@ -108,7 +108,14 @@ struct AgentStatusSection: View {
         .onAppear { refresh() }
     }
 
-    private func settingsURL(_ dir: String) -> URL { URL(fileURLWithPath: dir).appendingPathComponent("settings.json") }
+    /// Resolved so a symlinked settings.json (dotfile managers) is written through, not replaced.
+    private func settingsURL(_ dir: String) -> URL {
+        URL(fileURLWithPath: dir).appendingPathComponent("settings.json").resolvingSymlinksInPath()
+    }
+
+    /// Run from the DMG or Downloads, macOS moves the app to a random path that disappears;
+    /// hooks pointing there would silently stop working.
+    private static var isTranslocated: Bool { Bundle.main.bundlePath.contains("/AppTranslocation/") }
 
     private func refresh() {
         dirs = ClaudeAccounts.configDirs()
@@ -119,10 +126,14 @@ struct AgentStatusSection: View {
     }
 
     private func install(_ dir: String) {
+        guard !Self.isTranslocated else {
+            results[dir] = "Move Ufuq to the Applications folder and reopen it first; nothing changed."
+            return
+        }
         let url = settingsURL(dir)
         let existing = try? Data(contentsOf: url)
         do {
-            let backup = URL(fileURLWithPath: dir).appendingPathComponent("settings.json.ufuq-backup")
+            let backup = url.deletingLastPathComponent().appendingPathComponent("settings.json.ufuq-backup")
             if let existing, !FileManager.default.fileExists(atPath: backup.path) {
                 try existing.write(to: backup, options: .atomic)
             }

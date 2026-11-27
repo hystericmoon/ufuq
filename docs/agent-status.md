@@ -41,7 +41,7 @@ File name: session_id with every character outside `[A-Za-z0-9._-]` replaced by 
 
 - Hidden: `idle`; any session not updated for 6 h (crashed sessions never send SessionEnd); `done` older than 5 min (wing only; tile and sync keep it until 6 h).
 - One collapsed activity, id `agent`, source `.agent`, aggregated:
-  - any waiting → text `Needs input · <title>` (`+N` when more waiting), `isAlert = true` (pins it in the rotation).
+  - any waiting → text `Needs input` (`3 need input` when several; the slot fits ~11 characters, the title is in the peek, tile and label), `isAlert = true` (pins it in the rotation).
   - else any running → `<title> · 4m` (elapsed since `runningSince`, `TokenFormat`-style short), or `3 agents running`.
   - else a recent done → `<title> done`.
   - Accessibility label spells it out: "Claude Code, ufuq, needs input".

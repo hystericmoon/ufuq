@@ -315,7 +315,7 @@ final class AgentStatusModuleTests: XCTestCase {
             makeSession(.waiting, id: "w1", title: "ufuq", updatedAt: ago(10), runningSince: ago(60)),
         ])
         let a = try XCTUnwrap(try one.collapsedActivity(at: now))
-        XCTAssertEqual(a.text, "Needs input · ufuq")
+        XCTAssertEqual(a.text, "Needs input")
         XCTAssertTrue(a.isAlert)
         XCTAssertEqual(a.accessibilityLabel, "Claude Code, ufuq, needs input")
 
@@ -325,7 +325,7 @@ final class AgentStatusModuleTests: XCTestCase {
             makeSession(.waiting, id: "w3", title: "gamma", updatedAt: ago(20)),
         ])
         let b = try XCTUnwrap(try three.collapsedActivity(at: now))
-        XCTAssertEqual(b.text, "Needs input · beta +2")
+        XCTAssertEqual(b.text, "3 need input")
         XCTAssertTrue(b.isAlert)
     }
 
