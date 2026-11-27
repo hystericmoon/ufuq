@@ -3,7 +3,7 @@ import UfuqCore
 
 /// The tiles of the open panel, in reading and Tab order.
 enum BentoTileID: String, CaseIterable, Identifiable {
-    case prayer, ai, agents, actions, meetings, battery, nowPlaying, clipboard
+    case prayer, ai, agents, actions, meetings, timer, transcribe, system, battery, nowPlaying, clipboard
 
     var id: String { rawValue }
 }
@@ -41,6 +41,11 @@ struct BentoContent: Equatable {
     var meeting: MeetingEvent?
     var mediaDevices = MediaDeviceSnapshot()
     var isDNDActive = false
+    var timer: TimerSnapshot?
+    var systemStats: SystemStatsSnapshot?
+    var stayAwakeActive = false
+    var transcribeActive = false
+    var transcript = ""
     var clipboard: [ClipboardItem] = []
 
     /// Playing, or paused for less than a minute (the same window as the right wing).
@@ -55,10 +60,17 @@ struct BentoContent: Equatable {
         meeting != nil || mediaDevices.isMicInUse || mediaDevices.isCameraInUse
     }
 
+    var showsTranscribe: Bool {
+        transcribeActive || !transcript.isEmpty
+    }
+
     var smallTiles: [BentoTileID] {
         (agents.isEmpty ? [] : [.agents])
             + (actions.isEmpty ? [] : [.actions])
             + (showsMeetings ? [.meetings] : [])
+            + (timer == nil ? [] : [.timer])
+            + (showsTranscribe ? [.transcribe] : [])
+            + (systemStats == nil ? [] : [.system])
             + (battery == nil ? [] : [.battery])
             + (showsNowPlaying ? [.nowPlaying] : [])
             + (clipboard.isEmpty ? [] : [.clipboard])
@@ -89,6 +101,11 @@ final class NotchModel: ObservableObject {
     @Published var meeting: MeetingEvent?
     @Published var mediaDevices = MediaDeviceSnapshot()
     @Published var isDNDActive = false
+    @Published var timer: TimerSnapshot?
+    @Published var systemStats: SystemStatsSnapshot?
+    @Published var stayAwakeActive = false
+    @Published var transcribeActive = false
+    @Published var transcript = ""
     @Published var clipboard: [ClipboardItem] = []
     /// The tile that gets focus when the panel opens (the last one used).
     @Published var focusedTile: BentoTileID = .prayer
@@ -120,6 +137,8 @@ final class NotchModel: ObservableObject {
         BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions,
             nowPlaying: nowPlaying, nowPlayingPausedSince: nowPlayingPausedSince,
             meeting: meeting, mediaDevices: mediaDevices, isDNDActive: isDNDActive,
+            timer: timer, systemStats: systemStats, stayAwakeActive: stayAwakeActive,
+            transcribeActive: transcribeActive, transcript: transcript,
             clipboard: clipboard)
     }
 

@@ -16,7 +16,7 @@ enum BentoLayout {
     /// The tray row under the tiles (file tray); present only while the tray is shown.
     static let trayRowHeight: CGFloat = 76
 
-    static var tileRadius: CGFloat { Tokens.Radius.expanded - padding }
+    static var tileRadius: CGFloat { max(8, CGFloat(AppSettings.shapeStyle.expandedRadius) - padding) }
     /// Two rows and the gap between them: the height of Prayer, AI and a lone small tile.
     static var bodyHeight: CGFloat { 2 * rowHeight + gap }
 

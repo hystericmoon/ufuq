@@ -229,7 +229,7 @@ struct TrayItemView: View {
         }
         .onKeyPress(.leftArrow) { move(-1) }
         .onKeyPress(.rightArrow) { move(1) }
-        .onKeyPress(characters: CharacterSet(charactersIn: "rsazpjhcdobnfRSAZPJHCDOBNF"), phases: .down) { press in
+        .onKeyPress(characters: CharacterSet(charactersIn: "rsazpjhcdobntfRSAZPJHCDOBNTF"), phases: .down) { press in
             guard tray.renamingID == nil, press.modifiers.isEmpty,
                   let character = press.characters.first,
                   let action = TrayAction.forKey(character), actions.contains(action) else { return .ignored }

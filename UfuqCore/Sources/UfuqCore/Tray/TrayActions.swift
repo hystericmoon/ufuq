@@ -118,9 +118,19 @@ public struct TrayActions {
         ext.lowercased() == "pdf"
     }
 
+    public static func isAudioExtension(_ ext: String) -> Bool {
+        let lower = ext.lowercased()
+        return ["m4a", "mp3", "wav", "aac", "aiff", "flac", "caf", "ogg"].contains(lower)
+    }
+
     public static func formatOCRStatus(lineCount: Int) -> String {
         guard lineCount > 0 else { return "No text found" }
         return lineCount == 1 ? "Copied 1 line of text" : "Copied \(lineCount) lines of text"
+    }
+
+    public static func formatTranscriptStatus(wordCount: Int) -> String {
+        guard wordCount > 0 else { return "No speech detected" }
+        return wordCount == 1 ? "Copied 1 word" : "Copied \(wordCount) words"
     }
 
     /// "Name.ext", then "Name 2.ext", "Name 3.ext", …

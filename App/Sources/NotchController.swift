@@ -191,6 +191,8 @@ final class NotchController: NSObject {
     private var tickCount = 0
     private var lastGitHubPoll = Date.distantPast
     private var lastNowPlayingPoll = Date.distantPast
+    private var lastUtilityPoll = Date.distantPast
+    private var lastStatsPoll = Date.distantPast
     private var nowPlayingPausedSince: Date?
     private var allDisplays = AppSettings.allDisplays
 
@@ -219,11 +221,18 @@ final class NotchController: NSObject {
                 if let calendar = self.registry.module(id: "calendar") as? CalendarModule {
                     calendar.isEnabled = AppSettings.calendarEnabled
                 }
+                if let downloads = self.registry.module(id: "downloads") as? DownloadsModule {
+                    downloads.isEnabled = AppSettings.downloadsEnabled
+                }
+                if let audio = self.registry.module(id: "audioAccessory") as? AudioAccessoryModule {
+                    audio.isEnabled = AppSettings.audioAccessoryEnabled
+                }
                 guard self.allDisplays != AppSettings.allDisplays else { return }
                 self.allDisplays = AppSettings.allDisplays
                 self.rebuildIslands()
             }
         }
+        TimerControl.onChanged = { [weak self] in self?.tick() }
         calendarObserver = NotificationCenter.default.addObserver(
             forName: .EKEventStoreChanged, object: nil, queue: .main
         ) { [weak self] _ in
@@ -378,6 +387,11 @@ final class NotchController: NSObject {
         }
         pollGitHub(at: now)
         pollNowPlaying(at: now)
+        pollUtilities(at: now)
+        StayAwakeController.shared.tick(at: now)
+        if let timerModule = registry.module(id: "timer") as? TimerModule {
+            timerModule.tick(at: now)
+        }
         if let calendar = registry.module(id: "calendar") as? CalendarModule {
             calendar.checkPeeks(at: now)
             AutoDNDBridge.shared.update(ongoingMeeting: calendar.ongoingMeeting(at: now))
@@ -403,6 +417,7 @@ final class NotchController: NSObject {
                 refreshAgents(island, now: now)
                 refreshActions(island, now: now)
                 refreshMeetings(island, now: now)
+                refreshUtilities(island, now: now)
                 refreshNowPlaying(island)
                 refreshClipboard(island)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
@@ -441,6 +456,7 @@ final class NotchController: NSObject {
                     island.model.agents = (registry.module(id: "agent") as? AgentStatusModule)?.sessions(at: Date()) ?? []
                     island.model.actions = githubBuilds(at: Date())
                     refreshMeetings(island, now: Date())
+                    refreshUtilities(island, now: Date(), forceStats: true)
                     island.model.battery = BatteryReader.read()
                     refreshNowPlaying(island)
                     island.model.clipboard = AppSettings.clipboardEnabled ? ClipboardMonitor.shared.items : []
@@ -558,6 +574,53 @@ final class NotchController: NSObject {
         Task { [weak self] in
             try? await calendar.refresh()
             self?.tick()
+        }
+    }
+
+    private func pollUtilities(at now: Date) {
+        guard now.timeIntervalSince(lastUtilityPoll) >= 5 else { return }
+        lastUtilityPoll = now
+        if let downloads = registry.module(id: "downloads") as? DownloadsModule, downloads.isEnabled {
+            Task { try? await downloads.refresh() }
+        }
+        if let audio = registry.module(id: "audioAccessory") as? AudioAccessoryModule, audio.isEnabled {
+            Task { try? await audio.refresh() }
+        }
+    }
+
+    private func refreshUtilities(_ island: ScreenIsland, now: Date, forceStats: Bool = false) {
+        let beforeTimer = island.model.timer != nil
+        let beforeTranscribe = island.model.content.showsTranscribe
+        let beforeSystem = island.model.systemStats != nil
+
+        let timerSnap = (registry.module(id: "timer") as? TimerModule)?.snapshot(at: now)
+        if island.model.timer != timerSnap { island.model.timer = timerSnap }
+
+        let stayAwake = StayAwakeController.shared.isActive
+        if island.model.stayAwakeActive != stayAwake { island.model.stayAwakeActive = stayAwake }
+
+        let transcriber = SpeechTranscriber.shared
+        if island.model.transcribeActive != transcriber.isRecording {
+            island.model.transcribeActive = transcriber.isRecording
+        }
+        if island.model.transcript != transcriber.transcript {
+            island.model.transcript = transcriber.transcript
+        }
+
+        if AppSettings.systemStatsEnabled {
+            if forceStats || island.model.systemStats == nil || now.timeIntervalSince(lastStatsPoll) >= 2 {
+                lastStatsPoll = now
+                island.model.systemStats = SystemStatsReader.shared.read(at: now)
+            }
+        } else if island.model.systemStats != nil {
+            island.model.systemStats = nil
+        }
+
+        let afterTimer = island.model.timer != nil
+        let afterTranscribe = island.model.content.showsTranscribe
+        let afterSystem = island.model.systemStats != nil
+        if beforeTimer != afterTimer || beforeTranscribe != afterTranscribe || beforeSystem != afterSystem {
+            updateFrame(island, for: island.model.state.kind)
         }
     }
 

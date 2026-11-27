@@ -6,7 +6,7 @@ import UniformTypeIdentifiers
 enum TrayAction: String, CaseIterable, Identifiable {
     case open, reveal, share, airdrop, zip
     case png, jpeg, heic
-    case compressVideo, makePDF, ocrText, removeBackground
+    case compressVideo, makePDF, ocrText, removeBackground, transcribe
     case rename, pinFolder, remove
 
     var id: String { rawValue }
@@ -25,6 +25,7 @@ enum TrayAction: String, CaseIterable, Identifiable {
         case .makePDF: return "Combine to PDF"
         case .ocrText: return "Copy Text (OCR)"
         case .removeBackground: return "Remove Background"
+        case .transcribe: return "Transcribe Audio"
         case .rename: return "Rename…"
         case .pinFolder: return "Pin Folder"
         case .remove: return "Remove from Tray"
@@ -45,6 +46,7 @@ enum TrayAction: String, CaseIterable, Identifiable {
         case .makePDF: return "d"
         case .ocrText: return "o"
         case .removeBackground: return "b"
+        case .transcribe: return "t"
         case .rename: return "n"
         case .pinFolder: return "f"
         case .open, .remove: return nil
@@ -76,6 +78,12 @@ enum TrayAction: String, CaseIterable, Identifiable {
         return TrayActions.isPDFExtension(ext) || (UTType(filenameExtension: ext)?.conforms(to: .pdf) ?? false)
     }
 
+    static func isAudio(_ item: TrayItem) -> Bool {
+        guard item.kind == .file else { return false }
+        let ext = (item.path as NSString).pathExtension
+        return TrayActions.isAudioExtension(ext) || (UTType(filenameExtension: ext)?.conforms(to: .audio) ?? false)
+    }
+
     /// The actions that make sense for this item, in menu order.
     static func available(for item: TrayItem) -> [TrayAction] {
         var list: [TrayAction] = [.open, .reveal, .share, .airdrop, .zip]
@@ -85,6 +93,8 @@ enum TrayAction: String, CaseIterable, Identifiable {
             list.append(.compressVideo)
         } else if isPDF(item) {
             list.append(.makePDF)
+        } else if isAudio(item) {
+            list.append(.transcribe)
         }
         list.append(.rename)
         if item.kind == .folder { list.append(.pinFolder) }

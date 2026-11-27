@@ -33,7 +33,10 @@ struct ExpandedView: View {
 
     private var resolvedSurface: PanelSurface {
         if let surface { return surface }
-        return reduceTransparency || contrast == .increased ? .solid : .glass
+        if reduceTransparency || contrast == .increased || AppSettings.glassStyle == .solid {
+            return .solid
+        }
+        return .glass
     }
 
     var body: some View {
@@ -114,6 +117,18 @@ struct ExpandedView: View {
                 devices: content.mediaDevices,
                 isDNDActive: content.isDNDActive,
                 now: content.now)
+        case .timer:
+            if let timer = content.timer { TimerTile(snapshot: timer) }
+        case .transcribe:
+            TranscribeTile(isRecording: content.transcribeActive, transcript: content.transcript)
+        case .system:
+            if let stats = content.systemStats {
+                SystemTile(
+                    stats: stats,
+                    stayAwakeActive: content.stayAwakeActive,
+                    timerActive: content.timer != nil,
+                    transcribeActive: content.transcribeActive)
+            }
         case .nowPlaying:
             if let nowPlaying = content.nowPlaying { NowPlayingTile(track: nowPlaying, now: content.now) }
         case .clipboard:
@@ -215,9 +230,10 @@ private struct PanelBody: View {
     let bordered: Bool
 
     private var shape: UnevenRoundedRectangle {
-        UnevenRoundedRectangle(
-            topLeadingRadius: 0, bottomLeadingRadius: Tokens.Radius.expanded,
-            bottomTrailingRadius: Tokens.Radius.expanded, topTrailingRadius: 0, style: .continuous)
+        let r = CGFloat(AppSettings.shapeStyle.expandedRadius)
+        return UnevenRoundedRectangle(
+            topLeadingRadius: 0, bottomLeadingRadius: r,
+            bottomTrailingRadius: r, topTrailingRadius: 0, style: .continuous)
     }
 
     var body: some View {
@@ -230,15 +246,19 @@ private struct PanelBody: View {
         case .solid:
             shape.fill(Tokens.notchBg)
         case .glass:
-            #if compiler(>=6.2)
-            if #available(macOS 26.0, *) {
-                Color.clear.glassEffect(.regular.tint(Tokens.Fill.glassTint), in: shape)
+            if AppSettings.glassStyle == .frosted {
+                shape.fill(.regularMaterial).overlay(shape.fill(Color.black.opacity(0.62)))
             } else {
+                #if compiler(>=6.2)
+                if #available(macOS 26.0, *) {
+                    Color.clear.glassEffect(.regular.tint(Tokens.Fill.glassTint), in: shape)
+                } else {
+                    material
+                }
+                #else
                 material
+                #endif
             }
-            #else
-            material
-            #endif
         }
     }
 
