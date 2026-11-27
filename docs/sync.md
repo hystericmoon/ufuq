@@ -4,7 +4,7 @@ Decided 2026-11-26: local network first, no backend. The Mac app is the server; 
 client. Off by default (Settings: "Share with phone on this network").
 
 Code: `UfuqCore/Sources/UfuqCore/Sync/` (models, pairing, HTTP parser, router, event log),
-`App/Sources/Sync/` (Network.framework server, CryptoKit, Keychain, pairing UI),
+`App/Sources/Sync/` (Network.framework server, CryptoKit, key file, pairing UI),
 `android/core/.../sync/` (models, sealer, client). Golden vectors: `UfuqCore/Tests/UfuqCoreTests/Fixtures/sync/`,
 copied to `android/core/src/test/resources/fixtures/sync/` (keep the two in step).
 
@@ -24,7 +24,7 @@ The Mac shows a QR ("Pair phone…" in the menu bar). Its text is compact JSON w
 ```
 
 - `v`: format version, `1`. A phone rejects other values.
-- `key`: 32 random bytes, base64url without padding (43 characters). Kept in the Mac Keychain.
+- `key`: 32 random bytes, base64url without padding (43 characters). Kept on the Mac in `~/Library/Application Support/Ufuq/sync-key` (0600), not the Keychain: the app is ad-hoc signed, so the Keychain asked again after every update. 0.1.1 keys move to the file once, on first load.
 - `deviceId`: stable per Mac install. `name` is optional.
 
 The phone stores the key (Android Keystore-backed storage). "Forget phone" on the Mac deletes the
@@ -57,6 +57,10 @@ Request auth: header `X-Ufuq-Auth` = base64url (no padding) of the sealed box of
 `ufuq-sync-auth:<unix seconds>`. The server opens it with its key and requires the time within
 5 minutes of its own clock. Anything else (missing, bad, stale, wrong key) gets `401` with an
 empty body, before any routing, so an unpaired caller learns nothing (not even 404s).
+
+Optional header `X-Ufuq-Client`: a short phone name (printable ASCII, at most 64 characters, e.g.
+`Samsung SM-S928B`). After a request passes auth and the replay check, the Mac shows it as
+"Paired with … · seen … ago". Older phones omit it; the Mac then says "a phone".
 
 Every `200` body is a sealed box of the JSON below (`Content-Type: application/octet-stream`).
 JSON is compact, keys sorted, dates ISO 8601 UTC with whole seconds. Clients ignore unknown keys.

@@ -47,7 +47,7 @@ All code is on PR #1 (`claude/ufuqcore-phase-1-setup-php4yz`), CI green on Linux
 ### Known issues to decide or fix
 - Island UI is duplicated in `:app` and `:desktop`; extract a KMP `:island-ui` module.
 - Mac doesn't emit agent events yet (Phase 6); Android derives them from snapshots.
-- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. Check on the Mac: after a Sparkle update, does the Keychain ask again for the sync key (ad-hoc signatures change each build)? If so, move the key out of the Keychain.
+- Mac stays ad-hoc signed: no Apple Developer account (owner, 27 Nov). First open needs System Settings → Privacy & Security → Open Anyway. The Keychain asked again after each update (owner, v0.1.1), so the sync key now lives in `~/Library/Application Support/Ufuq/sync-key` (0600); the old Keychain item is moved once and deleted.
 - Windows code-signing certificate: optional, removes the SmartScreen warning.
 
 ## Next up
