@@ -50,7 +50,6 @@ fun OtherAppsSection(
     onGrantAccess: () -> Unit,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Section(stringResource(R.string.other_section))
         SwitchRow(
             title = stringResource(R.string.other_switch),
             subtitle = stringResource(if (enabled) R.string.other_switch_on_hint else R.string.other_switch_hint),

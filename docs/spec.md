@@ -25,7 +25,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 
 - **Collapsed** (300×32 pt; on notch screens `max(300, notch + 2×90)`, ≈368 pt): two wings beside the camera. Left = prayer, right = AI. A third activity rotates every 8 s.
 - **Peek** (352×92 pt): one alert at a time, auto-dismisses after 6 s, hover holds it. 95% limits and adhan jump the queue.
-- **Expanded** (640 pt wide): pill tabs (Prayer, AI usage, Media, Shelf, …). Opened by hover (optional) or the global hotkey (default ⌥Space).
+- **Expanded** (bento, owner pick 27 Nov 2026, design canvas option A): the collapsed wings stay in a black strip at the notch; below it a Liquid Glass body (macOS 26; dark material on 14–15; solid black under Reduce Transparency or Increase Contrast) holds Prayer (216 pt) and AI (248 pt) as tall tiles and the small tiles (144 × 112 pt) in columns of two. Sized to content: only live tiles show, so the width is 496 pt with Prayer + AI and 952 pt with six small tiles. No tabs; Tab and ←/→ move between tiles. Opened by hover (optional) or the global hotkey (default ⌥Space).
 - Every state returns to collapsed: peek → 6 s or Esc; expanded → mouse leaves or Esc.
 - Wing priority: active alert > prayer under 10 min > AI at 80% or more > agent task running > Now Playing > other.
 - Non-notch displays: the same states, hanging from the top edge of the screen like a notch: centred over the middle of the menu bar, collapsed 300 pt wide and as tall as the menu bar (at least 24 pt).
@@ -130,7 +130,8 @@ protocol UfuqModule: Identifiable {
 | state.warning / critical | #FFB340 / #FF6B5E |
 | android.accent.container / on-accent / track | #A8D8B9 / #0F3D25 / #26302A (Android expanded island) |
 | Radius | 14 collapsed, 22 peek, 28 expanded |
-| Type | SF Pro: 13/600 collapsed, 26/700 title, 44/600 countdown, tabular numbers |
+| Type | SF Pro: 13/600 collapsed and row titles, 26/700 title, 44/600 countdown, 11/600 tile label (uppercase), 12/600 small value, 11/400 caption, 10/600 ring %; tabular numbers |
+| Open panel | padding 12, gap 8, tile padding 12, tile radius 16 (concentric with 28), tile fill white 8% (card.bg on solid), glass tint black 45% |
 
 ## Open questions
 

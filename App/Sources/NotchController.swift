@@ -80,7 +80,7 @@ final class NotchController: NSObject {
 
     private var layout = WingLayout()
     private var snapshot: PrayerSnapshot?
-    private var selectedTab: ExpandedTab = .prayer
+    private var focusedTile: BentoTileID = .prayer
 
     private var previousApp: NSRunningApplication?
     private var lastAnnouncedPeekID: String?
@@ -230,7 +230,11 @@ final class NotchController: NSObject {
         for island in islands {
             if island.model.layout != layout { island.model.layout = layout }
             island.model.now = now
-            if island.displayID == activeID, machine.isExpanded { island.model.snapshot = snapshot }
+            if island.displayID == activeID, machine.isExpanded {
+                island.model.snapshot = snapshot
+                // The battery moves slowly; a reading every 30 s keeps the tile honest.
+                if tickCount % 30 == 0 { refreshBattery(island) }
+            }
         }
         applyState(restoreFocus: false)
 
@@ -258,11 +262,12 @@ final class NotchController: NSObject {
                 if newState.kind == .expanded {
                     snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: Date())
                     island.model.snapshot = snapshot
-                    island.model.selectedTab = selectedTab
+                    island.model.battery = BatteryReader.read()
+                    island.model.focusedTile = focusedTile
                 }
                 updateFrame(island, for: newState.kind)
             }
-            if oldState.kind == .expanded { selectedTab = island.model.selectedTab }
+            if oldState.kind == .expanded { focusedTile = island.model.focusedTile }
             island.model.state = newState
         }
 
@@ -369,7 +374,11 @@ final class NotchController: NSObject {
             island.model.layout = layout
             applyMetrics(island)
             island.shrinkTask?.cancel()
-            island.panel.setFrame(NotchGeometry.windowFrame(for: island.model.state.kind, metrics: island.metrics), display: true)
+            island.panel.setFrame(
+                NotchGeometry.windowFrame(
+                    for: island.model.state.kind, metrics: island.metrics,
+                    smallTiles: island.model.content.smallTiles.count),
+                display: true)
             island.panel.orderFrontRegardless()
         }
         applyState(restoreFocus: false)
@@ -389,14 +398,26 @@ final class NotchController: NSObject {
         let m = island.metrics
         island.model.topInset = m.hasNotch ? m.safeAreaTop : 0
         island.model.centerGap = m.hasNotch ? NotchGeometry.notchWidth(m) : 16
-        island.model.shapeSize = NotchGeometry.size(for: island.model.state.kind, metrics: m)
+        island.model.stripHeight = NotchGeometry.stripHeight(m)
+        island.model.shapeSize = NotchGeometry.size(
+            for: island.model.state.kind, metrics: m, smallTiles: island.model.content.smallTiles.count)
+    }
+
+    /// A battery appearing or going away changes the open panel's width.
+    private func refreshBattery(_ island: ScreenIsland) {
+        let battery = BatteryReader.read()
+        guard battery != island.model.battery else { return }
+        let resized = (battery == nil) != (island.model.battery == nil)
+        island.model.battery = battery
+        if resized { updateFrame(island, for: island.model.state.kind) }
     }
 
     /// Grow the window first, then let the shape morph; on shrink wait for the morph to finish.
     private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind) {
         applyMetrics(island)
-        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics)
-        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics)
+        let smallTiles = island.model.content.smallTiles.count
+        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics, smallTiles: smallTiles)
+        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics, smallTiles: smallTiles)
         let current = island.panel.frame
         island.shrinkTask?.cancel()
         let shrinking = target.width < current.width || target.height < current.height

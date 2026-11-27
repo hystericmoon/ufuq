@@ -2,28 +2,23 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27, 13:50 WIB)
+## Resume here (2026-11-27, 15:30 WIB)
 
-Released: v0.1.0 to v0.1.3 (DMG, MSI, APK on GitHub Releases; auto-update works on all three). Tags cannot be
+Released: v0.1.0 to v0.1.3. **0.2.0 is NOT shipped yet:** PR #7 waits for CI; then merge it (merge commit), run
+`release-mac.yml`, `release-windows.yml`, `release-android.yml` on `main` (workflow_dispatch), check the v0.2.0
+release has the DMG, MSI and APK, and fix this line. Also download the `snapshots` artifact from `mac.yml` and
+check `expanded-bento-*` (112 pt rows, no "Maghr…"). Tags cannot be
 pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
-bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release. (The `v0.1.0` tag
-points at the kickoff commit; harmless.)
+bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release.
 
-0.1.2 (PR #4) carries:
-- Android open island = **option C** (owner pick, 27 Nov): one black card under the status bar, one row per module (heading, large value, 4 dp progress line, 40 dp action in a 48 dp target), no pages. Rows without data show their message, no line. Media seek drags on the line; TalkBack reads each row as one node with progress (and the seek action), then its button. `IslandSlider`/pager removed. Windows follows (owner, 27 Nov): same card, 72 dp rows, window height grows with the rows (`IslandSizes.expandedHeight`), Tab between buttons, Esc closes; no arrow-key pages any more.
-- Android pill: countdown only, 24–30 dp, centred on the camera hole.
-- Mac: sync key in `~/Library/Application Support/Ufuq/sync-key` (not Keychain); island on non-notch screens sits in the menu bar; "Paired with <phone> · seen …"; "Forget phone…" confirms. macOS CI green.
-
-0.1.3 (owner picks 27 Nov, decision page https://claude.ai/artifact/AGqaayRyQD7zZuEymEUkvc):
-- Android, one Ufuq notification: the island service runs on the next-prayer notification (id 1, channel `next_prayer`); the old "Ufuq island is on" channel is deleted. No progress bar, no chronometer. With the island on: "Ashar in 2 h 3 min" / "15:08 · Bogor", reposted each minute by the island tick; without it: "Ashar at 15:08" / place (only what stays true between boundaries). With the Live Update setting off, the card stays while the island runs (Android needs it).
-- Android open island shows only live rows: media while a session exists, AI once a Mac is paired. Prayer row: "Ashar · 15:08 · Bogor", then "Then Maghrib 17:58 · Isya 19:12".
-- A device location shows its nearest listed city ("Near Jakarta" from 10 to 50 km), offline.
-- The "Android System · displaying over other apps" notification is the system's; the owner can long-press it to turn it off.
+0.2.0 (PR #7) carries:
+- Mac open panel = **bento, design canvas option A** (owner pick 27 Nov, https://claude.ai/artifact/PpqkyeEQu7EhFj8gxvRD1j): black strip with the wings at the notch; Prayer (216 pt) and AI (248 pt) tall tiles; small tiles 144×112 in columns of two (Battery only so far, IOKit). Sized to live tiles (496 pt, 648 with battery). Liquid Glass on macOS 26, dark material on 14–15, solid under Reduce Transparency / Increase Contrast. Tabs removed; Tab/←→ move between tiles. CI and release build with Xcode 26 (26.3 on macos-15). AI tile shows "No usage yet" until the usage readers are wired (Phase 5).
+- Android: Home is the settings (no Today screen). Next-prayer status card, then Island & notification / Mac / Prayer / About cards; location, method, reminder, silence, other apps and Mac open sub-screens (back stack).
+- CLAUDE.md: delegate lighter work to Haiku/Sonnet sub-agents (owner, 27 Nov).
 
 Next:
-1. **Mac panel revamp: waiting on the owner's reference design.** Direction so far: Liquid Glass (`.glassEffect` on macOS 26, material fallback on 14–15, black strip at the notch, solid under Reduce Transparency / Increase Contrast), sized to content, no dead space.
-2. Owner checks on 0.1.2/0.1.3: one notification, island rows, Windows card; Mac Keychain prompt (Allow once), external-monitor island in the menu bar, paired-phone line, Forget phone.
-3. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
+1. Owner checks on 0.2.0: Mac panel on macOS 26 (glass over a light wallpaper: is text readable?) and on 14–15; Tab/arrows/Esc; Android Home, sub-screens, Back, permission round-trips.
+2. Phase 5 on the Mac: wire Claude/Codex usage into the AI tile (needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac). Then more small tiles (agents, media) as their modules land.
 
 Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 

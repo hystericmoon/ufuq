@@ -1,11 +1,33 @@
 import SwiftUI
 import UfuqCore
 
-enum ExpandedTab: String, CaseIterable, Identifiable {
-    case prayer = "Prayer"
-    case ai = "AI usage"
+/// The tiles of the open panel, in reading and Tab order.
+enum BentoTileID: String, CaseIterable, Identifiable {
+    case prayer, ai, battery
 
     var id: String { rawValue }
+}
+
+/// One AI usage line: an account or a provider with its worst window.
+struct AIUsageRow: Equatable, Identifiable {
+    var id: String
+    var provider: UsageProvider
+    var name: String
+    var fraction: Double
+    /// e.g. "Week 41% · resets in 2 h 10 min".
+    var detail: String
+    var isBetaSource = false
+}
+
+/// What the open panel shows. A small tile appears only while its module has something live.
+struct BentoContent: Equatable {
+    var snapshot: PrayerSnapshot?
+    var now = Date()
+    var ai: [AIUsageRow] = []
+    var battery: BatteryStatus?
+
+    var smallTiles: [BentoTileID] { battery == nil ? [] : [.battery] }
+    var tileOrder: [BentoTileID] { [.prayer, .ai] + smallTiles }
 }
 
 /// What the SwiftUI views observe. The controller writes it; views never write state directly.
@@ -15,7 +37,12 @@ final class NotchModel: ObservableObject {
     @Published var layout = WingLayout()
     @Published var snapshot: PrayerSnapshot?
     @Published var now = Date()
-    @Published var selectedTab: ExpandedTab = .prayer
+    @Published var ai: [AIUsageRow] = []
+    @Published var battery: BatteryStatus?
+    /// The tile that gets focus when the panel opens (the last one used).
+    @Published var focusedTile: BentoTileID = .prayer
+    /// Height of the black strip on top of the open panel.
+    @Published var stripHeight: CGFloat = 32
     /// Size of the black shape for the current state.
     @Published var shapeSize = NotchGeometry.collapsedSize
     /// Height of the camera housing the content must stay below; 0 on screens without a notch.
@@ -24,6 +51,8 @@ final class NotchModel: ObservableObject {
     @Published var centerGap: CGFloat = 16
     /// Bumped each time the panel opens, so the expanded view moves keyboard and VoiceOver focus in.
     @Published var focusToken = 0
+
+    var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery) }
 
     var onEscape: () -> Void = {}
     var onTapCollapsed: () -> Void = {}

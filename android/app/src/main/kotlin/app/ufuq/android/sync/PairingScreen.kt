@@ -193,10 +193,9 @@ private fun Heading(text: String) {
     )
 }
 
-/** The Settings section: pair, or show the paired Mac with "Forget this Mac". */
+/** The Mac page: pair, or show the paired Mac with "Forget this Mac". */
 @Composable
 fun MacSyncSection(macName: String?, onPair: () -> Unit, onForget: () -> Unit) {
-    Heading(stringResource(R.string.sync_settings_section))
     Column(
         Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(Tokens.Card).padding(16.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
