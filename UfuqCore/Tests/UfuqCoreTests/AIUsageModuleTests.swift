@@ -137,4 +137,59 @@ final class AIUsageModuleTests: XCTestCase {
         try await m.refresh()
         XCTAssertNil(try m.collapsedActivity(at: utc("2026-11-27T14:00:00Z")))
     }
+
+    // MARK: - Skipping old files
+
+    /// Records every read; `dates` gives each path's modification date (absent = unknown).
+    private final class RecordingSource: FileSource, @unchecked Sendable {
+        let inner: InMemoryFileSource
+        let dates: [String: Date]
+        private let lock = NSLock()
+        private var _reads: [String] = []
+        var reads: [String] { lock.lock(); defer { lock.unlock() }; return _reads }
+
+        init(files: [String: String], dates: [String: Date]) {
+            inner = InMemoryFileSource(strings: files)
+            self.dates = dates
+        }
+
+        func files(under directory: String, suffix: String) throws -> [String] {
+            try inner.files(under: directory, suffix: suffix)
+        }
+
+        func read(_ path: String) throws -> Data {
+            lock.lock(); _reads.append(path); lock.unlock()
+            return try inner.read(path)
+        }
+
+        func modificationDate(_ path: String) -> Date? { dates[path] }
+    }
+
+    private func reads(dates: [String: Date]) async throws -> [String] {
+        let files = ["\(claudeDir)/projects/p/a.jsonl": claudeLog]
+        let source = RecordingSource(files: files, dates: dates)
+        let nowDate = now
+        let m = AIUsageModule(claudeDirs: [claudeDir], codexSessionsDir: nil, fileSource: source,
+                              directoryExists: { _ in false }, now: { nowDate })
+        try await m.refresh()
+        return source.reads
+    }
+
+    private var logPath: String { "\(claudeDir)/projects/p/a.jsonl" }
+
+    func testOldFileIsNotRead() async throws {
+        // 6 h 1 min before now: outside the 5 h block plus 1 h margin.
+        let read = try await reads(dates: [logPath: now.addingTimeInterval(-(6 * 3600 + 60))])
+        XCTAssertEqual(read, [])
+    }
+
+    func testRecentFileIsRead() async throws {
+        let read = try await reads(dates: [logPath: now.addingTimeInterval(-3600)])
+        XCTAssertEqual(read, [logPath])
+    }
+
+    func testFileWithUnknownDateIsRead() async throws {
+        let read = try await reads(dates: [:])
+        XCTAssertEqual(read, [logPath])
+    }
 }

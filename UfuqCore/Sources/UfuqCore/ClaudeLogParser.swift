@@ -79,13 +79,19 @@ public enum ClaudeLogParser {
     }
 
     /// Reads every `projects/**/*.jsonl` under `configDir` (`~` is expanded), one file at a time.
-    public static func parse(configDir: String, source: FileSource = LocalFileSource()) -> UsageResult<ClaudeUsageReport> {
+    /// With `modifiedSince`, files last modified before it are skipped; a file whose date is
+    /// unknown is always read.
+    public static func parse(configDir: String, source: FileSource = LocalFileSource(),
+                             modifiedSince: Date? = nil) -> UsageResult<ClaudeUsageReport> {
         let projects = ((configDir as NSString).expandingTildeInPath as NSString).appendingPathComponent("projects")
-        let paths: [String]
+        var paths: [String]
         do {
             paths = try source.files(under: projects, suffix: ".jsonl")
         } catch {
             return .unavailable(reason: "Claude logs not readable: \(error)")
+        }
+        if let modifiedSince {
+            paths = paths.filter { path in source.modificationDate(path).map { $0 >= modifiedSince } ?? true }
         }
 
         var acc = Accumulator()

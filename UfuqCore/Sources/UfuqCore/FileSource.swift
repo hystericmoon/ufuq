@@ -6,6 +6,12 @@ public protocol FileSource: Sendable {
     /// directory is missing or unreadable.
     func files(under directory: String, suffix: String) throws -> [String]
     func read(_ path: String) throws -> Data
+    /// Last modification date of `path`; nil when unknown (callers then treat the file as recent).
+    func modificationDate(_ path: String) -> Date?
+}
+
+public extension FileSource {
+    func modificationDate(_ path: String) -> Date? { nil }
 }
 
 public struct FileSourceError: Error, Equatable, CustomStringConvertible {
@@ -38,6 +44,10 @@ public struct LocalFileSource: FileSource {
             result.append(full)
         }
         return result.sorted()
+    }
+
+    public func modificationDate(_ path: String) -> Date? {
+        (try? FileManager.default.attributesOfItem(atPath: path))?[.modificationDate] as? Date
     }
 
     public func read(_ path: String) throws -> Data {
