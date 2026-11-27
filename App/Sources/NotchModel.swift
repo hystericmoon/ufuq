@@ -63,6 +63,12 @@ final class NotchModel: ObservableObject {
     @Published var centerGap: CGFloat = 16
     /// Bumped each time the panel opens, so the expanded view moves keyboard and VoiceOver focus in.
     @Published var focusToken = 0
+    /// A file drag near the top edge of this display; nil when none (written by the tray code).
+    @Published var fileDrag: FileDragState?
+    /// Bumped each time the tray swallows a drop, so the body can bulge.
+    @Published var swallowToken = 0
+    /// The tray's items, mirrored for the views that animate around them.
+    @Published var tray: [TrayItem] = []
 
     var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions) }
 

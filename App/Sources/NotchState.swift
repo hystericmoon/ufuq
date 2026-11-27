@@ -34,6 +34,8 @@ enum ExpandOrigin: Equatable {
     case hotkey
     case click
     case hover
+    /// A file drag reached the drop zone.
+    case drag
 }
 
 /// Pure state machine for the notch. The controller feeds it events and applies the result.
@@ -41,6 +43,7 @@ enum ExpandOrigin: Equatable {
 /// - Expanded wins over a peek; when expanded closes, a waiting peek shows.
 /// - Hotkey toggles expanded; Esc closes expanded, otherwise dismisses the current peek.
 /// - Mouse exit collapses only a panel that hover opened.
+/// - A drag-opened panel closes when the drag leaves without dropping, unless the tray has items.
 /// - The peek content comes from `PeekQueue.current`, which the controller passes to `setPeek`.
 struct NotchStateMachine: Equatable {
     enum EscapeResult: Equatable {
@@ -93,6 +96,19 @@ struct NotchStateMachine: Equatable {
             return .dismissedPeek
         }
         return .ignored
+    }
+
+    /// A file drag reached the drop zone. Opens the panel; one that is already open keeps its origin.
+    mutating func dragEntered() {
+        guard !isExpanded else { return }
+        open(origin: .drag)
+    }
+
+    /// The drag left the panel or ended without a drop. Closes only a drag-opened panel, and only
+    /// while the tray is empty.
+    mutating func dragLeft(hasItems: Bool) {
+        guard isExpanded, origin == .drag, !hasItems else { return }
+        collapse()
     }
 
     /// Pointer entered the panel. Opens it only when the hover setting is on.

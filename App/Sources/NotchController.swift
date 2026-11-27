@@ -77,6 +77,9 @@ final class NotchController: NSObject {
     private var screenObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
     private var clickMonitor: Any?
+    private var trayHotkey: Hotkey?
+    private var trayDrag: TrayDragMonitor?
+    private var floatingTray: FloatingTrayController?
 
     private var layout = WingLayout()
     private var snapshot: PrayerSnapshot?
@@ -124,6 +127,7 @@ final class NotchController: NSObject {
             MainActor.assumeIsolated { self?.toggleExpanded() }
         }
         if hotkey == nil { NSLog("Ufuq: could not register the Option+Space hotkey") }
+        startTray()
 
         for module in registry.enabledModules {
             let stream = module.peekEvents()
@@ -332,7 +336,8 @@ final class NotchController: NSObject {
     }
 
     private func becameExpanded() {
-        guard machine.origin != .hover, let island = activeIsland else { return }
+        // A drag-opened panel must not take focus from the app the drag comes from.
+        guard machine.origin != .hover, machine.origin != .drag, let island = activeIsland else { return }
         if let front = NSWorkspace.shared.frontmostApplication,
            front.processIdentifier != ProcessInfo.processInfo.processIdentifier {
             previousApp = front
@@ -429,7 +434,8 @@ final class NotchController: NSObject {
             island.panel.setFrame(
                 NotchGeometry.windowFrame(
                     for: island.model.state.kind, metrics: island.metrics,
-                    smallTiles: island.model.content.smallTiles.count),
+                    smallTiles: island.model.content.smallTiles.count,
+                    trayRow: TrayController.shared.isRowShown),
                 display: true)
             island.panel.orderFrontRegardless()
         }
@@ -452,7 +458,8 @@ final class NotchController: NSObject {
         island.model.centerGap = m.hasNotch ? NotchGeometry.notchWidth(m) : 16
         island.model.stripHeight = NotchGeometry.stripHeight(m)
         island.model.shapeSize = NotchGeometry.size(
-            for: island.model.state.kind, metrics: m, smallTiles: island.model.content.smallTiles.count)
+            for: island.model.state.kind, metrics: m, smallTiles: island.model.content.smallTiles.count,
+            trayRow: TrayController.shared.isRowShown)
     }
 
     /// A battery appearing or going away changes the open panel's width.
@@ -468,8 +475,9 @@ final class NotchController: NSObject {
     private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind) {
         applyMetrics(island)
         let smallTiles = island.model.content.smallTiles.count
-        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics, smallTiles: smallTiles)
-        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics, smallTiles: smallTiles)
+        let trayRow = TrayController.shared.isRowShown
+        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow)
+        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow)
         let current = island.panel.frame
         island.shrinkTask?.cancel()
         let shrinking = target.width < current.width || target.height < current.height
@@ -481,6 +489,118 @@ final class NotchController: NSObject {
             }
         } else {
             island.panel.setFrame(target, display: true)
+        }
+    }
+}
+
+// MARK: - File tray
+
+extension NotchController {
+    /// Wires the tray: ⌥⇧T, the Services item, drag monitoring and the shake tray.
+    fileprivate func startTray() {
+        let tray = TrayController.shared
+        tray.onRowShownChanged = { [weak self] in self?.resizeForTray() }
+        tray.onItemsChanged = { [weak self] swallowed in self?.publishTray(swallowed: swallowed) }
+        tray.onRequestOpen = { [weak self] in self?.openTray() }
+        publishTray(swallowed: false)
+        NSApp.servicesProvider = TrayServicesProvider.shared
+
+        trayHotkey = Hotkey(keyCode: Hotkey.trayKeyCode, modifiers: Hotkey.trayModifiers, id: 2) { [weak self] in
+            MainActor.assumeIsolated { self?.openTray() }
+        }
+        if trayHotkey == nil { NSLog("Ufuq: could not register the Option+Shift+T hotkey") }
+
+        let floating = FloatingTrayController(tray: tray)
+        floatingTray = floating
+        let monitor = TrayDragMonitor()
+        monitor.onFileDrag = { [weak self] point in self?.trayDragMoved(to: point) }
+        monitor.onShake = { [weak self] point in self?.floatingTray?.show(at: point) }
+        monitor.onDragEnded = { [weak self] in self?.trayDragEnded() }
+        monitor.start()
+        trayDrag = monitor
+    }
+
+    /// ⌥⇧T and the Services item: open the panel with focus on the tray row.
+    fileprivate func openTray() {
+        let tray = TrayController.shared
+        tray.revealed = true
+        tray.wantsFocus = true
+        if machine.isExpanded {
+            activeIsland?.model.focusToken += 1
+        } else {
+            activeID = pointerDisplayID() ?? islands.first?.displayID
+            machine.open(origin: .hotkey)
+            applyState(restoreFocus: true)
+        }
+    }
+
+    /// The row appeared or went away: the open panel changes height.
+    fileprivate func resizeForTray() {
+        for island in islands where island.model.state.kind == .expanded {
+            updateFrame(island, for: .expanded)
+        }
+    }
+
+    /// Mirrors the tray into every island's model; a drop also bumps the swallow token.
+    fileprivate func publishTray(swallowed: Bool) {
+        let items = TrayController.shared.items
+        for island in islands {
+            island.model.tray = items
+            if swallowed { island.model.swallowToken += 1 }
+        }
+    }
+
+    /// A file drag moved. The island under the pointer gets `fileDrag`; the drop zone opens the panel.
+    /// Coordinates: `NSEvent.mouseLocation` and `NSScreen.frame` share the screen space (origin
+    /// bottom-left); x is made relative to the collapsed body's centre.
+    fileprivate func trayDragMoved(to point: NSPoint) {
+        let tray = TrayController.shared
+        var current: FileDragState?
+        var currentID: CGDirectDisplayID?
+        for island in islands {
+            guard let screen = NSScreen.screens.first(where: { Self.displayID(of: $0) == island.displayID }),
+                  NSMouseInRect(point, screen.frame, false) || point.y >= screen.frame.maxY
+                    && point.x >= screen.frame.minX && point.x <= screen.frame.maxX else { continue }
+            let midX = NotchGeometry.windowFrame(for: .collapsed, metrics: island.metrics).midX
+            current = FileDragState.make(pointer: point, screenFrame: screen.frame, bodyMidX: midX)
+            currentID = island.displayID
+            break
+        }
+        for island in islands {
+            let value = island.displayID == currentID ? current : nil
+            if island.model.fileDrag != value { island.model.fileDrag = value }
+        }
+
+        if let current, current.overDropZone, let currentID {
+            tray.dragActive = true
+            if !machine.isExpanded {
+                activeID = currentID
+                machine.dragEntered()
+                applyState(restoreFocus: false)
+            }
+        } else if machine.isExpanded, machine.origin == .drag {
+            let inside = activeIsland?.panel.frame.insetBy(dx: -12, dy: -12).contains(point) ?? false
+            if !inside {
+                tray.dragActive = false
+                machine.dragLeft(hasItems: !tray.items.isEmpty)
+                applyState(restoreFocus: false)
+            }
+        }
+    }
+
+    /// The drag ended (dropped or not). A short delay lets an accepted drop finish loading first.
+    fileprivate func trayDragEnded() {
+        for island in islands where island.model.fileDrag != nil { island.model.fileDrag = nil }
+        floatingTray?.dragEnded()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let tray = TrayController.shared
+                tray.dragActive = false
+                tray.dropTargeted = false
+                self.machine.dragLeft(hasItems: !tray.items.isEmpty)
+                self.applyState(restoreFocus: false)
+            }
         }
     }
 }
