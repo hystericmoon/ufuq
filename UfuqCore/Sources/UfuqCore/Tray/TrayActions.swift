@@ -85,6 +85,44 @@ public struct TrayActions {
             output: destination)
     }
 
+    /// Unique output path for a compressed `.mp4` next to the source video.
+    public func compressVideoOutput(_ source: String) -> String {
+        let stem = ((source as NSString).lastPathComponent as NSString).deletingPathExtension
+        let dir = (source as NSString).deletingLastPathComponent
+        return uniquePath(directory: dir, stem: "\(stem) compressed", ext: "mp4")
+    }
+
+    /// Unique output path for combining images/PDFs into one PDF.
+    public func combinePDFOutput(directory: String, stem: String = "Combined") -> String {
+        uniquePath(directory: directory, stem: stem, ext: "pdf")
+    }
+
+    /// Unique output path for a foreground-masked transparent PNG (`<stem> no-bg.png`).
+    public func removeBackgroundOutput(_ source: String) -> String {
+        let stem = ((source as NSString).lastPathComponent as NSString).deletingPathExtension
+        let dir = (source as NSString).deletingLastPathComponent
+        return uniquePath(directory: dir, stem: "\(stem) no-bg", ext: "png")
+    }
+
+    public static func isImageExtension(_ ext: String) -> Bool {
+        let lower = ext.lowercased()
+        return ["png", "jpg", "jpeg", "heic", "heif", "tiff", "tif", "webp", "bmp", "gif"].contains(lower)
+    }
+
+    public static func isVideoExtension(_ ext: String) -> Bool {
+        let lower = ext.lowercased()
+        return ["mp4", "mov", "m4v", "avi", "mkv"].contains(lower)
+    }
+
+    public static func isPDFExtension(_ ext: String) -> Bool {
+        ext.lowercased() == "pdf"
+    }
+
+    public static func formatOCRStatus(lineCount: Int) -> String {
+        guard lineCount > 0 else { return "No text found" }
+        return lineCount == 1 ? "Copied 1 line of text" : "Copied \(lineCount) lines of text"
+    }
+
     /// "Name.ext", then "Name 2.ext", "Name 3.ext", …
     func uniquePath(directory: String, stem: String, ext: String) -> String {
         var n = 1

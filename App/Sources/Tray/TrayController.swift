@@ -19,6 +19,7 @@ final class TrayController: ObservableObject {
     @Published var wantsFocus = false
     @Published var dropTargeted = false
     @Published var errorText: String?
+    @Published var statusText: String?
     @Published var renamingID: UUID?
     @Published var renameText = ""
 
@@ -33,6 +34,7 @@ final class TrayController: ObservableObject {
     private let store: TrayStore
     private var lastRowShown = false
     private var errorTask: Task<Void, Never>?
+    private var statusTask: Task<Void, Never>?
 
     init(store: TrayStore = TrayStore()) {
         self.store = store
@@ -153,6 +155,14 @@ final class TrayController: ObservableObject {
             run(TrayActions().zip(item.path))
         case .png, .jpeg, .heic:
             if let format = action.imageFormat { run(TrayActions().convertImage(item.path, to: format)) }
+        case .compressVideo:
+            compressVideo(item.url)
+        case .makePDF:
+            combinePDF(anchoredAt: item.url)
+        case .ocrText:
+            ocrImage(item.url)
+        case .removeBackground:
+            removeBackground(item.url)
         case .rename:
             renameText = item.name
             renamingID = item.id
@@ -160,6 +170,135 @@ final class TrayController: ObservableObject {
             pin(item)
         case .remove:
             remove(item)
+        }
+    }
+
+    var canCombineTrayToPDF: Bool {
+        pdfCompatibleURLs.count >= 2
+    }
+
+    private var pdfCompatibleURLs: [URL] {
+        items.filter { TrayAction.isImage($0) || TrayAction.isPDF($0) }.map(\.url)
+    }
+
+    func combineTrayToPDF() {
+        let urls = pdfCompatibleURLs
+        guard !urls.isEmpty else {
+            fail("Add images or PDFs to combine")
+            return
+        }
+        runCombinePDF(urls: urls)
+    }
+
+    func captureScreenOCR() {
+        setStatus("Select text area…", clearAfter: nil)
+        Task { [weak self] in
+            let outcome = await VisionServices.captureScreenAndOCR()
+            guard let self else { return }
+            guard let outcome else {
+                self.statusText = nil
+                return
+            }
+            switch outcome {
+            case .success(let lines):
+                self.finishOCR(lines: lines)
+            case .failure(let error):
+                self.statusText = nil
+                self.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func compressVideo(_ url: URL) {
+        setStatus("Compressing video…", clearAfter: nil)
+        Task { [weak self] in
+            do {
+                let output = try await MediaTransformer.compressVideo(at: url)
+                guard let self else { return }
+                self.setStatus("Video compressed", clearAfter: 3)
+                self.add(urls: [output])
+            } catch {
+                self?.statusText = nil
+                self?.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func combinePDF(anchoredAt url: URL) {
+        let trayPDFInputs = pdfCompatibleURLs
+        let urls = trayPDFInputs.count >= 2 ? trayPDFInputs : [url]
+        runCombinePDF(urls: urls)
+    }
+
+    private func runCombinePDF(urls: [URL]) {
+        setStatus("Creating PDF…", clearAfter: nil)
+        Task { [weak self] in
+            do {
+                let output = try await Task.detached(priority: .userInitiated) {
+                    try MediaTransformer.combineToPDF(urls: urls)
+                }.value
+                guard let self else { return }
+                self.setStatus("PDF created", clearAfter: 3)
+                self.add(urls: [output])
+            } catch {
+                self?.statusText = nil
+                self?.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func ocrImage(_ url: URL) {
+        setStatus("Reading text…", clearAfter: nil)
+        Task { [weak self] in
+            do {
+                let lines = try await VisionServices.recognizeText(at: url)
+                self?.finishOCR(lines: lines)
+            } catch {
+                self?.statusText = nil
+                self?.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func finishOCR(lines: [String]) {
+        let message = TrayActions.formatOCRStatus(lineCount: lines.count)
+        guard !lines.isEmpty else {
+            setStatus(message, clearAfter: 3)
+            announce(message)
+            return
+        }
+        let joined = lines.joined(separator: "\n")
+        let pb = NSPasteboard.general
+        pb.clearContents()
+        pb.setString(joined, forType: .string)
+        setStatus(message, clearAfter: 3)
+        announce(message)
+    }
+
+    private func removeBackground(_ url: URL) {
+        setStatus("Removing background…", clearAfter: nil)
+        Task { [weak self] in
+            do {
+                let output = try await VisionServices.removeBackground(at: url)
+                guard let self else { return }
+                self.setStatus("Background removed", clearAfter: 3)
+                self.add(urls: [output])
+            } catch {
+                self?.statusText = nil
+                self?.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func setStatus(_ text: String, clearAfter seconds: Double?) {
+        errorText = nil
+        statusText = text
+        statusTask?.cancel()
+        guard let seconds else { return }
+        statusTask = Task { [weak self] in
+            try? await Task.sleep(nanoseconds: UInt64(seconds * 1_000_000_000))
+            guard !Task.isCancelled else { return }
+            self?.statusText = nil
         }
     }
 

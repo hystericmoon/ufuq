@@ -130,7 +130,7 @@ struct NotchRootView: View {
                 .onTapGesture { model.onTapCollapsed() }
                 .transition(transition)
         case .peek(let event):
-            PeekView(event: event, topInset: model.topInset)
+            PeekView(event: event, topInset: model.topInset, onAction: model.onPeekAction)
                 .transition(transition)
         case .hud(let reading):
             HUDCapsuleView(reading: reading, topInset: model.topInset)

@@ -1,5 +1,6 @@
 import AppKit
 import Combine
+import EventKit
 import SwiftUI
 import UfuqCore
 
@@ -172,6 +173,7 @@ final class NotchController: NSObject {
     private var peekTasks: [Task<Void, Never>] = []
     private var screenObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
+    private var calendarObserver: NSObjectProtocol?
     private var clickMonitor: Any?
     private var trayHotkey: Hotkey?
     private var trayDrag: TrayDragMonitor?
@@ -213,9 +215,20 @@ final class NotchController: NSObject {
             forName: UserDefaults.didChangeNotification, object: nil, queue: .main
         ) { [weak self] _ in
             MainActor.assumeIsolated {
-                guard let self, self.allDisplays != AppSettings.allDisplays else { return }
+                guard let self else { return }
+                if let calendar = self.registry.module(id: "calendar") as? CalendarModule {
+                    calendar.isEnabled = AppSettings.calendarEnabled
+                }
+                guard self.allDisplays != AppSettings.allDisplays else { return }
                 self.allDisplays = AppSettings.allDisplays
                 self.rebuildIslands()
+            }
+        }
+        calendarObserver = NotificationCenter.default.addObserver(
+            forName: .EKEventStoreChanged, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                self?.refreshCalendarNow()
             }
         }
 
@@ -365,6 +378,13 @@ final class NotchController: NSObject {
         }
         pollGitHub(at: now)
         pollNowPlaying(at: now)
+        if let calendar = registry.module(id: "calendar") as? CalendarModule {
+            calendar.checkPeeks(at: now)
+            AutoDNDBridge.shared.update(ongoingMeeting: calendar.ongoingMeeting(at: now))
+        }
+        if AppSettings.meetingDevicesEnabled, machine.isExpanded || tickCount % 5 == 0 {
+            MediaDeviceMonitor.shared.refresh()
+        }
         queue.tick(at: now)
         machine.setPeek(queue.current)
         announceIfNew()
@@ -382,6 +402,7 @@ final class NotchController: NSObject {
                 updateAIRows(island, now: now)
                 refreshAgents(island, now: now)
                 refreshActions(island, now: now)
+                refreshMeetings(island, now: now)
                 refreshNowPlaying(island)
                 refreshClipboard(island)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
@@ -419,6 +440,7 @@ final class NotchController: NSObject {
                     updateAIRows(island, now: Date())
                     island.model.agents = (registry.module(id: "agent") as? AgentStatusModule)?.sessions(at: Date()) ?? []
                     island.model.actions = githubBuilds(at: Date())
+                    refreshMeetings(island, now: Date())
                     island.model.battery = BatteryReader.read()
                     refreshNowPlaying(island)
                     island.model.clipboard = AppSettings.clipboardEnabled ? ClipboardMonitor.shared.items : []
@@ -511,6 +533,40 @@ final class NotchController: NSObject {
         let resized = items.isEmpty != island.model.clipboard.isEmpty
         island.model.clipboard = items
         if resized { updateFrame(island, for: island.model.state.kind) }
+    }
+
+    private func refreshMeetings(_ island: ScreenIsland, now: Date) {
+        let before = island.model.content.showsMeetings
+        let meeting = AppSettings.calendarEnabled
+            ? (registry.module(id: "calendar") as? CalendarModule)?.nextMeeting(at: now)
+            : nil
+        let devices = AppSettings.meetingDevicesEnabled
+            ? MediaDeviceMonitor.shared.snapshot
+            : MediaDeviceSnapshot()
+        let dnd = AutoDNDBridge.shared.isDNDActive
+
+        if island.model.meeting != meeting { island.model.meeting = meeting }
+        if island.model.mediaDevices != devices { island.model.mediaDevices = devices }
+        if island.model.isDNDActive != dnd { island.model.isDNDActive = dnd }
+        if before != island.model.content.showsMeetings {
+            updateFrame(island, for: island.model.state.kind)
+        }
+    }
+
+    private func refreshCalendarNow() {
+        guard let calendar = registry.module(id: "calendar") as? CalendarModule else { return }
+        Task { [weak self] in
+            try? await calendar.refresh()
+            self?.tick()
+        }
+    }
+
+    private func handlePeekAction(_ url: URL) {
+        NSWorkspace.shared.open(url)
+        queue.dismissCurrent(at: Date())
+        machine.setPeek(queue.current)
+        announceIfNew()
+        applyState(restoreFocus: false)
     }
 
     private func becameExpanded() {
@@ -624,6 +680,7 @@ final class NotchController: NSObject {
         let island = ScreenIsland(displayID: id, metrics: metrics)
         island.model.onEscape = { [weak self] in self?.handleEscape() }
         island.model.onTapCollapsed = { [weak self] in self?.open(origin: .click, on: id) }
+        island.model.onPeekAction = { [weak self] url in self?.handlePeekAction(url) }
         island.panel.onCancel = { [weak self] in self?.handleEscape() }
         island.hostingView.onMouseEntered = { [weak self] in self?.pointerEntered(id) }
         island.hostingView.onMouseExited = { [weak self] in self?.pointerExited(id) }

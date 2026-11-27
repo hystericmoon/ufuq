@@ -78,20 +78,41 @@ struct TrayRow: View {
 
     @ViewBuilder
     private var trailing: some View {
-        if tray.errorText != nil || !tray.items.isEmpty {
-            VStack(alignment: .trailing, spacing: 4) {
-                if let text = tray.errorText {
-                    Text(text)
+        VStack(alignment: .trailing, spacing: 4) {
+            if let text = tray.errorText {
+                Text(text)
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.stateCritical)
+                    .lineLimit(2)
+                    .multilineTextAlignment(.trailing)
+                    .frame(maxWidth: 140, alignment: .trailing)
+                    .onTapGesture { tray.clearError() }
+                    .accessibilityLabel("Error: \(text)")
+            } else if let status = tray.statusText {
+                Text(status)
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.accentPrayer)
+                    .lineLimit(1)
+                    .frame(maxWidth: 140, alignment: .trailing)
+                    .accessibilityLabel(status)
+            }
+            HStack(spacing: 8) {
+                Button("OCR") { tray.captureScreenOCR() }
+                    .buttonStyle(.plain)
+                    .font(Tokens.Typography.caption)
+                    .foregroundStyle(Tokens.textSecondary)
+                    .frame(minHeight: 28)
+                    .accessibilityLabel("Capture text from screen")
+                if tray.canCombineTrayToPDF {
+                    Button("PDF") { tray.combineTrayToPDF() }
+                        .buttonStyle(.plain)
                         .font(Tokens.Typography.caption)
-                        .foregroundStyle(Tokens.stateCritical)
-                        .lineLimit(2)
-                        .multilineTextAlignment(.trailing)
-                        .frame(maxWidth: 140, alignment: .trailing)
-                        .onTapGesture { tray.clearError() }
-                        .accessibilityLabel("Error: \(text)")
+                        .foregroundStyle(Tokens.accentPrayer)
+                        .frame(minHeight: 28)
+                        .accessibilityLabel("Combine tray items to PDF")
                 }
                 if !tray.items.isEmpty {
-                    Button("Clear Tray") { tray.clear() }
+                    Button("Clear") { tray.clear() }
                         .buttonStyle(.plain)
                         .font(Tokens.Typography.caption)
                         .foregroundStyle(Tokens.textSecondary)
@@ -208,7 +229,7 @@ struct TrayItemView: View {
         }
         .onKeyPress(.leftArrow) { move(-1) }
         .onKeyPress(.rightArrow) { move(1) }
-        .onKeyPress(characters: CharacterSet(charactersIn: "rsazpjhnfRSAZPJHNF"), phases: .down) { press in
+        .onKeyPress(characters: CharacterSet(charactersIn: "rsazpjhcdobnfRSAZPJHCDOBNF"), phases: .down) { press in
             guard tray.renamingID == nil, press.modifiers.isEmpty,
                   let character = press.characters.first,
                   let action = TrayAction.forKey(character), actions.contains(action) else { return .ignored }

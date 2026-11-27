@@ -11,6 +11,9 @@ struct UfuqApp: App {
             Button("Open panel  ⌥Space") {
                 appDelegate.controller?.toggleExpanded()
             }
+            Button("Capture Text (OCR)…") {
+                TrayController.shared.captureScreenOCR()
+            }
             LaunchAtLoginToggle()
             PairPhoneButton()
             OpenSettingsButton()
@@ -53,6 +56,14 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         NowPlayingControl.module = nowPlayingModule
         NowPlayingControl.send = { command in
             Task { await nowPlayingModule.send(command); try? await nowPlayingModule.refresh() }
+        }
+        let calendarModule = CalendarModule(
+            source: EventKitCalendarSource.shared,
+            isEnabled: AppSettings.calendarEnabled
+        )
+        try? registry.register(calendarModule)
+        CalendarControl.refresh = {
+            Task { try? await calendarModule.refresh() }
         }
         SyncService.shared.contentProvider = {
             SyncSnapshotContent(agents: agentModule.syncAgents(at: Date()))

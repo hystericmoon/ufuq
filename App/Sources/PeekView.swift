@@ -6,6 +6,7 @@ import UfuqCore
 struct PeekView: View {
     let event: PeekEvent
     let topInset: CGFloat
+    var onAction: ((URL) -> Void)? = nil
 
     private var isCritical: Bool { event.priority == .critical }
 
@@ -20,6 +21,7 @@ struct PeekView: View {
                     Text(event.title)
                         .font(Tokens.Typography.collapsed)
                         .foregroundStyle(Tokens.textPrimary)
+                        .lineLimit(1)
                     if isCritical {
                         // Color never carries meaning alone: the word says it too.
                         Text("Alert")
@@ -33,12 +35,28 @@ struct PeekView: View {
                     .lineLimit(2)
             }
             Spacer(minLength: 0)
+            if let actionTitle = event.actionTitle,
+               let urlString = event.actionURL,
+               let url = URL(string: urlString) {
+                Button {
+                    onAction?(url)
+                } label: {
+                    Text(actionTitle)
+                        .font(.system(size: 12, weight: .semibold))
+                        .foregroundStyle(Tokens.notchBg)
+                        .padding(.horizontal, 12)
+                        .frame(minHeight: 28)
+                        .background(Capsule().fill(Tokens.accentPrayer))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("\(actionTitle), \(event.title)")
+            }
         }
         .padding(.horizontal, 24)
         .padding(.top, topInset + 4)
         .padding(.bottom, 8)
         .frame(maxHeight: .infinity)
-        .accessibilityElement(children: .ignore)
+        .accessibilityElement(children: event.actionTitle == nil ? .ignore : .contain)
         .accessibilityLabel(event.announcement)
     }
 }

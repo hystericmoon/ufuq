@@ -85,6 +85,9 @@ public struct PeekEvent: Identifiable, Equatable, Sendable {
     public var duration: TimeInterval
     /// Text posted as a VoiceOver announcement when the peek appears.
     public var announcement: String
+    /// Optional clickable action button in the peek (e.g. "Join" for an upcoming meeting).
+    public var actionTitle: String?
+    public var actionURL: String?
 
     public init(
         id: String,
@@ -93,7 +96,9 @@ public struct PeekEvent: Identifiable, Equatable, Sendable {
         message: String,
         priority: Priority = .normal,
         duration: TimeInterval = PeekEvent.defaultDuration,
-        announcement: String? = nil
+        announcement: String? = nil,
+        actionTitle: String? = nil,
+        actionURL: String? = nil
     ) {
         self.id = id
         self.moduleID = moduleID
@@ -102,5 +107,7 @@ public struct PeekEvent: Identifiable, Equatable, Sendable {
         self.priority = priority
         self.duration = duration
         self.announcement = announcement ?? "\(title). \(message)"
+        self.actionTitle = actionTitle
+        self.actionURL = actionURL
     }
 }

@@ -1,8 +1,15 @@
 # Progress
 
-Last updated: 2026-11-27, 22:25 WIB
+Last updated: 2026-11-27, 23:28 WIB
 
-## Resume here (2026-11-27, 22:25 WIB)
+## Resume here (2026-11-27, 23:28 WIB)
+
+**Phase 8 — Calendar, Meetings & Transform (PR #29)**:
+- **Calendar & Meetings (`UfuqCore/Calendar/`, `App/Sources/Meetings/`):**
+  - `CalendarModule` + `MeetingURLParser` (Meet, Zoom, Teams, Webex, FaceTime), `EventKitCalendarSource` (reads only once authorized; Settings/Onboarding button requests permission), `MediaDeviceMonitor` (CoreAudio mic in-use/mute + CoreMediaIO camera in-use), `AutoDNDTracker` + `AutoDNDBridge` (Focus Shortcut automation), `MeetingsTile` (Join button 5 min before, mic mute toggle, camera & DND indicators), and clickable `Join` action button in `PeekView`.
+- **Transform (`UfuqCore/Tray/TrayActions.swift`, `App/Sources/Transform/`):**
+  - On-device `MediaTransformer` (AVFoundation MP4 video compression + PDFKit combine images/PDFs) and `VisionServices` (Vision `VNRecognizeTextRequest` OCR on dropped images or interactive `screencapture -i` screen capture, plus `VNGenerateForegroundInstanceMaskRequest` transparent PNG background removal).
+- Verified locally: `UfuqCore` **288/288** tests, Mac app **90/90** tests (including Vision OCR, PDF combine, MP4 compress, and Meetings snapshots).
 
 **v0.4.1 release (macOS 27 hover crash fix + Phase 7 gaps + 7a AI Tile Upgrade)**:
 - Fixed macOS 27 hover crash (`-[NSWindow(NSDisplayCycle) _postWindowNeedsUpdateConstraints]` thrown from `NSHostingView.updateWindowContentSizeExtremaIfNecessary()`): wrapped `NotchHostingView` and `FloatingTrayPanel` `NSHostingView` inside plain `NSView` containers and skipped redundant `panel.setFrame` calls in `updateFrame`.
