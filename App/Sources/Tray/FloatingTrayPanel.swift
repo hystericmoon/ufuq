@@ -26,9 +26,15 @@ final class FloatingTrayPanel: NSPanel {
         animationBehavior = .none
         title = "Ufuq tray"
         setAccessibilityLabel("Ufuq tray")
+        let container = NSView(frame: NSRect(origin: .zero, size: Self.size))
+        container.autoresizingMask = [.width, .height]
         let host = NSHostingView(rootView: FloatingTrayView(tray: tray))
-        host.frame = NSRect(origin: .zero, size: Self.size)
-        contentView = host
+        host.sizingOptions = []
+        host.translatesAutoresizingMaskIntoConstraints = true
+        host.frame = container.bounds
+        host.autoresizingMask = [.width, .height]
+        container.addSubview(host)
+        contentView = container
     }
 
     override var canBecomeKey: Bool { true }

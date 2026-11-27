@@ -1,8 +1,13 @@
 # Progress
 
-Last updated: 2026-11-27, 22:09 WIB
+Last updated: 2026-11-27, 22:25 WIB
 
-## Resume here (2026-11-27, 22:09 WIB)
+## Resume here (2026-11-27, 22:25 WIB)
+
+**v0.4.1 release (macOS 27 hover crash fix + Phase 7 gaps + 7a AI Tile Upgrade)**:
+- Fixed macOS 27 hover crash (`-[NSWindow(NSDisplayCycle) _postWindowNeedsUpdateConstraints]` thrown from `NSHostingView.updateWindowContentSizeExtremaIfNecessary()`): wrapped `NotchHostingView` and `FloatingTrayPanel` `NSHostingView` inside plain `NSView` containers and skipped redundant `panel.setFrame` calls in `updateFrame`.
+- Carries PR #24 (Phase 7 gaps + Swift 6 concurrency fixes) and PR #25 (7a AI Tile Upgrade: Claude pace via `BurnRate`, estimated `$` cost, and read-only Antigravity `"Beta source"` provider).
+- Verified locally: `UfuqCore` **277/277** tests, Mac app **83/83** tests.
 
 **Phase 7a (AI Tile Upgrade — SessionWatcher Option 1) implemented & verified on Mac**:
 - **Claude pace & estimated `$` cost (`UfuqCore/Sources/UfuqCore/ClaudeCost.swift`, `AIUsageModule.swift`, `AIUsageRows.swift`):**
