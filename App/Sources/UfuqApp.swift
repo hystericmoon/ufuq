@@ -35,7 +35,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         let registry = ModuleRegistry()
         try? registry.register(PrayerModule(location: AppSettings.defaultLocation))
         try? registry.register(AIUsageModule(
-            claudeDirs: ClaudeAccounts.configDirs(), codexSessionsDir: CodexParser.defaultSessionsDir()))
+            claudeDirs: ClaudeAccounts.configDirs(),
+            codexSessionsDir: CodexParser.defaultSessionsDir(),
+            antigravityDir: AntigravityParser.defaultConfigDir()))
         let agentModule = AgentStatusModule(
             directory: AgentStateStore.resolveDirectory(environment: ProcessInfo.processInfo.environment))
         try? registry.register(agentModule)

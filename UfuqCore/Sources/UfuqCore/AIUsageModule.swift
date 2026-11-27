@@ -15,13 +15,25 @@ public struct AIUsageLine: Equatable, Sendable, Identifiable {
     public var name: String
     public var value: Value
     public var isBetaSource: Bool
+    public var paceTokensPerHour: Int?
+    public var estimatedCostUSD: Double?
 
-    public init(id: String, provider: UsageProvider, name: String, value: Value, isBetaSource: Bool = false) {
+    public init(
+        id: String,
+        provider: UsageProvider,
+        name: String,
+        value: Value,
+        isBetaSource: Bool = false,
+        paceTokensPerHour: Int? = nil,
+        estimatedCostUSD: Double? = nil
+    ) {
         self.id = id
         self.provider = provider
         self.name = name
         self.value = value
         self.isBetaSource = isBetaSource
+        self.paceTokensPerHour = paceTokensPerHour
+        self.estimatedCostUSD = estimatedCostUSD
     }
 }
 
@@ -43,11 +55,13 @@ public final class AIUsageModule: UfuqModule {
     private struct State {
         var claude: [Account]
         var codex: UsageResult<CodexRateLimits>?
+        var antigravity: UsageResult<AntigravityUsageReport>?
         var previousReadings: [String: UsageSnapshot] = [:]
         var peeks: AsyncStream<PeekEvent>.Continuation?
     }
 
     private let codexSessionsDir: String?
+    private let antigravityDir: String?
     private let fileSource: FileSource
     private let directoryExists: @Sendable (String) -> Bool
     private let cache = ClaudeLogCache()
@@ -57,10 +71,12 @@ public final class AIUsageModule: UfuqModule {
     public init(
         claudeDirs: [String],
         codexSessionsDir: String?,
+        antigravityDir: String? = nil,
         fileSource: FileSource = LocalFileSource(),
         directoryExists: @escaping @Sendable (String) -> Bool = AIUsageModule.defaultDirectoryExists
     ) {
         self.codexSessionsDir = codexSessionsDir
+        self.antigravityDir = antigravityDir
         self.fileSource = fileSource
         self.directoryExists = directoryExists
         self.state = State(claude: claudeDirs.map { Account(dir: $0, name: ClaudeAccounts.label(forConfigDir: $0), result: nil) })
@@ -74,22 +90,28 @@ public final class AIUsageModule: UfuqModule {
     // MARK: - Refresh
 
     public func refresh() async throws {
-        let (dirs, codexDir) = withLock { ($0.claude.map(\.dir), codexSessionsDir) }
+        let (dirs, codexDir, agDir) = withLock { ($0.claude.map(\.dir), codexSessionsDir, antigravityDir) }
         let source = fileSource
         let exists = directoryExists
         let cache = cache
-        let (claude, codex) = await Task.detached { () -> ([UsageResult<ClaudeUsageReport>], UsageResult<CodexRateLimits>?) in
+        let (claude, codex, antigravity) = await Task.detached {
+            () -> ([UsageResult<ClaudeUsageReport>], UsageResult<CodexRateLimits>?, UsageResult<AntigravityUsageReport>?) in
             let claude = dirs.map { ClaudeLogParser.parse(configDir: $0, source: source, cache: cache) }
             var codex: UsageResult<CodexRateLimits>?
             if let codexDir, exists(codexDir) {
                 codex = CodexParser.parse(sessionsDir: codexDir, source: source, now: Date())
             }
-            return (claude, codex)
+            var antigravity: UsageResult<AntigravityUsageReport>?
+            if let agDir, exists(agDir) {
+                antigravity = AntigravityParser.parse(configDir: agDir, now: Date())
+            }
+            return (claude, codex, antigravity)
         }.value
 
         let (continuation, events) = withLock { state -> (AsyncStream<PeekEvent>.Continuation?, [PeekEvent]) in
             for (i, result) in claude.enumerated() where i < state.claude.count { state.claude[i].result = result }
             state.codex = codex
+            state.antigravity = antigravity
             return (state.peeks, updatePeeks(&state))
         }
         for event in events { continuation?.yield(event) }
@@ -106,8 +128,25 @@ public final class AIUsageModule: UfuqModule {
             switch result {
             case .available(let report):
                 let block = report.currentBlock(at: now)
-                out.append(AIUsageLine(id: id, provider: .claude, name: account.name,
-                                       value: .tokens(count: block?.tokens.total ?? 0, resetsAt: block?.end)))
+                let pace: Int?
+                let cost: Double?
+                if let block {
+                    let blockEntries = report.entries.filter { $0.timestamp >= block.start && $0.timestamp < block.end }
+                    pace = ClaudePace.tokensPerHour(entries: blockEntries, resetsAt: block.end)
+                    let usd = ClaudeCost.estimateUSD(entries: blockEntries)
+                    cost = usd > 0 ? usd : nil
+                } else {
+                    pace = nil
+                    cost = nil
+                }
+                out.append(AIUsageLine(
+                    id: id,
+                    provider: .claude,
+                    name: account.name,
+                    value: .tokens(count: block?.tokens.total ?? 0, resetsAt: block?.end),
+                    paceTokensPerHour: pace,
+                    estimatedCostUSD: cost
+                ))
             case .unavailable(let reason):
                 out.append(AIUsageLine(id: id, provider: .claude, name: account.name, value: .unavailable(reason: reason)))
             }
@@ -117,6 +156,26 @@ public final class AIUsageModule: UfuqModule {
             out.append(AIUsageLine(id: "codex", provider: .codex, name: "Codex", value: .limits(limits.readings)))
         case .unavailable(let reason):
             out.append(AIUsageLine(id: "codex", provider: .codex, name: "Codex", value: .unavailable(reason: reason)))
+        case nil:
+            break
+        }
+        switch snapshot.antigravity {
+        case .available(let report):
+            out.append(AIUsageLine(
+                id: "antigravity",
+                provider: .antigravity,
+                name: "Antigravity",
+                value: .tokens(count: report.tokens, resetsAt: report.resetsAt),
+                isBetaSource: true
+            ))
+        case .unavailable(let reason):
+            out.append(AIUsageLine(
+                id: "antigravity",
+                provider: .antigravity,
+                name: "Antigravity",
+                value: .unavailable(reason: reason),
+                isBetaSource: true
+            ))
         case nil:
             break
         }

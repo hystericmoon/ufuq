@@ -1,10 +1,19 @@
 # Progress
 
-Last updated: 2026-11-27, 21:47 WIB
+Last updated: 2026-11-27, 22:09 WIB
 
-## Resume here (2026-11-27, 21:47 WIB)
+## Resume here (2026-11-27, 22:09 WIB)
 
-**Phase 7 gaps fixed & verified on real Mac (macOS 27.2.1)** (on branch `fix/phase7-gaps`, PR pending merge):
+**Phase 7a (AI Tile Upgrade — SessionWatcher Option 1) implemented & verified on Mac**:
+- **Claude pace & estimated `$` cost (`UfuqCore/Sources/UfuqCore/ClaudeCost.swift`, `AIUsageModule.swift`, `AIUsageRows.swift`):**
+  - `ClaudePace.tokensPerHour` feeds cumulative 5-hour block entries into `BurnRate.estimate(samples:)` (5-min minimum span, 60-min lookback).
+  - `ClaudeCost.estimateUSD` computes API-equivalent USD cost per model family (Opus / Sonnet / Haiku); `AIUsageRows` renders compact `"1.8M/h · ~$4.20 · 2 h 10 m"` with full VoiceOver spoken values.
+- **Antigravity "Beta source" provider (`UfuqCore/Sources/UfuqCore/AntigravityParser.swift`, `UfuqApp.swift`):**
+  - Read-only `SQLITE_OPEN_READONLY` reader for `~/.gemini/antigravity/conversation_summaries.db` and recent `conversations/<uuid>.db` (`gen_metadata` protobuf token fields); never reads secrets or daemon auth tokens.
+  - Wired into `AIUsageModule` with `isBetaSource: true`; fails cleanly to `.unavailable` when missing or if the schema changes.
+- **Verified locally:** `UfuqCore` **277/277** tests, Mac app **83/83** tests.
+
+**Phase 7 gaps fixed & verified on real Mac (macOS 27.2.1)** (PR #24 merged):
 - Horizontal trackpad swipe on collapsed body drives `JellyShape.skew` (±4°) and skips track (when playing) or rotates the right-wing activity (`ActivityArbiter.advanceRotation()`).
 - Drag neck in `JellyGoo` now flares from the body's bottom edge and snaps `neckX` on entry instead of emerging from top centre.
 - `ExpandedView` now routes `Space` (play/pause) and `←`/`→` (seek ±10 s when track has position, else tile navigation) directly when the Now Playing tile has focus.

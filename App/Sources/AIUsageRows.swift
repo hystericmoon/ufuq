@@ -14,11 +14,35 @@ enum AIUsageRows {
         case .tokens(let count, let resetsAt):
             row.tokens = count
             let future = resetsAt.flatMap { $0 > now ? $0 : nil }
-            row.detail = future.map { "Resets in \(duration($0.timeIntervalSince(now)))" } ?? "No session running"
+            if let future {
+                var parts: [String] = []
+                if let pace = line.paceTokensPerHour, pace > 0 {
+                    parts.append("\(TokenFormat.compact(pace))/h")
+                }
+                if let cost = line.estimatedCostUSD, cost > 0 {
+                    parts.append(ClaudeCost.formatUSD(cost))
+                }
+                if parts.isEmpty {
+                    row.detail = "Resets in \(duration(future.timeIntervalSince(now)))"
+                } else {
+                    parts.append(shortDuration(future.timeIntervalSince(now)))
+                    row.detail = parts.joined(separator: " · ")
+                }
+            } else {
+                row.detail = "No session running"
+            }
             let spoken = TokenFormat.spoken(count)
-            row.accessibilityValue = future.map {
-                "\(spoken) used in this 5-hour session, resets in \(PrayerFormat.spoken($0.timeIntervalSince(now)))"
-            } ?? "\(spoken) used in this 5-hour session"
+            var a11y = "\(spoken) used in this 5-hour session"
+            if let pace = line.paceTokensPerHour, pace > 0 {
+                a11y += ", pace \(TokenFormat.spoken(pace)) per hour"
+            }
+            if let cost = line.estimatedCostUSD, cost > 0 {
+                a11y += ", estimated cost \(ClaudeCost.spokenUSD(cost))"
+            }
+            if let future {
+                a11y += ", resets in \(PrayerFormat.spoken(future.timeIntervalSince(now)))"
+            }
+            row.accessibilityValue = a11y
         case .limits(let readings):
             guard let worst = UsageSummary.worst(of: readings),
                   let fraction = UsageSummary.worstFraction(of: readings) else {
@@ -60,5 +84,14 @@ enum AIUsageRows {
         let h = minutes / 60, m = minutes % 60
         if h == 0 { return "\(m) min" }
         return m == 0 ? "\(h) h" : "\(h) h \(m) min"
+    }
+
+    /// Compact reset suffix when paired with pace/cost: "2 h 10 m", "38 m", "2 h", "<1 m".
+    static func shortDuration(_ interval: TimeInterval) -> String {
+        if interval < 60 { return "<1 m" }
+        let minutes = Int((interval / 60).rounded(.up))
+        let h = minutes / 60, m = minutes % 60
+        if h == 0 { return "\(m) m" }
+        return m == 0 ? "\(h) h" : "\(h) h \(m) m"
     }
 }

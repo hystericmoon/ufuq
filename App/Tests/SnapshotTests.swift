@@ -90,6 +90,23 @@ final class SnapshotTests: XCTestCase {
         XCTAssertEqual(rows[3].detail, "Unavailable")
         XCTAssertEqual(AIUsageRows.duration(38 * 60), "38 min")
         XCTAssertEqual(AIUsageRows.duration(20), "under 1 min")
+
+        let paced = AIUsageRows.rows(from: [
+            AIUsageLine(
+                id: "c3", provider: .claude, name: "Claude",
+                value: .tokens(count: 4_200_000, resetsAt: now.addingTimeInterval(130 * 60)),
+                paceTokensPerHour: 1_800_000, estimatedCostUSD: 4.20
+            ),
+            AIUsageLine(
+                id: "ag", provider: .antigravity, name: "Antigravity",
+                value: .unavailable(reason: "schema changed"), isBetaSource: true
+            ),
+        ], now: now)
+        XCTAssertEqual(paced[0].detail, "1.8M/h · ~$4.20 · 2 h 10 m")
+        XCTAssertTrue(paced[0].accessibilityValue.contains("pace 1.8 million tokens per hour"))
+        XCTAssertTrue(paced[0].accessibilityValue.contains("estimated cost 4 dollars 20 cents"))
+        XCTAssertTrue(paced[1].isBetaSource)
+        XCTAssertTrue(paced[1].isUnavailable)
     }
 
     func testExpandedBentoUnavailable() throws {
