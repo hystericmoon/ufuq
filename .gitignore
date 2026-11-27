@@ -28,3 +28,6 @@ Package.resolved
 *.xcodeproj
 App/Info.plist
 .claude/worktrees/
+
+# mediaremote-adapter, built by CI
+App/Resources/MediaRemoteAdapter/

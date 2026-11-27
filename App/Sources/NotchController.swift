@@ -90,6 +90,8 @@ final class NotchController: NSObject {
     private var lastEscape = Date.distantPast
     private var tickCount = 0
     private var lastGitHubPoll = Date.distantPast
+    private var lastNowPlayingPoll = Date.distantPast
+    private var nowPlayingPausedSince: Date?
     private var allDisplays = AppSettings.allDisplays
 
     init(registry: ModuleRegistry) {
@@ -228,6 +230,7 @@ final class NotchController: NSObject {
             Task { try? await agent.refresh() }
         }
         pollGitHub(at: now)
+        pollNowPlaying(at: now)
         queue.tick(at: now)
         machine.setPeek(queue.current)
         announceIfNew()
@@ -245,6 +248,7 @@ final class NotchController: NSObject {
                 updateAIRows(island, now: now)
                 refreshAgents(island, now: now)
                 refreshActions(island, now: now)
+                refreshNowPlaying(island)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
                 if tickCount % 30 == 0 { refreshBattery(island) }
             }
@@ -279,6 +283,7 @@ final class NotchController: NSObject {
                     island.model.agents = (registry.module(id: "agent") as? AgentStatusModule)?.sessions(at: Date()) ?? []
                     island.model.actions = githubBuilds(at: Date())
                     island.model.battery = BatteryReader.read()
+                    refreshNowPlaying(island)
                     island.model.focusedTile = focusedTile
                 }
                 updateFrame(island, for: newState.kind)
@@ -318,6 +323,33 @@ final class NotchController: NSObject {
         guard now.timeIntervalSince(lastGitHubPoll) >= module.pollInterval(at: now) else { return }
         lastGitHubPoll = now
         Task { try? await module.refresh() }
+    }
+
+    /// Now Playing polls every 2 s while something plays, every 5 s otherwise.
+    private func pollNowPlaying(at now: Date) {
+        guard let module = registry.module(id: "nowPlaying") as? NowPlayingModule, module.isEnabled else { return }
+        let interval: TimeInterval = module.nowPlaying?.isPlaying == true ? 2 : 5
+        guard now.timeIntervalSince(lastNowPlayingPoll) >= interval else { return }
+        lastNowPlayingPoll = now
+        Task { try? await module.refresh() }
+    }
+
+    /// Copies the module's state into the model. A track appearing or leaving changes the panel width.
+    private func refreshNowPlaying(_ island: ScreenIsland) {
+        guard let module = registry.module(id: "nowPlaying") as? NowPlayingModule else { return }
+        let track = module.nowPlaying
+        let now = Date()
+        if let track, !track.isPlaying {
+            if nowPlayingPausedSince == nil { nowPlayingPausedSince = now }
+        } else {
+            nowPlayingPausedSince = nil
+        }
+        let before = island.model.content.showsNowPlaying
+        if island.model.nowPlaying != track { island.model.nowPlaying = track }
+        if island.model.nowPlayingPausedSince != nowPlayingPausedSince {
+            island.model.nowPlayingPausedSince = nowPlayingPausedSince
+        }
+        if before != island.model.content.showsNowPlaying { updateFrame(island, for: island.model.state.kind) }
     }
 
     private func githubBuilds(at now: Date) -> [GitHubBuild] {

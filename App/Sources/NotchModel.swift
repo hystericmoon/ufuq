@@ -3,7 +3,7 @@ import UfuqCore
 
 /// The tiles of the open panel, in reading and Tab order.
 enum BentoTileID: String, CaseIterable, Identifiable {
-    case prayer, ai, agents, actions, nowPlaying, battery
+    case prayer, ai, agents, actions, battery, nowPlaying
 
     var id: String { rawValue }
 }
@@ -33,9 +33,21 @@ struct BentoContent: Equatable {
     var battery: BatteryStatus?
     var agents: [AgentSession] = []
     var actions: [GitHubBuild] = []
+    var nowPlaying: NowPlaying?
+    /// When the current track was first seen paused; nil while playing.
+    var nowPlayingPausedSince: Date?
+
+    /// Playing, or paused for less than a minute (the same window as the right wing).
+    var showsNowPlaying: Bool {
+        guard let nowPlaying else { return false }
+        if nowPlaying.isPlaying { return true }
+        guard let since = nowPlayingPausedSince else { return true }
+        return now.timeIntervalSince(since) <= NowPlayingModule.pausedWingWindow
+    }
 
     var smallTiles: [BentoTileID] {
         (agents.isEmpty ? [] : [.agents]) + (actions.isEmpty ? [] : [.actions]) + (battery == nil ? [] : [.battery])
+            + (showsNowPlaying ? [.nowPlaying] : [])
     }
     var tileOrder: [BentoTileID] { [.prayer, .ai] + smallTiles }
 }
@@ -58,6 +70,8 @@ final class NotchModel: ObservableObject {
     @Published var battery: BatteryStatus?
     @Published var agents: [AgentSession] = []
     @Published var actions: [GitHubBuild] = []
+    @Published var nowPlaying: NowPlaying?
+    @Published var nowPlayingPausedSince: Date?
     /// The tile that gets focus when the panel opens (the last one used).
     @Published var focusedTile: BentoTileID = .prayer
     /// Height of the black strip on top of the open panel.
@@ -81,10 +95,11 @@ final class NotchModel: ObservableObject {
     @Published var swallowToken = 0
     /// Tray contents, in order. Writer: File Tray.
     @Published var tray: [TrayItem] = []
-    /// Current track, nil when nothing is playing or the module is unavailable. Writer: Now Playing.
-    @Published var nowPlaying: NowPlaying?
 
-    var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions) }
+    var content: BentoContent {
+        BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions,
+            nowPlaying: nowPlaying, nowPlayingPausedSince: nowPlayingPausedSince)
+    }
 
     var onEscape: () -> Void = {}
     var onTapCollapsed: () -> Void = {}

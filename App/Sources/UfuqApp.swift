@@ -46,6 +46,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
             makeClient: GitHubSupport.makeClient,
             autoRepos: { autoStore.repos() },
             manualRepos: { GitHubSupport.manualRepos }))
+        let nowPlayingModule = NowPlayingModule(sources: [AdapterNowPlayingSource(), SpotifyNowPlayingSource()])
+        try? registry.register(nowPlayingModule)
+        NowPlayingControl.module = nowPlayingModule
+        NowPlayingControl.send = { command in
+            Task { await nowPlayingModule.send(command); try? await nowPlayingModule.refresh() }
+        }
         SyncService.shared.contentProvider = {
             SyncSnapshotContent(agents: agentModule.syncAgents(at: Date()))
         }
