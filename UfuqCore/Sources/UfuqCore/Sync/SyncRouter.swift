@@ -38,22 +38,38 @@ public enum SyncAuth {
 /// Order: unpaired or replayed requests get an empty 401 before anything else is revealed.
 public struct SyncRouter: Sendable {
     public typealias ContentProvider = @Sendable () async -> SyncSnapshotContent
+    /// Called for each request that passes auth and the replay guard: the client's name (or nil
+    /// when it sent none) and the time. Runs on the router's caller; hop to the main actor yourself.
+    public typealias AuthenticatedHandler = @Sendable (String?, Date) -> Void
 
     private let sealer: SyncSealer
     private let log: SyncEventLog
     private let content: ContentProvider
     private let now: @Sendable () -> Date
     private let longPollTimeout: TimeInterval
+    private let onAuthenticated: AuthenticatedHandler?
     private let replayGuard = SyncReplayGuard()
 
     public init(sealer: SyncSealer, log: SyncEventLog, content: @escaping ContentProvider,
                 now: @escaping @Sendable () -> Date = { Date() },
-                longPollTimeout: TimeInterval = SyncProtocol.longPollTimeout) {
+                longPollTimeout: TimeInterval = SyncProtocol.longPollTimeout,
+                onAuthenticated: AuthenticatedHandler? = nil) {
         self.sealer = sealer
         self.log = log
         self.content = content
         self.now = now
         self.longPollTimeout = longPollTimeout
+        self.onAuthenticated = onAuthenticated
+    }
+
+    /// The `X-Ufuq-Client` value trimmed, without control characters and cut to
+    /// `maxClientNameLength`; nil when absent or empty.
+    public static func clientName(from headers: [String: String]) -> String? {
+        guard let raw = headers[SyncProtocol.clientHeader.lowercased()] else { return nil }
+        let cleaned = String(raw.unicodeScalars.filter { !CharacterSet.controlCharacters.contains($0) })
+            .trimmingCharacters(in: .whitespaces)
+        guard !cleaned.isEmpty else { return nil }
+        return String(cleaned.prefix(SyncProtocol.maxClientNameLength))
     }
 
     public func handle(_ request: HTTPRequest) async -> HTTPResponse {
@@ -66,6 +82,7 @@ public struct SyncRouter: Sendable {
               await replayGuard.admit(SyncCoding.base64URLEncode(sealed), expires: issued.addingTimeInterval(SyncProtocol.maxClockSkew), now: at) else {
             return HTTPResponse(status: 401)
         }
+        onAuthenticated?(Self.clientName(from: request.headers), at)
         do {
             switch request.path {
             case "/v1/snapshot":

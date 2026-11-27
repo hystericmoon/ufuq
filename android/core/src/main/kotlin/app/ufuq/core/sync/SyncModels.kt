@@ -23,8 +23,32 @@ object SyncProtocol {
     const val KEY_LENGTH = 32
     const val MAX_CLOCK_SKEW_SECONDS = 5 * 60L
     const val AUTH_HEADER = "X-Ufuq-Auth"
+    /** Optional short phone name (e.g. "Samsung SM-S928B") the Mac shows after pairing. */
+    const val CLIENT_HEADER = "X-Ufuq-Client"
+    const val MAX_CLIENT_NAME_LENGTH = 64
     const val AUTH_PREFIX = "ufuq-sync-auth:"
     const val BONJOUR_TYPE = "_ufuq._tcp"
+
+    /**
+     * A readable phone name from `Build.MANUFACTURER` and `Build.MODEL`: "samsung" + "SM-S928B"
+     * gives "Samsung SM-S928B"; a model that already starts with the maker is not doubled.
+     */
+    fun phoneName(manufacturer: String?, model: String?): String? {
+        val maker = manufacturer?.trim().orEmpty().replaceFirstChar { it.titlecase() }
+        val device = model?.trim().orEmpty().replaceFirstChar { it.titlecase() }
+        val name = when {
+            device.isEmpty() -> maker
+            maker.isEmpty() || device.startsWith(maker, ignoreCase = true) -> device
+            else -> "$maker $device"
+        }
+        return clientHeaderValue(name)
+    }
+
+    /** [name] as a header value: printable ASCII only, trimmed, at most [MAX_CLIENT_NAME_LENGTH]; null when empty. */
+    fun clientHeaderValue(name: String?): String? {
+        val cleaned = name.orEmpty().filter { it in ' '..'~' }.trim().take(MAX_CLIENT_NAME_LENGTH).trim()
+        return cleaned.ifEmpty { null }
+    }
 }
 
 /** ISO 8601 UTC, whole seconds on the wire; any ISO instant is accepted on read. */
