@@ -19,7 +19,7 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 - No Mac App Store build (sandbox blocks reading `~/.claude*` and `~/.codex`).
 - No Linux version. (Windows and Android were added 2026-11-26; see `docs/plan.md`.)
 - No cloud backend or account system; everything runs locally.
-- Not a full clipboard manager or file manager: 10 clipboard items, a simple shelf.
+- Not a full clipboard manager or file manager: 10 clipboard items, a simple file tray. Not a store of dozens of features: skipped or much later are lock-screen art, teleprompter, camera, drop-down terminal, sales/stocks, window snap, a cloud file service and an iPhone app (owner, 27 Nov 2026).
 
 ## Notch states
 
@@ -56,10 +56,16 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 - Claude Code / Codex tasks: running, waiting for input, done; "needs input" pulse; click jumps to the window
 - GitHub Actions status for watched repos; finish summary (duration, tokens)
 
-### 5. Media and Shelf (phase 5)
-- Now Playing with controls, album-art tint, AirPlay picker
-- System HUDs replaced (volume, brightness, keyboard backlight)
-- File shelf (drag in/out, AirDrop, Quick Look); clipboard history (10 items, pin)
+### 5. File Tray and Now Playing (plan phase 7)
+- File Tray: drop on the top edge (the notch grows a neck toward the drag) or shake a drag for a floating tray at the pointer; zip, convert image, rename, share/AirDrop, reveal; pinned folders; "Add to Ufuq Tray" Services item and ⌥⇧T for keyboard users
+- Now Playing with controls: source is the mediaremote-adapter helper (all players, including browsers), Spotify via AppleScript as the fallback, else "Now Playing unavailable"; third right-wing activity, 144 × 112 tile, floating player
+
+### 5b. System HUDs and clipboard (plan phase 7b)
+- System HUDs replaced (volume, brightness, keyboard backlight) as a capsule budding from the notch; clipboard history (10 items, pin)
+- Debug build tested on the owner's Mac first: macOS 26 moved the volume HUD and key interception needs Accessibility; clipboard reads may prompt
+
+### Tier 2 (plan phases 8 and 9; all on-device)
+- Calendar and Meetings; Transform (image convert, video compress, combine to PDF); text capture (Vision OCR); remove background (Vision foreground mask); voice transcribe (Speech); timer/Pomodoro; Stay Awake; system stats; AirPods and download live activities; Make It Yours (glass, accent, shape)
 
 ### 6. Designer shelf and Meeting mode (phase 6)
 - Screenshots to the shelf, quick annotation, color picker (HEX/RGB/OKLCH/Tailwind), send to Claude
@@ -75,8 +81,8 @@ Source docs: [Product spec (Claude Doc)](https://claude.ai/artifact/TaMXyaqrAM7S
 | Claude accounts | One `CLAUDE_CONFIG_DIR` per account | Low | User adds accounts by config dir |
 | Codex | Local session logs under `~/.codex` (rate-limit snapshots expected) | Medium | Spike first |
 | Antigravity | No known public API; local state or language server | High | Isolated plugin, "Beta source", fails to "unavailable" |
-| Now Playing | MediaRemote, restricted since macOS 15.4 | High | Adapter (e.g. mediaremote-adapter); module can be disabled |
-| HUDs | Media key interception | Medium | Accessibility permission, explained in onboarding |
+| Now Playing | MediaRemote, restricted since macOS 15.4 | High | mediaremote-adapter via /usr/bin/perl (BSD-3), Spotify AppleScript fallback; "unavailable" when both fail |
+| HUDs | Media key interception (macOS 26 moved the volume HUD) | Medium | Accessibility permission, explained in onboarding; debug build tested first |
 | Agent status | Claude Code hooks / log tail; Codex logs | Medium | Hooks over polling |
 | GitHub Actions | REST API + user token | Low | Token in Keychain |
 | Meeting | EventKit + mic/camera in-use state | Low | Ask permission on enable |
@@ -114,6 +120,7 @@ protocol UfuqModule: Identifiable {
 - Peeks post VoiceOver announcements (high priority for 95% and adhan).
 - Color always comes with a number or a label; provider colors differ in lightness.
 - Text contrast on black: #FFFFFF, #A1A1A6, #8E8E93. Never darker grey.
+- Motion: one black jelly body, full spec in `docs/motion.md`.
 - Reduce Motion: cross-fade instead of the morph animation, no pulses. Increase Contrast: thicker strokes and borders.
 
 ## Visual tokens

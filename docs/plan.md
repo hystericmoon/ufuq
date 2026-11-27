@@ -14,12 +14,19 @@ One phase per Claude Code session. Phases marked **cloud** run in a Linux cloud 
    Done when: two Claude accounts and Codex show numbers that agree with `/usage`, and a disabled Antigravity source shows "unavailable".
 6. **Agent status (Mac).** Claude Code hooks for running/waiting/done; click jumps to the terminal; GitHub Actions status.
    Done when: a real Claude Code task shows the three states in order and a click focuses its window.
-7. **Media and Shelf (Mac).** Now Playing via adapter, HUD replacement, file shelf with AirDrop, clipboard history.
-   Done when: Spotify and Music.app show with controls, and the module turns itself off cleanly when MediaRemote is unavailable.
-8. **Designer shelf and Meeting mode (Mac).** Screenshot to shelf, annotate, color picker; next meeting, Join, mic/camera status, auto DND.
-   Done when: a screenshot lands on the shelf instead of the Desktop, and an event with a Meet link shows Join 5 min before.
-9. **Release (Mac).** Onboarding (permissions per module), Sparkle feed, DMG, app icon, website.
+7. **File Tray and Now Playing (cloud for UfuqCore, then Mac).** Replaces the old Media and Shelf scope (owner, 27 Nov 2026; reasoning in `docs/decisions/phase7.html`).
+   - File Tray: drop files on the top edge (the notch grows a neck toward the drag); shake a drag to get a floating tray at the pointer; actions: zip, convert image, rename, share/AirDrop, reveal; pinned folders; "Add to Ufuq Tray" Services item and ⌥⇧T for keyboard users.
+   - Now Playing: source is the open-source mediaremote-adapter helper (run through /usr/bin/perl; BSD-3; covers every player, including browsers and YouTube Music). Spotify via AppleScript is the fallback when the adapter's self-test fails; both failing shows "Now Playing unavailable". Settings shows the active source. It is a third activity in the right wing (8 s turns), a small 144×112 tile next to Battery in the open panel, and a floating player.
+   - Motion follows `docs/motion.md`. The UfuqCore part (tray model, Now Playing module and parsers) is built in the cloud; the panel, drag and helper wiring need a Mac.
+   Done when: Spotify and a browser tab show with working controls, a file dropped on the top edge can be AirDropped, and the module shows "unavailable" cleanly when the adapter is missing.
+7b. **System HUDs and clipboard history (Mac).** Volume, brightness and keyboard backlight as a capsule budding from the notch; clipboard history. Start with a debug build tested on the owner's Mac: macOS 26 moved the volume HUD (the old OSDUIHelper trick is gone; intercepting the keys needs Accessibility access) and macOS may prompt every time an app reads the clipboard.
+   Done when: the owner confirms on a real Mac that each HUD shows and that the clipboard prompt behaviour is acceptable; otherwise the part is dropped.
+8. **Calendar, Meetings and Transform (Mac).** Next meeting, Join, mic/camera status, auto DND (Calendar and Meetings); Transform: image convert, video compress, combine to PDF; text capture (Vision OCR); remove background (Vision foreground mask). All on-device.
+   Done when: an event with a Meet link shows Join 5 min before, and a dropped image can be converted, OCR'd and have its background removed.
+9. **Utilities and Release (Mac).** Voice transcribe (Speech), timer/Pomodoro, Stay Awake, system stats, AirPods and download live activities, Make It Yours (glass, accent, shape); all on-device. Then onboarding (permissions per module), Sparkle feed, DMG, app icon, website.
    Done when: a fresh Mac installs from the DMG and updates via Sparkle.
+
+Not planned: lock-screen art, teleprompter, camera, drop-down terminal, sales/stocks, DockDoor/window snap, a cloud file service, an iPhone app (owner, 27 Nov 2026; skipped or much later).
 
 ## Android track
 
