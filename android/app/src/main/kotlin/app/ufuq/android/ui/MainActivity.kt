@@ -49,17 +49,30 @@ class MainActivity : ComponentActivity() {
     /** Bumped each time the island's "Pair again" button opens the app, so the pairing screen shows. */
     private var pairRequests by mutableStateOf(0)
 
+    /** A `ufuq://pair#...` link the camera opened: filled into the pairing screen, never paired silently. */
+    private val pairLink = mutableStateOf<String?>(null)
+
+    private fun readPairLink(intent: Intent?) {
+        val data = intent?.takeIf { it.action == Intent.ACTION_VIEW }?.dataString ?: return
+        if (data.startsWith(app.ufuq.core.sync.PairingPayload.LINK_PREFIX)) {
+            pairLink.value = data
+            pairRequests++
+        }
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         openMediaAccess.value = intent?.action == ACTION_ALLOW_MEDIA
         if (intent?.getBooleanExtra(EXTRA_OPEN_PAIRING, false) == true) pairRequests++
-        setContent { UfuqTheme { UfuqRoot(pairRequests, openMediaAccess) } }
+        readPairLink(intent)
+        setContent { UfuqTheme { UfuqRoot(pairRequests, openMediaAccess, pairLink) } }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         if (intent.action == ACTION_ALLOW_MEDIA) openMediaAccess.value = true
         if (intent.getBooleanExtra(EXTRA_OPEN_PAIRING, false)) pairRequests++
+        readPairLink(intent)
     }
 
     // The Mac link polls only while the app (or the island) is visible.
@@ -83,7 +96,11 @@ class MainActivity : ComponentActivity() {
 private enum class Screen { TODAY, SETTINGS, UPDATES, OVERLAY_EXPLAIN, OTHER_APPS_EXPLAIN, SILENCE_EXPLAIN, BACKGROUND_EXPLAIN, LISTENER_EXPLAIN, PAIRING }
 
 @Composable
-private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> = mutableStateOf(false)) {
+private fun UfuqRoot(
+    pairRequests: Int,
+    openMediaAccess: MutableState<Boolean> = mutableStateOf(false),
+    pairLink: MutableState<String?> = mutableStateOf(null),
+) {
     val context = LocalContext.current
     val graph = context.graph
     val scope = rememberCoroutineScope()
@@ -349,7 +366,7 @@ private fun UfuqRoot(pairRequests: Int, openMediaAccess: MutableState<Boolean> =
             },
             onCancel = { screen = Screen.SETTINGS },
         )
-        Screen.PAIRING -> PairingRoute(onClose = { screen = Screen.SETTINGS })
+        Screen.PAIRING -> PairingRoute(initialCode = pairLink.value, onClose = { pairLink.value = null; screen = Screen.SETTINGS })
         Screen.UPDATES -> UpdateScreen(updateState, updateActions)
         Screen.OVERLAY_EXPLAIN -> OverlayExplainScreen(
             onContinue = {

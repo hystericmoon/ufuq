@@ -108,6 +108,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - Mac collapsed width stays ≈368 pt (not the spec's 300).
 - Ramadan keeps "Sahur" at Subuh; no Imsak.
 - No Apple Developer account: the Mac app stays ad-hoc signed.
+- Mac island on every display (owner ask, 27 Nov): one panel per display with the same wings and peeks; the expanded panel opens on one display (pointer's display for ⌥Space, the touched one for click/hover). Setting "Show the island on every display", default on.
+- Pairing QR is now a `ufuq://pair#<base64url JSON>` link: the phone camera opens Ufuq with the code filled in; the user still taps Pair. Bare JSON still parses.
 
 ## History
 

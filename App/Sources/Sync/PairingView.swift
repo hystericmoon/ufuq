@@ -14,9 +14,13 @@ struct PairingView: View {
                     shareEnabled = true
                     service.apply()
                 }
-            } else if let payload = service.pairingPayload(), let text = try? payload.encodedString() {
-                Text("Scan with Ufuq on your phone")
+            } else if let payload = service.pairingPayload(), let text = try? payload.link() {
+                Text("Scan with your phone's camera")
                     .font(.headline)
+                Text("Ufuq opens and asks you to confirm. Or in Ufuq: Settings → Pair with your Mac.")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+                    .multilineTextAlignment(.center)
                 if let qr = QRCode.image(for: text) {
                     qr.resizable()
                         .frame(width: 240, height: 240)
@@ -24,7 +28,7 @@ struct PairingView: View {
                         .background(Color.white)
                         .clipShape(RoundedRectangle(cornerRadius: 8))
                         .accessibilityLabel("Pairing code")
-                        .accessibilityHint("Scan it with the phone camera, or use Copy pairing code.")
+                        .accessibilityHint("Scan it with the phone's camera, or use Copy pairing code and paste it in Ufuq on the phone.")
                 }
                 Text("Both devices must be on the same Wi-Fi network.")
                     .font(.callout)

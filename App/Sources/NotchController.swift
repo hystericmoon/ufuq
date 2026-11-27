@@ -31,29 +31,62 @@ final class NotchHostingView: NSHostingView<NotchRootView> {
     }
 }
 
-/// Owns the panel, the state machine, the arbiter and the peek queue.
+/// One display's island: its own panel and view model; content is shared through the controller.
+@MainActor
+private final class ScreenIsland {
+    let displayID: CGDirectDisplayID
+    let panel: NotchPanel
+    let hostingView: NotchHostingView
+    let model = NotchModel()
+    var metrics: ScreenMetrics
+    var shrinkTask: Task<Void, Never>?
+
+    init(displayID: CGDirectDisplayID, metrics: ScreenMetrics) {
+        self.displayID = displayID
+        self.metrics = metrics
+        panel = NotchPanel(contentRect: NotchGeometry.windowFrame(for: .collapsed, metrics: metrics))
+        hostingView = NotchHostingView(rootView: NotchRootView(model: model))
+        hostingView.sizingOptions = []
+        panel.contentView = hostingView
+    }
+
+    func close() {
+        shrinkTask?.cancel()
+        panel.orderOut(nil)
+        panel.close()
+    }
+}
+
+/// Owns the panels (one per display, or only the notch display), the state machine, the arbiter
+/// and the peek queue. Every island shows the same wings and peeks; the expanded panel opens on
+/// one display only: the one with the pointer for the hotkey, the touched one for click or hover.
 @MainActor
 final class NotchController: NSObject {
     let registry: ModuleRegistry
-    let model = NotchModel()
 
     private var machine = NotchStateMachine()
     private var arbiter = ActivityArbiter()
     private var queue = PeekQueue()
 
-    private var panel: NotchPanel!
-    private var hostingView: NotchHostingView!
+    private var islands: [ScreenIsland] = []
+    /// The display the expanded panel uses.
+    private var activeID: CGDirectDisplayID?
     private var hotkey: Hotkey?
     private var timer: Timer?
     private var peekTasks: [Task<Void, Never>] = []
-    private var shrinkTask: Task<Void, Never>?
     private var screenObserver: NSObjectProtocol?
+    private var defaultsObserver: NSObjectProtocol?
     private var clickMonitor: Any?
+
+    private var layout = WingLayout()
+    private var snapshot: PrayerSnapshot?
+    private var selectedTab: ExpandedTab = .prayer
 
     private var previousApp: NSRunningApplication?
     private var lastAnnouncedPeekID: String?
     private var lastEscape = Date.distantPast
     private var tickCount = 0
+    private var allDisplays = AppSettings.allDisplays
 
     init(registry: ModuleRegistry) {
         self.registry = registry
@@ -63,29 +96,23 @@ final class NotchController: NSObject {
     // MARK: - Start
 
     func start() {
-        model.onEscape = { [weak self] in self?.handleEscape() }
-        model.onTapCollapsed = { [weak self] in self?.open(origin: .click) }
-
-        let metrics = currentMetrics()
-        let frame = NotchGeometry.windowFrame(for: .collapsed, metrics: metrics)
-        panel = NotchPanel(contentRect: frame)
-        panel.onCancel = { [weak self] in self?.handleEscape() }
-
-        hostingView = NotchHostingView(rootView: NotchRootView(model: model))
-        hostingView.sizingOptions = []
-        hostingView.onMouseEntered = { [weak self] in self?.pointerEntered() }
-        hostingView.onMouseExited = { [weak self] in self?.pointerExited() }
-        panel.contentView = hostingView
-
-        applyMetrics(metrics)
-        panel.setFrame(frame, display: true)
-        panel.orderFrontRegardless()
+        rebuildIslands()
 
         screenObserver = NotificationCenter.default.addObserver(
             forName: NSApplication.didChangeScreenParametersNotification,
             object: nil, queue: .main
         ) { [weak self] _ in
-            MainActor.assumeIsolated { self?.reposition() }
+            MainActor.assumeIsolated { self?.rebuildIslands() }
+        }
+        // The "every display" setting can change while running.
+        defaultsObserver = NotificationCenter.default.addObserver(
+            forName: UserDefaults.didChangeNotification, object: nil, queue: .main
+        ) { [weak self] _ in
+            MainActor.assumeIsolated {
+                guard let self, self.allDisplays != AppSettings.allDisplays else { return }
+                self.allDisplays = AppSettings.allDisplays
+                self.rebuildIslands()
+            }
         }
 
         clickMonitor = NSEvent.addGlobalMonitorForEvents(matching: [.leftMouseDown, .rightMouseDown]) { [weak self] _ in
@@ -122,10 +149,10 @@ final class NotchController: NSObject {
     // MARK: - Public actions
 
     func toggleExpanded() {
-        let wasExpanded = machine.isExpanded
-        if wasExpanded {
+        if machine.isExpanded {
             machine.collapse()
         } else {
+            activeID = pointerDisplayID() ?? islands.first?.displayID
             machine.open(origin: .hotkey)
         }
         applyState(restoreFocus: true)
@@ -133,7 +160,8 @@ final class NotchController: NSObject {
 
     // MARK: - Events
 
-    private func open(origin: ExpandOrigin) {
+    private func open(origin: ExpandOrigin, on displayID: CGDirectDisplayID) {
+        activeID = displayID
         machine.open(origin: origin)
         applyState(restoreFocus: false)
     }
@@ -157,14 +185,17 @@ final class NotchController: NSObject {
         }
     }
 
-    private func pointerEntered() {
+    private func pointerEntered(_ displayID: CGDirectDisplayID) {
         queue.setHovering(true, at: Date())
+        if !machine.isExpanded { activeID = displayID }
         machine.mouseEntered(hoverEnabled: AppSettings.hoverEnabled)
         applyState(restoreFocus: false)
     }
 
-    private func pointerExited() {
+    private func pointerExited(_ displayID: CGDirectDisplayID) {
         queue.setHovering(false, at: Date())
+        // Leaving a collapsed island on another display must not close the open panel.
+        guard displayID == activeID || !machine.isExpanded else { return }
         machine.mouseExited()
         applyState(restoreFocus: false)
     }
@@ -191,11 +222,15 @@ final class NotchController: NSObject {
         machine.setPeek(queue.current)
         announceIfNew()
 
-        let layout = arbiter.layout(for: registry.activities(at: now), at: now)
-        if layout != model.layout { model.layout = layout }
-        model.now = now
+        let newLayout = arbiter.layout(for: registry.activities(at: now), at: now)
+        if newLayout != layout { layout = newLayout }
         if machine.isExpanded {
-            model.snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: now)
+            snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: now)
+        }
+        for island in islands {
+            if island.model.layout != layout { island.model.layout = layout }
+            island.model.now = now
+            if island.displayID == activeID, machine.isExpanded { island.model.snapshot = snapshot }
         }
         applyState(restoreFocus: false)
 
@@ -205,52 +240,62 @@ final class NotchController: NSObject {
         }
     }
 
-    // MARK: - State to window
+    // MARK: - State to windows
+
+    private var activeIsland: ScreenIsland? {
+        islands.first { $0.displayID == activeID } ?? islands.first
+    }
 
     private func applyState(restoreFocus: Bool) {
-        let newState = machine.state
-        let oldState = model.state
-        guard newState != oldState else { return }
+        let wasExpanded = islands.contains { $0.model.state.kind == .expanded }
+        if machine.isExpanded, activeIsland?.displayID != activeID { activeID = activeIsland?.displayID }
 
-        let oldKind = oldState.kind
-        let newKind = newState.kind
-        if oldKind != newKind {
-            if newKind == .expanded {
-                model.snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: Date())
+        for island in islands {
+            let newState = NotchState.shown(machine.state, onActiveDisplay: island.displayID == activeID, peek: machine.currentPeek)
+            let oldState = island.model.state
+            guard newState != oldState else { continue }
+            if oldState.kind != newState.kind {
+                if newState.kind == .expanded {
+                    snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: Date())
+                    island.model.snapshot = snapshot
+                    island.model.selectedTab = selectedTab
+                }
+                updateFrame(island, for: newState.kind)
             }
-            updateFrame(for: newKind)
+            if oldState.kind == .expanded { selectedTab = island.model.selectedTab }
+            island.model.state = newState
         }
-        model.state = newState
 
-        if newKind == .expanded, oldKind != .expanded {
+        let isExpanded = islands.contains { $0.model.state.kind == .expanded }
+        if isExpanded, !wasExpanded {
             becameExpanded()
-        } else if oldKind == .expanded, newKind != .expanded {
+        } else if wasExpanded, !isExpanded {
             leftExpanded(restoreFocus: restoreFocus)
         }
     }
 
     private func becameExpanded() {
-        guard machine.origin != .hover else { return }
+        guard machine.origin != .hover, let island = activeIsland else { return }
         if let front = NSWorkspace.shared.frontmostApplication,
            front.processIdentifier != ProcessInfo.processInfo.processIdentifier {
             previousApp = front
         }
         NSApp.activate(ignoringOtherApps: true)
-        panel.makeKeyAndOrderFront(nil)
-        panel.makeFirstResponder(hostingView)
-        model.focusToken += 1
+        island.panel.makeKeyAndOrderFront(nil)
+        island.panel.makeFirstResponder(island.hostingView)
+        island.model.focusToken += 1
         // Give SwiftUI a moment to lay out, then tell VoiceOver where focus is.
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self] in
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.3) { [weak self, weak island] in
             MainActor.assumeIsolated {
-                guard let self, self.machine.isExpanded else { return }
-                self.model.focusToken += 1
-                NSAccessibility.post(element: self.panel as Any, notification: .focusedUIElementChanged)
+                guard let self, let island, self.machine.isExpanded else { return }
+                island.model.focusToken += 1
+                NSAccessibility.post(element: island.panel as Any, notification: .focusedUIElementChanged)
             }
         }
     }
 
     private func leftExpanded(restoreFocus: Bool) {
-        let wasKey = panel.isKeyWindow
+        let wasKey = islands.contains { $0.panel.isKeyWindow }
         if restoreFocus || wasKey {
             if let app = previousApp {
                 app.activate(options: [])
@@ -266,6 +311,7 @@ final class NotchController: NSObject {
             if queue.current == nil { lastAnnouncedPeekID = nil }
             return
         }
+        // One announcement, however many displays show the peek.
         lastAnnouncedPeekID = event.id
         var userInfo: [NSAccessibility.NotificationUserInfoKey: Any] = [.announcement: event.announcement]
         let priority: NSAccessibilityPriorityLevel = event.priority == .critical ? .high : .medium
@@ -275,16 +321,12 @@ final class NotchController: NSObject {
 
     // MARK: - Screens
 
-    private func chooseScreen() -> NSScreen? {
-        NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens.first
+    private static func displayID(of screen: NSScreen) -> CGDirectDisplayID? {
+        (screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber).map { CGDirectDisplayID($0.uint32Value) }
     }
 
-    private func currentMetrics() -> ScreenMetrics {
-        guard let screen = chooseScreen() else {
-            let frame = CGRect(x: 0, y: 0, width: 1440, height: 900)
-            return ScreenMetrics(frame: frame, visibleFrame: frame, safeAreaTop: 0, auxLeftWidth: 0, auxRightWidth: 0)
-        }
-        return ScreenMetrics(
+    private static func metrics(of screen: NSScreen) -> ScreenMetrics {
+        ScreenMetrics(
             frame: screen.frame,
             visibleFrame: screen.visibleFrame,
             safeAreaTop: screen.safeAreaInsets.top,
@@ -292,36 +334,80 @@ final class NotchController: NSObject {
             auxRightWidth: screen.auxiliaryTopRightArea?.width ?? 0)
     }
 
-    private func applyMetrics(_ metrics: ScreenMetrics) {
-        model.topInset = metrics.hasNotch ? metrics.safeAreaTop : 0
-        model.centerGap = metrics.hasNotch ? NotchGeometry.notchWidth(metrics) : 16
-        model.shapeSize = NotchGeometry.size(for: model.state.kind, metrics: metrics)
+    /// Every display, or (setting off) the notch display, else the main one.
+    private func chosenScreens() -> [NSScreen] {
+        if allDisplays { return NSScreen.screens }
+        let one = NSScreen.screens.first { $0.safeAreaInsets.top > 0 } ?? NSScreen.main ?? NSScreen.screens.first
+        return one.map { [$0] } ?? []
     }
 
-    private func reposition() {
-        let metrics = currentMetrics()
-        applyMetrics(metrics)
-        shrinkTask?.cancel()
-        panel.setFrame(NotchGeometry.windowFrame(for: model.state.kind, metrics: metrics), display: true)
+    private func pointerDisplayID() -> CGDirectDisplayID? {
+        let point = NSEvent.mouseLocation
+        let ids = Set(islands.map(\.displayID))
+        return NSScreen.screens.first { NSMouseInRect(point, $0.frame, false) }
+            .flatMap(Self.displayID(of:))
+            .flatMap { ids.contains($0) ? $0 : nil }
+    }
+
+    /// Adds, keeps or removes islands to match the displays; keeps state on displays that stay.
+    private func rebuildIslands() {
+        var kept: [ScreenIsland] = []
+        for screen in chosenScreens() {
+            guard let id = Self.displayID(of: screen) else { continue }
+            let metrics = Self.metrics(of: screen)
+            if let existing = islands.first(where: { $0.displayID == id }) {
+                existing.metrics = metrics
+                kept.append(existing)
+            } else {
+                kept.append(makeIsland(id: id, metrics: metrics))
+            }
+        }
+        for old in islands where !kept.contains(where: { $0 === old }) { old.close() }
+        islands = kept
+        if let activeID, !islands.contains(where: { $0.displayID == activeID }) { self.activeID = nil }
+        for island in islands {
+            island.model.layout = layout
+            applyMetrics(island)
+            island.shrinkTask?.cancel()
+            island.panel.setFrame(NotchGeometry.windowFrame(for: island.model.state.kind, metrics: island.metrics), display: true)
+            island.panel.orderFrontRegardless()
+        }
+        applyState(restoreFocus: false)
+    }
+
+    private func makeIsland(id: CGDirectDisplayID, metrics: ScreenMetrics) -> ScreenIsland {
+        let island = ScreenIsland(displayID: id, metrics: metrics)
+        island.model.onEscape = { [weak self] in self?.handleEscape() }
+        island.model.onTapCollapsed = { [weak self] in self?.open(origin: .click, on: id) }
+        island.panel.onCancel = { [weak self] in self?.handleEscape() }
+        island.hostingView.onMouseEntered = { [weak self] in self?.pointerEntered(id) }
+        island.hostingView.onMouseExited = { [weak self] in self?.pointerExited(id) }
+        return island
+    }
+
+    private func applyMetrics(_ island: ScreenIsland) {
+        let m = island.metrics
+        island.model.topInset = m.hasNotch ? m.safeAreaTop : 0
+        island.model.centerGap = m.hasNotch ? NotchGeometry.notchWidth(m) : 16
+        island.model.shapeSize = NotchGeometry.size(for: island.model.state.kind, metrics: m)
     }
 
     /// Grow the window first, then let the shape morph; on shrink wait for the morph to finish.
-    private func updateFrame(for kind: NotchState.Kind) {
-        let metrics = currentMetrics()
-        applyMetrics(metrics)
-        model.shapeSize = NotchGeometry.size(for: kind, metrics: metrics)
-        let target = NotchGeometry.windowFrame(for: kind, metrics: metrics)
-        let current = panel.frame
-        shrinkTask?.cancel()
+    private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind) {
+        applyMetrics(island)
+        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics)
+        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics)
+        let current = island.panel.frame
+        island.shrinkTask?.cancel()
         let shrinking = target.width < current.width || target.height < current.height
         if shrinking {
-            shrinkTask = Task { [weak self] in
+            island.shrinkTask = Task { [weak island] in
                 try? await Task.sleep(nanoseconds: 400_000_000)
-                guard !Task.isCancelled, let self else { return }
-                self.panel.setFrame(target, display: true)
+                guard !Task.isCancelled, let island else { return }
+                island.panel.setFrame(target, display: true)
             }
         } else {
-            panel.setFrame(target, display: true)
+            island.panel.setFrame(target, display: true)
         }
     }
 }

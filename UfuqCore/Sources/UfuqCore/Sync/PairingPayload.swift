@@ -43,9 +43,22 @@ public struct PairingPayload: Codable, Equatable, Sendable {
         String(decoding: try encoded(), as: UTF8.self)
     }
 
-    /// Parses and validates a scanned QR string.
+    /// The QR code's text: `ufuq://pair#<base64url JSON>`. A phone camera opens Ufuq with it; the
+    /// app still asks before pairing. The fragment keeps the key out of any server log.
+    public static let linkPrefix = "ufuq://pair#"
+
+    public func link() throws -> String {
+        Self.linkPrefix + SyncCoding.base64URLEncode(try encoded())
+    }
+
+    /// Parses and validates a scanned or pasted code: the link, or the bare JSON (older Macs).
     public static func decode(_ text: String) throws -> PairingPayload {
-        try decode(Data(text.utf8))
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        if trimmed.hasPrefix(linkPrefix) {
+            guard let json = SyncCoding.base64URLDecode(String(trimmed.dropFirst(linkPrefix.count))) else { throw PairingError.malformed }
+            return try decode(json)
+        }
+        return try decode(Data(trimmed.utf8))
     }
 
     public static func decode(_ data: Data) throws -> PairingPayload {
