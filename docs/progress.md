@@ -16,7 +16,7 @@ Next: (1) owner on the Mac: AI tile numbers vs `/usage` for each account; collap
 
 Next:
 1. Owner checks on 0.2.0: Mac panel on macOS 26 (glass over a light wallpaper: is text readable?) and on 14–15; Tab/arrows/Esc; Android Home, sub-screens, Back, permission round-trips.
-2. Phase 5 on the Mac: wire Claude/Codex usage into the AI tile (needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac). Then more small tiles (agents, media) as their modules land.
+2. Phase 5: see Resume here.
 
 Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 
