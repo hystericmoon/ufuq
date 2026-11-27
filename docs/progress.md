@@ -2,14 +2,12 @@
 
 Last updated: 2026-11-27
 
-## Resume here (2026-11-27, 15:30 WIB)
+## Resume here (2026-11-27, 15:15 WIB)
 
-Released: v0.1.0 to v0.1.3. **0.2.0 is NOT shipped yet:** PR #7 waits for CI; then merge it (merge commit), run
-`release-mac.yml`, `release-windows.yml`, `release-android.yml` on `main` (workflow_dispatch), check the v0.2.0
-release has the DMG, MSI and APK, and fix this line. Also download the `snapshots` artifact from `mac.yml` and
-check `expanded-bento-*` (112 pt rows, no "Maghr…"). Tags cannot be
-pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
-bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release.
+Released: v0.1.0 to v0.1.3 and **v0.2.0** (27 Nov: DMG + zip + appcast, MSI, APK; https://github.com/hystericmoon/ufuq/releases/tag/v0.2.0).
+Bento snapshots checked; a truncated prayer time ("Maghrib 17:…") was fixed before merge. Tags cannot be pushed from
+cloud sessions: to release, bump `VERSION` + `project.yml` `MARKETING_VERSION`, merge, then run `release-mac.yml`,
+`release-windows.yml`, `release-android.yml` by hand (workflow_dispatch on `main`); they create the `v<VERSION>` release.
 
 0.2.0 (PR #7) carries:
 - Mac open panel = **bento, design canvas option A** (owner pick 27 Nov, https://claude.ai/artifact/PpqkyeEQu7EhFj8gxvRD1j): black strip with the wings at the notch; Prayer (216 pt) and AI (248 pt) tall tiles; small tiles 144×112 in columns of two (Battery only so far, IOKit). Sized to live tiles (496 pt, 648 with battery). Liquid Glass on macOS 26, dark material on 14–15, solid under Reduce Transparency / Increase Contrast. Tabs removed; Tab/←→ move between tiles. CI and release build with Xcode 26 (26.3 on macos-15). AI tile shows "No usage yet" until the usage readers are wired (Phase 5).
