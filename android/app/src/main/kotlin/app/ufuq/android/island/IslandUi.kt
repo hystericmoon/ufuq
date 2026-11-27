@@ -248,6 +248,10 @@ fun IslandRow(page: IslandPageModel, onAction: (ButtonAction) -> Unit, onSeek: (
                 onDragCancel = { dragFraction = null },
             )
         }
+        page.footnote?.let {
+            // Spoken as part of the row's description above.
+            Text(it, Modifier.padding(top = 2.dp).clearAndSetSemantics { }, color = IslandColors.Ink2, fontFamily = IslandFont, fontSize = 12.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, style = TabularNums)
+        }
     }
 }
 

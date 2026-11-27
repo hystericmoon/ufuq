@@ -46,7 +46,9 @@ class IslandScreenshotTest {
         }
     }
 
-    @Test fun expandedPrayerNormal() = page(allPages, name = "island-03-expanded-a-prayer")
+    /** What a phone shows unpaired and with nothing playing: the prayer row only. */
+    @Test fun expandedPrayerNormal() =
+        page(IslandPages.visible(IslandPages.all(Fixtures.oneHourTwelveFull, false, null, TestStrings), unpaired = true), name = "island-03-expanded-a-prayer")
 
     @Test fun expandedPrayerUnderTenMinutes() =
         page(listOf(IslandPages.prayer(Fixtures.underTen, false, TestStrings)), name = "island-04-expanded-a-under-10min")
@@ -81,7 +83,7 @@ class IslandScreenshotTest {
 
     @Test fun expandedEverythingLive() = page(
         listOf(
-            prayerPage,
+            IslandPages.prayer(Fixtures.oneHourTwelveFull, false, TestStrings),
             IslandPages.aiUsage(AiUsageSample("Claude", 0.82, Duration.ofMinutes(72)), TestStrings),
             IslandPages.media(track, true, TestStrings, 0),
         ),

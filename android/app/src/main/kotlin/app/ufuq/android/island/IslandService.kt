@@ -1,6 +1,9 @@
 package app.ufuq.android.island
 
 import android.app.Notification
+import androidx.core.app.ServiceCompat
+import app.ufuq.android.live.LiveUpdate
+import app.ufuq.android.live.LiveUpdateContent
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.PendingIntent
@@ -50,6 +53,7 @@ import app.ufuq.android.R
 import app.ufuq.android.graph
 import app.ufuq.android.prayer.PrayerProgress
 import app.ufuq.android.sync.SyncMapper
+import app.ufuq.android.sync.SyncState
 import app.ufuq.android.ui.MainActivity
 import app.ufuq.core.PeekEvent
 import kotlinx.coroutines.CoroutineScope
@@ -90,6 +94,7 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
     private var lastPeekId: String? = null
     private var muted = false
     private var syncHeld = false
+    private var lastMinuteKey: String? = null
 
     private val strings by lazy { AndroidIslandStrings(this) }
 
@@ -156,6 +161,11 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
 
     override fun onDestroy() {
         graph.island.isShowing = false
+        // Keep the card: the Live Update setting decides whether it stays (reposted without the
+        // per-minute countdown) or goes.
+        ServiceCompat.stopForeground(this, ServiceCompat.STOP_FOREGROUND_DETACH)
+        val app = graph
+        CoroutineScope(SupervisorJob() + Dispatchers.Default).launch { app.liveUpdate.post(app.currentSettings()) }
         if (syncHeld) graph.sync.release()
         syncHeld = false
         scope?.cancel()
@@ -175,14 +185,21 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         graph.peeks.tick(now)
         pill = PillMapper.from(graph.arbiter.layout(graph.registry.activities(now), now), now)
         val progress = PrayerProgress.at(now, graph.prayer)
+        // The notification's countdown is in whole minutes: repost it when that text changes.
+        val minuteKey = progress?.let { "${it.name}|${LiveUpdateContent.inWords(it.remaining)}" }
+        if (minuteKey != lastMinuteKey) {
+            lastMinuteKey = minuteKey
+            graph.liveUpdate.post(settings, now)
+        }
         // Page B shows the Mac's usage (or its pairing / offline state) from the sync link.
-        pages = SyncMapper.withPageB(
+        val syncState = graph.sync.state.value
+        pages = IslandPages.visible(SyncMapper.withPageB(
             IslandPages.all(
                 progress, muted, usage = null, strings = strings,
                 mediaState = graph.media.state.value, mediaAccess = graph.media.accessGranted(), elapsedNowMs = SystemClock.elapsedRealtime(),
             ),
-            graph.sync.state.value, now, strings, graph.syncStrings,
-        ) + listOfNotNull(graph.otherApps.page(now))
+            syncState, now, strings, graph.syncStrings,
+        ), unpaired = syncState == SyncState.Unpaired) + listOfNotNull(graph.otherApps.page(now))
         val current = graph.peeks.current
         if (current?.id != lastPeekId) {
             lastPeekId = current?.id
@@ -360,38 +377,31 @@ class IslandService : Service(), LifecycleOwner, SavedStateRegistryOwner, ViewMo
         scope?.launch { tick() }
     }
 
+    /**
+     * The island's foreground notification is the next-prayer notification itself (one Ufuq
+     * card). It starts from the prayer module as it stands; the first tick reposts it with the
+     * user's settings applied.
+     */
     private fun startInForeground() {
-        val nm = getSystemService(NotificationManager::class.java)
-        nm.createNotificationChannel(
-            NotificationChannel(CHANNEL, getString(R.string.channel_island), NotificationManager.IMPORTANCE_MIN),
-        )
-        val open = PendingIntent.getActivity(
-            this, 0,
-            Intent(this, MainActivity::class.java).addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP or Intent.FLAG_ACTIVITY_CLEAR_TOP),
-            PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT,
-        )
-        val notification: Notification = NotificationCompat.Builder(this, CHANNEL)
-            .setSmallIcon(R.drawable.ic_notification)
-            .setColor(ContextCompat.getColor(this, R.color.notification_accent))
-            .setContentTitle(getString(R.string.island_notification_title))
-            .setContentText(getString(R.string.island_notification_text))
-            .setContentIntent(open)
-            .setOngoing(true)
-            .setSilent(true)
-            .setPriority(NotificationCompat.PRIORITY_MIN)
-            .setCategory(NotificationCompat.CATEGORY_SERVICE)
-            .build()
+        LiveUpdate.ensureChannel(this)
+        // The old separate "Island" channel (0.1.2 and earlier) is no longer used.
+        getSystemService(NotificationManager::class.java).deleteNotificationChannel(OLD_CHANNEL)
+        val notification: Notification = runCatching {
+            val now = Instant.now()
+            val zone = graph.prayer.snapshot(now)?.zone
+            val progress = PrayerProgress.at(now, graph.prayer)
+            if (zone != null && progress != null) LiveUpdate.build(this, LiveUpdateContent(progress, zone, ticking = true)) else null
+        }.getOrNull() ?: LiveUpdate.fallback(this)
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
+            startForeground(LiveUpdate.NOTIFICATION_ID, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_SPECIAL_USE)
         } else {
-            startForeground(NOTIFICATION_ID, notification)
+            startForeground(LiveUpdate.NOTIFICATION_ID, notification)
         }
     }
 
     companion object {
         const val ACTION_EXPAND = "app.ufuq.android.action.EXPAND_ISLAND"
-        private const val CHANNEL = "island"
-        private const val NOTIFICATION_ID = 101
+        private const val OLD_CHANNEL = "island"
         private const val EXPANDED_SECONDS = 10
         private val QUIET_START: Duration = Duration.ofSeconds(20)
 

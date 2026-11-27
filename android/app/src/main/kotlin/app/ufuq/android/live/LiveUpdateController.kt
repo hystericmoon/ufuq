@@ -19,8 +19,10 @@ import kotlinx.coroutines.launch
 import java.time.Instant
 
 /**
- * Posts the Live Update notification and wakes up again only at the next prayer boundary (one
- * inexact alarm, no polling). The chronometer counts down on its own between boundaries.
+ * Posts the next-prayer notification and wakes up again only at the next prayer boundary (one
+ * inexact alarm, no polling). While the island runs, this same notification is the island
+ * service's foreground notification (one Ufuq card, owner 27 Nov), and the service reposts it
+ * every minute so its countdown in words stays right.
  */
 class LiveUpdateController(private val context: Context, private val graph: AppGraph) {
 
@@ -31,32 +33,47 @@ class LiveUpdateController(private val context: Context, private val graph: AppG
         graph.silence.onRefresh(settings, now)
         graph.travel.onRefresh(settings)
         val pending = alarmIntent()
-        if (!settings.liveUpdateEnabled) {
-            NotificationManagerCompat.from(context).cancel(LiveUpdate.NOTIFICATION_ID)
+        val snapshot = post(settings, now)
+        if (!settings.liveUpdateEnabled || snapshot == null) {
             alarms.cancel(pending)
             return
-        }
-        graph.apply(settings)
-        val snapshot = graph.prayer.snapshot(now) ?: run {
-            NotificationManagerCompat.from(context).cancel(LiveUpdate.NOTIFICATION_ID)
-            return
-        }
-        val progress = graph.liveStrategies.firstNotNullOfOrNull { it.progress(now, settings, snapshot) }
-            ?: PrayerProgress.at(now, graph.prayer) ?: return
-        LiveUpdate.ensureChannel(context)
-        if (NotificationManagerCompat.from(context).areNotificationsEnabled()) {
-            try {
-                NotificationManagerCompat.from(context).notify(
-                    LiveUpdate.NOTIFICATION_ID,
-                    LiveUpdate.build(context, LiveUpdateContent(progress, snapshot.zone)),
-                )
-            } catch (_: SecurityException) {
-                // Permission revoked between the check and the post.
-            }
         }
         val at = PrayerSnapshots.nextRefresh(now, snapshot)
         // Inexact on purpose: no exact-alarm permission, and a minute late is fine for a countdown.
         alarms.setAndAllowWhileIdle(AlarmManager.RTC_WAKEUP, at.toEpochMilli(), pending)
+    }
+
+    /**
+     * Posts (or removes) the notification only: no alarms, no prayer extras. The island service
+     * calls it every minute. Returns the snapshot it showed, or null when nothing is shown.
+     * While the island runs the notification stays even with the Live Update setting off,
+     * because Android needs it to keep the island on screen.
+     */
+    fun post(settings: AppSettings, now: Instant = Instant.now()): app.ufuq.core.prayer.PrayerSnapshot? {
+        val nm = NotificationManagerCompat.from(context)
+        val island = graph.island.isShowing
+        if (!settings.liveUpdateEnabled && !island) {
+            nm.cancel(LiveUpdate.NOTIFICATION_ID)
+            return null
+        }
+        graph.apply(settings)
+        val snapshot = graph.prayer.snapshot(now)
+        val progress = snapshot?.let { snap -> graph.liveStrategies.firstNotNullOfOrNull { it.progress(now, settings, snap) } }
+            ?: PrayerProgress.at(now, graph.prayer)
+        if (snapshot == null || progress == null) {
+            // The island keeps its fallback notification; it cannot be removed while it runs.
+            if (!island) nm.cancel(LiveUpdate.NOTIFICATION_ID)
+            return null
+        }
+        LiveUpdate.ensureChannel(context)
+        if (nm.areNotificationsEnabled()) {
+            try {
+                nm.notify(LiveUpdate.NOTIFICATION_ID, LiveUpdate.build(context, LiveUpdateContent(progress, snapshot.zone, ticking = island)))
+            } catch (_: SecurityException) {
+                // Permission revoked between the check and the post.
+            }
+        }
+        return snapshot
     }
 
     private fun alarmIntent(): PendingIntent = PendingIntent.getBroadcast(

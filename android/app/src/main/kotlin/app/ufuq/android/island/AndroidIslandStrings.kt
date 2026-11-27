@@ -26,6 +26,7 @@ class AndroidIslandStrings(private val context: Context) : IslandStrings {
     override fun prayerDescription(name: String, spoken: String, percent: Int) =
         context.getString(R.string.island_prayer_description, name, spoken, percent)
     override fun resetsIn(time: String) = context.getString(R.string.island_resets_in, time)
+    override fun then(list: String) = context.getString(R.string.island_then, list)
     override fun usageDescription(provider: String, percent: Int, resetsSpoken: String?) =
         if (resetsSpoken == null) {
             context.getString(R.string.island_usage_description, provider, percent)

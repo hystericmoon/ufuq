@@ -14,9 +14,16 @@ points at the kickoff commit; harmless.)
 - Android pill: countdown only, 24–30 dp, centred on the camera hole.
 - Mac: sync key in `~/Library/Application Support/Ufuq/sync-key` (not Keychain); island on non-notch screens sits in the menu bar; "Paired with <phone> · seen …"; "Forget phone…" confirms. macOS CI green.
 
+0.1.3 (owner picks 27 Nov, decision page https://claude.ai/artifact/AGqaayRyQD7zZuEymEUkvc):
+- Android, one Ufuq notification: the island service runs on the next-prayer notification (id 1, channel `next_prayer`); the old "Ufuq island is on" channel is deleted. No progress bar, no chronometer. With the island on: "Ashar in 2 h 3 min" / "15:08 · Bogor", reposted each minute by the island tick; without it: "Ashar at 15:08" / place (only what stays true between boundaries). With the Live Update setting off, the card stays while the island runs (Android needs it).
+- Android open island shows only live rows: media while a session exists, AI once a Mac is paired. Prayer row: "Ashar · 15:08 · Bogor", then "Then Maghrib 17:58 · Isya 19:12".
+- A device location shows its nearest listed city ("Near Jakarta" from 10 to 50 km), offline.
+- The "Android System · displaying over other apps" notification is the system's; the owner can long-press it to turn it off.
+
 Next:
-1. Owner checks on 0.1.2: Android open island (all three rows, swipe up closes, TalkBack order); last Keychain prompt during migration (click Allow), external-monitor island in the menu bar, paired-phone line, Forget phone.
-2. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
+1. **Mac panel revamp: waiting on the owner's reference design.** Direction so far: Liquid Glass (`.glassEffect` on macOS 26, material fallback on 14–15, black strip at the notch, solid under Reduce Transparency / Increase Contrast), sized to content, no dead space.
+2. Owner checks on 0.1.2/0.1.3: one notification, island rows, Windows card; Mac Keychain prompt (Allow once), external-monitor island in the menu bar, paired-phone line, Forget phone.
+3. Then Phase 5 on the Mac (AI usage page; needs real `~/.claude` / `~/.codex` logs, best from a session on the Mac).
 
 Owner rule (CLAUDE.md): do every step you can yourself (merge, workflows, CI fixes, releases); only device checks, local keys and decisions go to the owner.
 
@@ -115,6 +122,8 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - Pairing QR is now a `ufuq://pair#<base64url JSON>` link: the phone camera opens Ufuq with the code filled in; the user still taps Pair. Bare JSON still parses.
 
 ## History
+
+- 2026-11-27 (afternoon): 0.1.3: one Android notification, live-only island rows, place names. Mac revamp waits on a reference design.
 
 - 2026-11-27 (afternoon): v0.1.2 released: Android and Windows open island option C, pill countdown, Mac sync key file, menu-bar island on external screens, paired-phone line.
 

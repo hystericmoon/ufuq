@@ -27,18 +27,10 @@ import androidx.compose.foundation.layout.fillMaxHeight
  */
 @Composable
 fun RamadanLiveCard(content: LiveUpdateContent, modifier: Modifier = Modifier) {
-    val p = content.progress
     Column(
         modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(Tokens.Card).padding(16.dp),
     ) {
         Text(content.title, color = Tokens.Primary, fontSize = 22.sp, fontWeight = FontWeight.SemiBold)
         Text(content.text, color = Tokens.Secondary, fontSize = 14.sp)
-        Box(
-            Modifier.padding(top = 12.dp).fillMaxWidth().height(8.dp).clip(RoundedCornerShape(4.dp)).background(Tokens.Track)
-                .semantics { progressBarRangeInfo = ProgressBarRangeInfo(p.fraction, 0f..1f) },
-        ) {
-            Box(Modifier.fillMaxWidth(p.fraction).fillMaxHeight().background(Tokens.AccentPrayer))
-        }
-        Text("${p.percent}%  ·  ${p.countdown}", color = Tokens.Secondary, fontSize = 13.sp, modifier = Modifier.padding(top = 6.dp))
     }
 }

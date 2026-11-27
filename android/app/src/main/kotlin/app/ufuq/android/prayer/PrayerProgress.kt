@@ -73,6 +73,10 @@ data class PrayerProgress(
     val next: Instant,
     val now: Instant,
     val location: String = "",
+    /** The place's time zone, for "15:08"; null in tests that do not need it. */
+    val zone: java.time.ZoneId? = null,
+    /** Up to two prayers after [next], today only: ("Maghrib", 17:58). */
+    val later: List<Pair<String, Instant>> = emptyList(),
 ) {
     val fraction: Float get() = SliderMath.fraction(now, previous, next)
     val percent: Int get() = (fraction * 100).toInt()
@@ -92,7 +96,11 @@ data class PrayerProgress(
             val previous = todayFive.filter { !it.isAfter(now) && it.isBefore(next.time) }.maxOrNull()
                 ?: previousOf()?.today?.firstOrNull { it.slot == PrayerTimeSlot.ISHA }?.time
                 ?: next.time.minus(Duration.ofHours(5))
-            return PrayerProgress(next.displayName, previous, next.time, now, snap.locationName)
+            val later = snap.today
+                .filter { it.slot.prayer in FIVE_PRAYERS && it.time.isAfter(next.time) }
+                .take(2)
+                .mapNotNull { t -> t.slot.prayer?.let { it.displayName to t.time } }
+            return PrayerProgress(next.displayName, previous, next.time, now, snap.locationName, snap.zone, later)
         }
     }
 }

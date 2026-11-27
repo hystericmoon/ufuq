@@ -34,7 +34,15 @@ data class AppSettings(
     val followLocation: Boolean = false,
 ) {
     val location: PrayerLocation
-        get() = PrayerLocation(cityName, latitude, longitude, runCatching { ZoneId.of(zoneId) }.getOrDefault(ZoneId.systemDefault()))
+        get() = PrayerLocation(placeName, latitude, longitude, runCatching { ZoneId.of(zoneId) }.getOrDefault(ZoneId.systemDefault()))
+
+    /**
+     * The name shown with the times. A device location names its nearest listed city ("Near
+     * Jakarta" beyond 10 km, so it never looks like the city's own times), offline; [cityName]
+     * ("My location") only when no listed city is within 50 km.
+     */
+    val placeName: String
+        get() = if (usesDeviceLocation) app.ufuq.android.travel.TravelLogic.placeName(latitude, longitude, Cities.ALL, cityName) else cityName
 
     val calculation: CalculationSettings get() = CalculationSettings(method = method)
 

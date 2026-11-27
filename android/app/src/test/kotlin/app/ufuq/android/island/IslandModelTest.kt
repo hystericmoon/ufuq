@@ -191,4 +191,23 @@ class IslandModelTest {
         // No cutout: 26 dp, 4 dp from the top.
         assertEquals(IslandGeometry.Placement(4, 26), IslandGeometry.placement(null, null, 3f))
     }
+
+    @Test fun onlyLiveRowsAreVisible() {
+        val pages = IslandPages.all(Fixtures.oneHourTwelve, false, null, TestStrings)
+        assertEquals(listOf(IslandPageId.PRAYER), IslandPages.visible(pages, unpaired = true).map { it.id })
+        assertEquals(listOf(IslandPageId.PRAYER, IslandPageId.AI_USAGE), IslandPages.visible(pages, unpaired = false).map { it.id })
+        val playing = app.ufuq.android.media.MediaState("Mishary", durationMs = 210_000, playing = true)
+        val withMedia = IslandPages.all(Fixtures.oneHourTwelve, false, null, TestStrings, mediaState = playing, mediaAccess = true)
+        assertEquals(listOf(IslandPageId.PRAYER, IslandPageId.MEDIA), IslandPages.visible(withMedia, unpaired = true).map { it.id })
+        // Nothing live (no location yet): everything shows rather than an empty card.
+        val none = IslandPages.all(null, false, null, TestStrings)
+        assertEquals(none, IslandPages.visible(none, unpaired = true))
+    }
+
+    @Test fun prayerRowHasTimePlaceAndTheRestOfToday() {
+        val page = IslandPages.prayer(Fixtures.oneHourTwelveFull, false, TestStrings)
+        assertEquals("15:12 · Jakarta", page.slider.trailing)
+        assertEquals("Then Maghrib 17:58 · Isya 19:12", page.footnote)
+        assertTrue(page.slider.description.endsWith("Then Maghrib 17:58 · Isya 19:12"), page.slider.description)
+    }
 }
