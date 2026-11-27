@@ -43,6 +43,19 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Releasing $VERSION"
 
+      - name: Build mediaremote-adapter
+        run: |
+          set -euo pipefail
+          ADAPTER_TAG=v0.9.1
+          git clone --depth 1 --branch "$ADAPTER_TAG" https://github.com/ungive/mediaremote-adapter.git "$RUNNER_TEMP/mra"
+          cmake -S "$RUNNER_TEMP/mra" -B "$RUNNER_TEMP/mra/build"
+          cmake --build "$RUNNER_TEMP/mra/build"
+          DEST=App/Resources/MediaRemoteAdapter
+          mkdir -p "$DEST"
+          cp "$RUNNER_TEMP/mra/bin/mediaremote-adapter.pl" "$DEST/"
+          cp -R "$RUNNER_TEMP/mra/build/MediaRemoteAdapter.framework" "$DEST/"
+          cp "$RUNNER_TEMP/mra/build/MediaRemoteAdapterTestClient" "$DEST/"
+          cp "$RUNNER_TEMP/mra/LICENSE" "$DEST/LICENSE-mediaremote-adapter.txt"
       - name: Install XcodeGen
         run: brew install xcodegen
 

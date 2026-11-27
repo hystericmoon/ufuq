@@ -1,19 +1,27 @@
 import AppKit
+import Combine
 import SwiftUI
 import UfuqCore
 
-/// Hosting view that reports the pointer entering and leaving the panel (for optional hover).
+/// Hosting view that reports the pointer over the body (for optional hover and the jelly's lean
+/// and squash). The window is a little larger than the body, so "inside" is the body rect only.
 final class NotchHostingView: NSHostingView<NotchRootView> {
     var onMouseEntered: (() -> Void)?
     var onMouseExited: (() -> Void)?
+    var onPointer: ((JellyPointer) -> Void)?
+    /// The black body's size; set by the controller. Zero means the whole view.
+    var bodySize: CGSize = .zero
     private var tracking: NSTrackingArea?
+    private var inside = false
+    private var pressed = false
+    private var lastX: CGFloat = 0
 
     override func updateTrackingAreas() {
         super.updateTrackingAreas()
         if let tracking { removeTrackingArea(tracking) }
         let area = NSTrackingArea(
             rect: .zero,
-            options: [.mouseEnteredAndExited, .activeAlways, .inVisibleRect],
+            options: [.mouseEnteredAndExited, .mouseMoved, .activeAlways, .inVisibleRect],
             owner: self,
             userInfo: nil)
         addTrackingArea(area)
@@ -22,12 +30,55 @@ final class NotchHostingView: NSHostingView<NotchRootView> {
 
     override func mouseEntered(with event: NSEvent) {
         super.mouseEntered(with: event)
-        onMouseEntered?()
+        update(with: event)
+    }
+
+    override func mouseMoved(with event: NSEvent) {
+        super.mouseMoved(with: event)
+        update(with: event)
     }
 
     override func mouseExited(with event: NSEvent) {
         super.mouseExited(with: event)
-        onMouseExited?()
+        pressed = false
+        if inside {
+            inside = false
+            onMouseExited?()
+        }
+        publish()
+    }
+
+    override func mouseDown(with event: NSEvent) {
+        pressed = true
+        publish()
+        super.mouseDown(with: event)
+    }
+
+    override func mouseUp(with event: NSEvent) {
+        pressed = false
+        publish()
+        super.mouseUp(with: event)
+    }
+
+    /// Window coordinates start bottom-left; the body hangs from the top, centered.
+    private func update(with event: NSEvent) {
+        let point = event.locationInWindow
+        let width = bounds.width
+        let height = bounds.height
+        let bodyWidth = bodySize.width > 0 ? bodySize.width : width
+        let bodyHeight = bodySize.height > 0 ? bodySize.height : height
+        let dx = point.x - width / 2
+        lastX = dx.rounded()
+        let isInside = abs(dx) <= bodyWidth / 2 && point.y >= height - bodyHeight
+        if isInside != inside {
+            inside = isInside
+            if isInside { onMouseEntered?() } else { onMouseExited?() }
+        }
+        publish()
+    }
+
+    private func publish() {
+        onPointer?(JellyPointer(hovering: inside, x: lastX, pressed: pressed && inside))
     }
 }
 
@@ -40,11 +91,12 @@ private final class ScreenIsland {
     let model = NotchModel()
     var metrics: ScreenMetrics
     var shrinkTask: Task<Void, Never>?
+    var cancellables = Set<AnyCancellable>()
 
     init(displayID: CGDirectDisplayID, metrics: ScreenMetrics) {
         self.displayID = displayID
         self.metrics = metrics
-        panel = NotchPanel(contentRect: NotchGeometry.windowFrame(for: .collapsed, metrics: metrics))
+        panel = NotchPanel(contentRect: NotchGeometry.paddedWindowFrame(for: .collapsed, metrics: metrics))
         hostingView = NotchHostingView(rootView: NotchRootView(model: model))
         hostingView.sizingOptions = []
         panel.contentView = hostingView
@@ -77,6 +129,9 @@ final class NotchController: NSObject {
     private var screenObserver: NSObjectProtocol?
     private var defaultsObserver: NSObjectProtocol?
     private var clickMonitor: Any?
+    private var trayHotkey: Hotkey?
+    private var trayDrag: TrayDragMonitor?
+    private var floatingTray: FloatingTrayController?
 
     private var layout = WingLayout()
     private var snapshot: PrayerSnapshot?
@@ -87,6 +142,8 @@ final class NotchController: NSObject {
     private var lastEscape = Date.distantPast
     private var tickCount = 0
     private var lastGitHubPoll = Date.distantPast
+    private var lastNowPlayingPoll = Date.distantPast
+    private var nowPlayingPausedSince: Date?
     private var allDisplays = AppSettings.allDisplays
 
     init(registry: ModuleRegistry) {
@@ -124,6 +181,7 @@ final class NotchController: NSObject {
             MainActor.assumeIsolated { self?.toggleExpanded() }
         }
         if hotkey == nil { NSLog("Ufuq: could not register the Option+Space hotkey") }
+        startTray()
 
         for module in registry.enabledModules {
             let stream = module.peekEvents()
@@ -224,6 +282,7 @@ final class NotchController: NSObject {
             Task { try? await agent.refresh() }
         }
         pollGitHub(at: now)
+        pollNowPlaying(at: now)
         queue.tick(at: now)
         machine.setPeek(queue.current)
         announceIfNew()
@@ -241,6 +300,7 @@ final class NotchController: NSObject {
                 updateAIRows(island, now: now)
                 refreshAgents(island, now: now)
                 refreshActions(island, now: now)
+                refreshNowPlaying(island)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
                 if tickCount % 30 == 0 { refreshBattery(island) }
             }
@@ -275,6 +335,7 @@ final class NotchController: NSObject {
                     island.model.agents = (registry.module(id: "agent") as? AgentStatusModule)?.sessions(at: Date()) ?? []
                     island.model.actions = githubBuilds(at: Date())
                     island.model.battery = BatteryReader.read()
+                    refreshNowPlaying(island)
                     island.model.focusedTile = focusedTile
                 }
                 updateFrame(island, for: newState.kind)
@@ -316,6 +377,33 @@ final class NotchController: NSObject {
         Task { try? await module.refresh() }
     }
 
+    /// Now Playing polls every 2 s while something plays, every 5 s otherwise.
+    private func pollNowPlaying(at now: Date) {
+        guard let module = registry.module(id: "nowPlaying") as? NowPlayingModule, module.isEnabled else { return }
+        let interval: TimeInterval = module.nowPlaying?.isPlaying == true ? 2 : 5
+        guard now.timeIntervalSince(lastNowPlayingPoll) >= interval else { return }
+        lastNowPlayingPoll = now
+        Task { try? await module.refresh() }
+    }
+
+    /// Copies the module's state into the model. A track appearing or leaving changes the panel width.
+    private func refreshNowPlaying(_ island: ScreenIsland) {
+        guard let module = registry.module(id: "nowPlaying") as? NowPlayingModule else { return }
+        let track = module.nowPlaying
+        let now = Date()
+        if let track, !track.isPlaying {
+            if nowPlayingPausedSince == nil { nowPlayingPausedSince = now }
+        } else {
+            nowPlayingPausedSince = nil
+        }
+        let before = island.model.content.showsNowPlaying
+        if island.model.nowPlaying != track { island.model.nowPlaying = track }
+        if island.model.nowPlayingPausedSince != nowPlayingPausedSince {
+            island.model.nowPlayingPausedSince = nowPlayingPausedSince
+        }
+        if before != island.model.content.showsNowPlaying { updateFrame(island, for: island.model.state.kind) }
+    }
+
     private func githubBuilds(at now: Date) -> [GitHubBuild] {
         guard let module = registry.module(id: "github") as? GitHubActionsModule,
               module.status.isAvailable else { return [] }
@@ -332,7 +420,8 @@ final class NotchController: NSObject {
     }
 
     private func becameExpanded() {
-        guard machine.origin != .hover, let island = activeIsland else { return }
+        // A drag-opened panel must not take focus from the app the drag comes from.
+        guard machine.origin != .hover, machine.origin != .drag, let island = activeIsland else { return }
         if let front = NSWorkspace.shared.frontmostApplication,
            front.processIdentifier != ProcessInfo.processInfo.processIdentifier {
             previousApp = front
@@ -427,9 +516,10 @@ final class NotchController: NSObject {
             applyMetrics(island)
             island.shrinkTask?.cancel()
             island.panel.setFrame(
-                NotchGeometry.windowFrame(
+                NotchGeometry.paddedWindowFrame(
                     for: island.model.state.kind, metrics: island.metrics,
-                    smallTiles: island.model.content.smallTiles.count),
+                    smallTiles: island.model.content.smallTiles.count,
+                    trayRow: TrayController.shared.isRowShown),
                 display: true)
             island.panel.orderFrontRegardless()
         }
@@ -443,6 +533,21 @@ final class NotchController: NSObject {
         island.panel.onCancel = { [weak self] in self?.handleEscape() }
         island.hostingView.onMouseEntered = { [weak self] in self?.pointerEntered(id) }
         island.hostingView.onMouseExited = { [weak self] in self?.pointerExited(id) }
+        island.hostingView.onPointer = { [weak island] pointer in
+            guard let island, island.model.pointer != pointer else { return }
+            island.model.pointer = pointer
+        }
+        // A file drag near the notch needs room below the body for the neck.
+        island.model.$fileDrag
+            .map { $0 != nil }
+            .removeDuplicates()
+            .sink { [weak self, weak island] active in
+                MainActor.assumeIsolated {
+                    guard let self, let island else { return }
+                    self.updateFrame(island, for: island.model.state.kind, neck: active)
+                }
+            }
+            .store(in: &island.cancellables)
         return island
     }
 
@@ -452,7 +557,9 @@ final class NotchController: NSObject {
         island.model.centerGap = m.hasNotch ? NotchGeometry.notchWidth(m) : 16
         island.model.stripHeight = NotchGeometry.stripHeight(m)
         island.model.shapeSize = NotchGeometry.size(
-            for: island.model.state.kind, metrics: m, smallTiles: island.model.content.smallTiles.count)
+            for: island.model.state.kind, metrics: m, smallTiles: island.model.content.smallTiles.count,
+            trayRow: TrayController.shared.isRowShown)
+        island.hostingView.bodySize = island.model.shapeSize
     }
 
     /// A battery appearing or going away changes the open panel's width.
@@ -465,11 +572,15 @@ final class NotchController: NSObject {
     }
 
     /// Grow the window first, then let the shape morph; on shrink wait for the morph to finish.
-    private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind) {
+    private func updateFrame(_ island: ScreenIsland, for kind: NotchState.Kind, neck: Bool? = nil) {
         applyMetrics(island)
         let smallTiles = island.model.content.smallTiles.count
-        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics, smallTiles: smallTiles)
-        let target = NotchGeometry.windowFrame(for: kind, metrics: island.metrics, smallTiles: smallTiles)
+        let trayRow = TrayController.shared.isRowShown
+        island.model.shapeSize = NotchGeometry.size(for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow)
+        island.hostingView.bodySize = island.model.shapeSize
+        let target = NotchGeometry.paddedWindowFrame(
+            for: kind, metrics: island.metrics, smallTiles: smallTiles, trayRow: trayRow,
+            neck: neck ?? (island.model.fileDrag != nil))
         let current = island.panel.frame
         island.shrinkTask?.cancel()
         let shrinking = target.width < current.width || target.height < current.height
@@ -481,6 +592,118 @@ final class NotchController: NSObject {
             }
         } else {
             island.panel.setFrame(target, display: true)
+        }
+    }
+}
+
+// MARK: - File tray
+
+extension NotchController {
+    /// Wires the tray: ⌥⇧T, the Services item, drag monitoring and the shake tray.
+    fileprivate func startTray() {
+        let tray = TrayController.shared
+        tray.onRowShownChanged = { [weak self] in self?.resizeForTray() }
+        tray.onItemsChanged = { [weak self] swallowed in self?.publishTray(swallowed: swallowed) }
+        tray.onRequestOpen = { [weak self] in self?.openTray() }
+        publishTray(swallowed: false)
+        NSApp.servicesProvider = TrayServicesProvider.shared
+
+        trayHotkey = Hotkey(keyCode: Hotkey.trayKeyCode, modifiers: Hotkey.trayModifiers, id: 2) { [weak self] in
+            MainActor.assumeIsolated { self?.openTray() }
+        }
+        if trayHotkey == nil { NSLog("Ufuq: could not register the Option+Shift+T hotkey") }
+
+        let floating = FloatingTrayController(tray: tray)
+        floatingTray = floating
+        let monitor = TrayDragMonitor()
+        monitor.onFileDrag = { [weak self] point in self?.trayDragMoved(to: point) }
+        monitor.onShake = { [weak self] point in self?.floatingTray?.show(at: point) }
+        monitor.onDragEnded = { [weak self] in self?.trayDragEnded() }
+        monitor.start()
+        trayDrag = monitor
+    }
+
+    /// ⌥⇧T and the Services item: open the panel with focus on the tray row.
+    fileprivate func openTray() {
+        let tray = TrayController.shared
+        tray.revealed = true
+        tray.wantsFocus = true
+        if machine.isExpanded {
+            activeIsland?.model.focusToken += 1
+        } else {
+            activeID = pointerDisplayID() ?? islands.first?.displayID
+            machine.open(origin: .hotkey)
+            applyState(restoreFocus: true)
+        }
+    }
+
+    /// The row appeared or went away: the open panel changes height.
+    fileprivate func resizeForTray() {
+        for island in islands where island.model.state.kind == .expanded {
+            updateFrame(island, for: .expanded)
+        }
+    }
+
+    /// Mirrors the tray into every island's model; a drop also bumps the swallow token.
+    fileprivate func publishTray(swallowed: Bool) {
+        let items = TrayController.shared.items
+        for island in islands {
+            island.model.tray = items
+            if swallowed { island.model.swallowToken += 1 }
+        }
+    }
+
+    /// A file drag moved. The island under the pointer gets `fileDrag`; the drop zone opens the panel.
+    /// Coordinates: `NSEvent.mouseLocation` and `NSScreen.frame` share the screen space (origin
+    /// bottom-left); x is made relative to the collapsed body's centre.
+    fileprivate func trayDragMoved(to point: NSPoint) {
+        let tray = TrayController.shared
+        var current: FileDragState?
+        var currentID: CGDirectDisplayID?
+        for island in islands {
+            guard let screen = NSScreen.screens.first(where: { Self.displayID(of: $0) == island.displayID }),
+                  NSMouseInRect(point, screen.frame, false) || point.y >= screen.frame.maxY
+                    && point.x >= screen.frame.minX && point.x <= screen.frame.maxX else { continue }
+            let midX = NotchGeometry.windowFrame(for: .collapsed, metrics: island.metrics).midX
+            current = FileDragState.make(pointer: point, screenFrame: screen.frame, bodyMidX: midX)
+            currentID = island.displayID
+            break
+        }
+        for island in islands {
+            let value = island.displayID == currentID ? current : nil
+            if island.model.fileDrag != value { island.model.fileDrag = value }
+        }
+
+        if let current, current.overDropZone, let currentID {
+            tray.dragActive = true
+            if !machine.isExpanded {
+                activeID = currentID
+                machine.dragEntered()
+                applyState(restoreFocus: false)
+            }
+        } else if machine.isExpanded, machine.origin == .drag {
+            let inside = activeIsland?.panel.frame.insetBy(dx: -12, dy: -12).contains(point) ?? false
+            if !inside {
+                tray.dragActive = false
+                machine.dragLeft(hasItems: !tray.items.isEmpty)
+                applyState(restoreFocus: false)
+            }
+        }
+    }
+
+    /// The drag ended (dropped or not). A short delay lets an accepted drop finish loading first.
+    fileprivate func trayDragEnded() {
+        for island in islands where island.model.fileDrag != nil { island.model.fileDrag = nil }
+        floatingTray?.dragEnded()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.6) { [weak self] in
+            MainActor.assumeIsolated {
+                guard let self else { return }
+                let tray = TrayController.shared
+                tray.dragActive = false
+                tray.dropTargeted = false
+                self.machine.dragLeft(hasItems: !tray.items.isEmpty)
+                self.applyState(restoreFocus: false)
+            }
         }
     }
 }

@@ -3,7 +3,7 @@ import UfuqCore
 
 /// The tiles of the open panel, in reading and Tab order.
 enum BentoTileID: String, CaseIterable, Identifiable {
-    case prayer, ai, agents, actions, battery
+    case prayer, ai, agents, actions, battery, nowPlaying
 
     var id: String { rawValue }
 }
@@ -33,11 +33,30 @@ struct BentoContent: Equatable {
     var battery: BatteryStatus?
     var agents: [AgentSession] = []
     var actions: [GitHubBuild] = []
+    var nowPlaying: NowPlaying?
+    /// When the current track was first seen paused; nil while playing.
+    var nowPlayingPausedSince: Date?
+
+    /// Playing, or paused for less than a minute (the same window as the right wing).
+    var showsNowPlaying: Bool {
+        guard let nowPlaying else { return false }
+        if nowPlaying.isPlaying { return true }
+        guard let since = nowPlayingPausedSince else { return true }
+        return now.timeIntervalSince(since) <= NowPlayingModule.pausedWingWindow
+    }
 
     var smallTiles: [BentoTileID] {
         (agents.isEmpty ? [] : [.agents]) + (actions.isEmpty ? [] : [.actions]) + (battery == nil ? [] : [.battery])
+            + (showsNowPlaying ? [.nowPlaying] : [])
     }
     var tileOrder: [BentoTileID] { [.prayer, .ai] + smallTiles }
+}
+
+/// Where the pointer is relative to the body. `x` is points from the body's centre.
+struct JellyPointer: Equatable {
+    var hovering = false
+    var x: CGFloat = 0
+    var pressed = false
 }
 
 /// What the SwiftUI views observe. The controller writes it; views never write state directly.
@@ -51,6 +70,8 @@ final class NotchModel: ObservableObject {
     @Published var battery: BatteryStatus?
     @Published var agents: [AgentSession] = []
     @Published var actions: [GitHubBuild] = []
+    @Published var nowPlaying: NowPlaying?
+    @Published var nowPlayingPausedSince: Date?
     /// The tile that gets focus when the panel opens (the last one used).
     @Published var focusedTile: BentoTileID = .prayer
     /// Height of the black strip on top of the open panel.
@@ -64,7 +85,21 @@ final class NotchModel: ObservableObject {
     /// Bumped each time the panel opens, so the expanded view moves keyboard and VoiceOver focus in.
     @Published var focusToken = 0
 
-    var content: BentoContent { BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions) }
+    // MARK: Phase 7 contract (set in the main session; each field has one writer)
+
+    /// Pointer over the body. Writer: motion layer (NotchController hover tracking).
+    @Published var pointer = JellyPointer()
+    /// A file drag near the top edge, nil otherwise. Writer: File Tray. Reader: motion (the neck).
+    @Published var fileDrag: FileDragState?
+    /// Bumped once per accepted drop. Writer: File Tray. Reader: motion (the swallow bulge).
+    @Published var swallowToken = 0
+    /// Tray contents, in order. Writer: File Tray.
+    @Published var tray: [TrayItem] = []
+
+    var content: BentoContent {
+        BentoContent(snapshot: snapshot, now: now, ai: ai, battery: battery, agents: agents, actions: actions,
+            nowPlaying: nowPlaying, nowPlayingPausedSince: nowPlayingPausedSince)
+    }
 
     var onEscape: () -> Void = {}
     var onTapCollapsed: () -> Void = {}

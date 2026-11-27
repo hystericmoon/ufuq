@@ -30,6 +30,10 @@ targets:
     platform: macOS
     sources:
       - App/Sources
+      # mediaremote-adapter, built by CI into this folder (gitignored); absent in local builds.
+      - path: App/Resources/MediaRemoteAdapter
+        type: folder
+        optional: true
     dependencies:
       - package: UfuqCore
       - package: Sparkle
@@ -54,8 +58,16 @@ targets:
         LSMinimumSystemVersion: "14.0"
         NSHumanReadableCopyright: "Ufuq"
         NSLocalNetworkUsageDescription: "Ufuq shares usage and agent status with your paired phone over your local network."
+        NSAppleEventsUsageDescription: "Ufuq shows and controls the song playing in Spotify."
         NSBonjourServices:
           - _ufuq._tcp
+        NSServices:
+          - NSMenuItem:
+              default: "Add to Ufuq Tray"
+            NSMessage: addToTray
+            NSPortName: Ufuq
+            NSSendTypes:
+              - public.file-url
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: app.ufuq.mac
