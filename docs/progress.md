@@ -4,7 +4,10 @@ Last updated: 2026-11-27
 
 ## Resume here (2026-11-27, 15:30 WIB)
 
-Released: v0.1.0 to v0.2.0 (DMG, MSI, APK on GitHub Releases; auto-update on all three). Tags cannot be
+Released: v0.1.0 to v0.1.3. **0.2.0 is NOT shipped yet:** PR #7 waits for CI; then merge it (merge commit), run
+`release-mac.yml`, `release-windows.yml`, `release-android.yml` on `main` (workflow_dispatch), check the v0.2.0
+release has the DMG, MSI and APK, and fix this line. Also download the `snapshots` artifact from `mac.yml` and
+check `expanded-bento-*` (112 pt rows, no "Maghr…"). Tags cannot be
 pushed from cloud sessions: run the three `release-*.yml` workflows by hand (workflow_dispatch on `main`) after
 bumping `VERSION` + `project.yml` `MARKETING_VERSION`; they create the `v<VERSION>` release.
 
