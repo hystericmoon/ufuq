@@ -1,0 +1,1 @@
+{"session_id":"abc123","transcript_path":"/Users/x/.claude/projects/-Users-x-ufuq/abc123.jsonl","cwd":"/Users/x/ufuq","hook_event_name":"PreToolUse","agent_id":"agent-7","agent_type":"Explore","tool_name":"Read","tool_input":{"file_path":"/x"},"tool_use_id":"toolu_03"}

@@ -90,6 +90,8 @@ struct ExpandedView: View {
         switch id {
         case .battery:
             if let battery = content.battery { BatteryTile(status: battery) }
+        case .agents:
+            AgentsTile(sessions: content.agents, now: content.now)
         case .prayer, .ai:
             EmptyView()
         }
@@ -452,5 +454,101 @@ struct BatteryTile: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel("Battery")
         .accessibilityValue("\(status.percent) percent, \(status.stateText)")
+    }
+}
+
+// MARK: - Agents
+
+/// Words for the Agents tile and its spoken labels.
+enum AgentTileFormat {
+    static func stateWord(_ session: AgentSession, now: Date) -> String {
+        switch session.state {
+        case .waiting: return "Needs input"
+        case .done: return "Done"
+        case .idle: return "Idle"
+        case .running:
+            let seconds = Int(now.timeIntervalSince(session.runningSince ?? session.updatedAt))
+            if seconds < 60 { return "Running <1m" }
+            let minutes = seconds / 60
+            return minutes < 60 ? "Running \(minutes)m" : "Running \(minutes / 60)h \(minutes % 60)m"
+        }
+    }
+
+    static func spokenState(_ session: AgentSession) -> String {
+        switch session.state {
+        case .waiting: return "needs input"
+        case .done: return "done"
+        case .idle: return "idle"
+        case .running: return "running"
+        }
+    }
+
+    static func appName(_ bundleID: String?) -> String? {
+        guard let bundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return nil }
+        return FileManager.default.displayName(atPath: url.path).replacingOccurrences(of: ".app", with: "")
+    }
+
+    static func open(_ bundleID: String?) {
+        guard let bundleID, let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) else { return }
+        NSWorkspace.shared.openApplication(at: url, configuration: NSWorkspace.OpenConfiguration())
+    }
+}
+
+struct AgentsTile: View {
+    let sessions: [AgentSession]
+    let now: Date
+
+    private static let maxRows = 2
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 2) {
+            TileLabel(
+                title: "Agents",
+                trailing: sessions.count > Self.maxRows ? "+\(sessions.count - Self.maxRows) more" : nil)
+            ForEach(sessions.prefix(Self.maxRows)) { session in
+                AgentRow(session: session, now: now)
+            }
+            Spacer(minLength: 0)
+        }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel("Agents")
+    }
+}
+
+private struct AgentRow: View {
+    let session: AgentSession
+    let now: Date
+
+    private var word: String { AgentTileFormat.stateWord(session, now: now) }
+
+    private var label: String {
+        var text = "\(session.title), \(AgentTileFormat.spokenState(session))"
+        if let app = AgentTileFormat.appName(session.appBundleID) { text += ", opens \(app)" }
+        return text
+    }
+
+    var body: some View {
+        Button {
+            AgentTileFormat.open(session.appBundleID)
+        } label: {
+            HStack(spacing: 4) {
+                Text(session.title)
+                    .font(Tokens.Typography.value)
+                    .foregroundStyle(Tokens.textPrimary)
+                    .lineLimit(1)
+                Spacer(minLength: 4)
+                Text(word)
+                    .font(Tokens.Typography.caption)
+                    .monospacedDigit()
+                    .foregroundStyle(session.state == .waiting ? Tokens.stateWarning : Tokens.textSecondary)
+                    .lineLimit(1)
+                    .fixedSize()
+            }
+            .frame(maxWidth: .infinity, minHeight: 28, alignment: .leading)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .disabled(session.appBundleID == nil)
+        .accessibilityLabel(label)
     }
 }

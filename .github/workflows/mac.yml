@@ -27,7 +27,17 @@ jobs:
           TEST_RUNNER_SNAPSHOT_DIR: ${{ github.workspace }}/snapshots
         run: >
           xcodebuild -scheme Ufuq -destination 'platform=macOS' -configuration Debug
-          CODE_SIGNING_ALLOWED=NO build test
+          -derivedDataPath build CODE_SIGNING_ALLOWED=NO build test
+      - name: Check the embedded ufuq-hook helper
+        run: |
+          HOOK="build/Build/Products/Debug/Ufuq.app/Contents/MacOS/ufuq-hook"
+          test -x "$HOOK" || { echo "missing $HOOK"; find build/Build/Products -name 'ufuq-hook*'; exit 1; }
+          DIR=$(mktemp -d)
+          echo '{"hook_event_name":"UserPromptSubmit","session_id":"ci-session","cwd":"/tmp/ci-project"}' \
+            | UFUQ_AGENT_DIR="$DIR" "$HOOK"
+          echo "exit $?"
+          ls -l "$DIR"
+          ls "$DIR"/*.json
       - name: Upload snapshots
         if: always()
         uses: actions/upload-artifact@v4

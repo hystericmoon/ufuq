@@ -218,6 +218,10 @@ final class NotchController: NSObject {
 
     private func tick() {
         let now = Date()
+        // Agent state files are tiny; read them every second (peeks flow through the module's stream).
+        if let agent = registry.module(id: "agent") {
+            Task { try? await agent.refresh() }
+        }
         queue.tick(at: now)
         machine.setPeek(queue.current)
         announceIfNew()
@@ -233,6 +237,7 @@ final class NotchController: NSObject {
             if island.displayID == activeID, machine.isExpanded {
                 island.model.snapshot = snapshot
                 updateAIRows(island, now: now)
+                refreshAgents(island, now: now)
                 // The battery moves slowly; a reading every 30 s keeps the tile honest.
                 if tickCount % 30 == 0 { refreshBattery(island) }
             }
@@ -264,6 +269,7 @@ final class NotchController: NSObject {
                     snapshot = (registry.module(id: "prayer") as? PrayerModule)?.snapshot(at: Date())
                     island.model.snapshot = snapshot
                     updateAIRows(island, now: Date())
+                    island.model.agents = (registry.module(id: "agent") as? AgentStatusModule)?.sessions(at: Date()) ?? []
                     island.model.battery = BatteryReader.read()
                     island.model.focusedTile = focusedTile
                 }
@@ -286,6 +292,16 @@ final class NotchController: NSObject {
         guard let module = registry.module(id: "ai") as? AIUsageModule else { return }
         let rows = AIUsageRows.rows(from: module.lines(at: now), now: now)
         if island.model.ai != rows { island.model.ai = rows }
+    }
+
+    /// A first or last session appearing changes the open panel's width.
+    private func refreshAgents(_ island: ScreenIsland, now: Date) {
+        guard let module = registry.module(id: "agent") as? AgentStatusModule else { return }
+        let sessions = module.sessions(at: now)
+        guard sessions != island.model.agents else { return }
+        let resized = sessions.isEmpty != island.model.agents.isEmpty
+        island.model.agents = sessions
+        if resized { updateFrame(island, for: island.model.state.kind) }
     }
 
     private func becameExpanded() {

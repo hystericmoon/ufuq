@@ -1,0 +1,1 @@
+{"session_id":"abc123","transcript_path":"/Users/x/.claude/projects/-Users-x-ufuq/abc123.jsonl","cwd":"/Users/x/ufuq","permission_mode":"default","hook_event_name":"PreToolUse","tool_name":"Bash","tool_input":{"command":"cat SECRET_TOOL_INPUT"},"tool_use_id":"toolu_01"}

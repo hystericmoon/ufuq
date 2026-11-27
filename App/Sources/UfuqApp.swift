@@ -36,6 +36,12 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         try? registry.register(PrayerModule(location: AppSettings.defaultLocation))
         try? registry.register(AIUsageModule(
             claudeDirs: ClaudeAccounts.configDirs(), codexSessionsDir: CodexParser.defaultSessionsDir()))
+        let agentModule = AgentStatusModule(
+            directory: AgentStateStore.resolveDirectory(environment: ProcessInfo.processInfo.environment))
+        try? registry.register(agentModule)
+        SyncService.shared.contentProvider = {
+            SyncSnapshotContent(agents: agentModule.syncAgents(at: Date()))
+        }
         let controller = NotchController(registry: registry)
         controller.start()
         self.controller = controller
