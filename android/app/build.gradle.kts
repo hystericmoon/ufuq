@@ -9,6 +9,21 @@ plugins {
 // Same as Adwam (muslimdaily/app/build.gradle.kts): compile/target SDK 37, minSdk 26.
 val robolectricRepoUrl: String? = providers.gradleProperty("ufuq.robolectricRepoUrl").orNull
 
+// Robolectric's Android runtimes, resolved by Gradle (cached, retried) instead of being fetched
+// by Robolectric itself mid-test, which failed on CI with IOExceptions. One per SDK the tests use:
+// robolectric.properties (36) and @Config(sdk = [34]). Versions match Robolectric 4.17.
+// One configuration each: in a single one Gradle would keep only the highest version.
+val robolectricRuntimes = listOf("16-robolectric-13921718-i7", "14-robolectric-10818077-i7").map { version ->
+    configurations.create("robolectricRuntime${version.substringBefore('-')}") { isTransitive = false }.also {
+        dependencies.add(it.name, "org.robolectric:android-all-instrumented:$version")
+    }
+}
+val robolectricJarsDir = layout.buildDirectory.dir("robolectric-jars")
+val robolectricJars = tasks.register<Sync>("robolectricJars") {
+    robolectricRuntimes.forEach { from(it) }
+    into(robolectricJarsDir)
+}
+
 // One version for every platform: the repo-root VERSION (docs/release-android.md).
 val appVersion: String = rootProject.file("../VERSION").readText().trim()
 val appVersionCode: Int = appVersion.split('.').map { it.toIntOrNull() ?: error("VERSION '$appVersion' is not numeric dotted") }
@@ -92,6 +107,9 @@ android {
                 )
                 test.maxHeapSize = "3g"
                 robolectricRepoUrl?.let { test.systemProperty("robolectric.dependency.repo.url", it) }
+                test.dependsOn(robolectricJars)
+                test.systemProperty("robolectric.offline", "true")
+                test.systemProperty("robolectric.dependency.dir", robolectricJarsDir.get().asFile.absolutePath)
             }
         }
     }

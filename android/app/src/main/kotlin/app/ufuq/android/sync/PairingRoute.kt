@@ -52,12 +52,18 @@ sealed interface PairingOutcome {
  * "Allow camera and scan", after the rationale on screen.
  */
 @Composable
-fun PairingRoute(onClose: () -> Unit) {
+fun PairingRoute(onClose: () -> Unit, initialCode: String? = null) {
     val context = LocalContext.current
     val store = context.graph.pairings
     val scope = rememberCoroutineScope()
-    var state by remember {
-        mutableStateOf(PairingUiState(cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED))
+    var state by remember(initialCode) {
+        mutableStateOf(
+            PairingUiState(
+                cameraGranted = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED,
+                // From a camera link: filled in, but the user confirms with Pair.
+                code = initialCode.orEmpty(),
+            ),
+        )
     }
 
     fun submit(text: String) {

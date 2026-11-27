@@ -108,8 +108,12 @@ Then start Phase 5 if time remains. Update docs/progress.md before finishing.
 - Mac collapsed width stays ≈368 pt (not the spec's 300).
 - Ramadan keeps "Sahur" at Subuh; no Imsak.
 - No Apple Developer account: the Mac app stays ad-hoc signed.
+- Mac island on every display (owner ask, 27 Nov): one panel per display with the same wings and peeks; the expanded panel opens on one display (pointer's display for ⌥Space, the touched one for click/hover). Setting "Show the island on every display", default on.
+- Pairing QR is now a `ufuq://pair#<base64url JSON>` link: the phone camera opens Ufuq with the code filled in; the user still taps Pair. Bare JSON still parses.
 
 ## History
+
+- 2026-11-27: v0.1.0 released (DMG, MSI, APK; release workflows started by hand because tags cannot be pushed from cloud sessions, so the `v0.1.0` tag still points at the kickoff commit). v0.1.1 carries the four decisions and the Mac release-script fix.
 
 - 2026-11-26 (late): Sync replay fix: the Mac server accepts each auth token once (`SyncReplayGuard`, keyed on the decoded bytes, entries expire with the 5-min window, capped at 4096). No Android change: it already seals a fresh token per request.
 

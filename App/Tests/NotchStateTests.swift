@@ -5,6 +5,15 @@ import UfuqCore
 final class NotchStateTests: XCTestCase {
     private let peek = PeekEvent(id: "p1", moduleID: "prayer", title: "Ashar", message: "in 10 minutes")
 
+    func testOtherDisplaysStayCollapsedWhileOneIsExpanded() {
+        XCTAssertEqual(NotchState.shown(.expanded, onActiveDisplay: true), .expanded)
+        XCTAssertEqual(NotchState.shown(.expanded, onActiveDisplay: false), .collapsed)
+        XCTAssertEqual(NotchState.shown(.expanded, onActiveDisplay: false, peek: peek), .peek(peek))
+        // Collapsed and peek are the same on every display.
+        XCTAssertEqual(NotchState.shown(.peek(peek), onActiveDisplay: false), .peek(peek))
+        XCTAssertEqual(NotchState.shown(.collapsed, onActiveDisplay: false), .collapsed)
+    }
+
     func testStartsCollapsed() {
         XCTAssertEqual(NotchStateMachine().state, .collapsed)
     }

@@ -13,7 +13,7 @@ struct UfuqApp: App {
             }
             LaunchAtLoginToggle()
             PairPhoneButton()
-            SettingsLink { Text("Settings…") }
+            OpenSettingsButton()
             CheckForUpdatesButton(updater: updater)
             Divider()
             Button("Quit") { NSApp.terminate(nil) }

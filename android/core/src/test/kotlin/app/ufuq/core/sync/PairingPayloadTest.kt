@@ -20,6 +20,19 @@ class PairingPayloadTest {
     private fun json(v: Int = 1, port: Int = 1000, key: String = Base64.getUrlEncoder().withoutPadding().encodeToString(SyncFixtures.KEY), device: String = "d") =
         """{"v":$v,"host":"h","port":$port,"deviceId":"$device","key":"$key"}"""
 
+    @Test fun linkRoundTripsAndOldJsonStillWorks() {
+        val p = PairingPayload.parse(SyncFixtures.text("pairing.json"))
+        val link = p.toLink()
+        assertEquals(true, link.startsWith("ufuq://pair#"))
+        assertEquals(p, PairingPayload.parse(link))
+        assertEquals(p, PairingPayload.parse("  $link\n"))
+        // The Mac's encoder drops base64 padding; the link must still parse.
+        val unpadded = PairingPayload.LINK_PREFIX + java.util.Base64.getUrlEncoder().withoutPadding()
+            .encodeToString(SyncFixtures.text("pairing.json").trim().toByteArray())
+        assertEquals(p, PairingPayload.parse(unpadded))
+        kotlin.test.assertFailsWith<PairingException> { PairingPayload.parse("ufuq://pair#%%%") }
+    }
+
     @Test fun acceptsMissingName() {
         assertEquals(null, PairingPayload.parse(json()).name)
     }

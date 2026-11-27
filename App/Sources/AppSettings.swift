@@ -9,6 +9,13 @@ enum AppSettings {
         UserDefaults.standard.bool(forKey: hoverKey)
     }
 
+    /// Show an island on every display, not only the notch display. Default on.
+    static let allDisplaysKey = "islandOnAllDisplays"
+
+    static var allDisplays: Bool {
+        UserDefaults.standard.object(forKey: allDisplaysKey) as? Bool ?? true
+    }
+
     /// Share usage and agent status with a paired phone on the local network. Default off.
     static let syncKey = "shareWithPhone"
 

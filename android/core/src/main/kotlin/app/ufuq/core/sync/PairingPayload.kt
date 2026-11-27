@@ -20,11 +20,28 @@ data class PairingPayload(
 ) {
     val keyBytes: ByteArray get() = Base64.getUrlDecoder().decode(key)
 
+    /** The QR text the Mac shows: [LINK_PREFIX] + base64url of the JSON. */
+    fun toLink(): String =
+        LINK_PREFIX + Base64.getUrlEncoder().withoutPadding().encodeToString(SyncJson.encodeToString(serializer(), this).toByteArray(Charsets.UTF_8))
+
     companion object {
-        /** Parses and validates a scanned QR string. */
+        /** A phone camera opens Ufuq with this link; the app still asks before pairing. */
+        const val LINK_PREFIX = "ufuq://pair#"
+
+        /** Parses and validates a scanned or pasted code: the link, or the bare JSON (older Macs). */
         fun parse(text: String): PairingPayload {
+            val trimmed = text.trim()
+            val json = if (trimmed.startsWith(LINK_PREFIX)) {
+                try {
+                    String(Base64.getUrlDecoder().decode(trimmed.removePrefix(LINK_PREFIX)), Charsets.UTF_8)
+                } catch (e: IllegalArgumentException) {
+                    throw PairingException("Not a Ufuq pairing code")
+                }
+            } else {
+                trimmed
+            }
             val payload = try {
-                SyncJson.decodeFromString(serializer(), text.trim())
+                SyncJson.decodeFromString(serializer(), json)
             } catch (e: SerializationException) {
                 throw PairingException("Not a Ufuq pairing code")
             } catch (e: IllegalArgumentException) {

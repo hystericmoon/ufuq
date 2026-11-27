@@ -49,6 +49,14 @@
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
+            <!-- The Mac's pairing QR (ufuq://pair#...): the phone camera opens the pairing screen
+                 with the code filled in; the user still taps Pair. -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="ufuq" android:host="pair" />
+            </intent-filter>
         </activity>
 
         <service

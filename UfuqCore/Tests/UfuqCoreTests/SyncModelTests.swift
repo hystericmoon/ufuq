@@ -59,6 +59,11 @@ final class SyncModelTests: XCTestCase {
                                      keyData: Data(0..<32), name: "Mac mini")
         XCTAssertEqual(trimmed(try payload.encoded()), trimmed(golden))
         XCTAssertEqual(try PairingPayload.decode(golden), payload)
+        let link = try payload.link()
+        XCTAssertTrue(link.hasPrefix("ufuq://pair#"))
+        XCTAssertEqual(try PairingPayload.decode(link), payload)
+        XCTAssertEqual(try PairingPayload.decode("  \(link)\n"), payload)
+        XCTAssertThrowsError(try PairingPayload.decode("ufuq://pair#%%%")) { XCTAssertEqual($0 as? PairingPayload.PairingError, .malformed) }
         XCTAssertEqual(payload.keyData, Data(0..<32))
     }
 

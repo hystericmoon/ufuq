@@ -1,3 +1,4 @@
+import AppKit
 import SwiftUI
 
 struct LaunchAtLoginToggle: View {
@@ -17,15 +18,31 @@ struct LaunchAtLoginToggle: View {
     }
 }
 
+/// "Settings…" in the menu-bar menu. A menu-bar app is not frontmost, so the Settings window
+/// opened behind other apps (or only after a delay); bring Ufuq forward first, then open it.
+struct OpenSettingsButton: View {
+    @Environment(\.openSettings) private var openSettings
+
+    var body: some View {
+        Button("Settings…") {
+            NSApp.activate(ignoringOtherApps: true)
+            openSettings()
+        }
+        .keyboardShortcut(",")
+    }
+}
+
 struct SettingsView: View {
     @AppStorage(AppSettings.hoverKey) private var hoverToOpen = false
     @AppStorage(AppSettings.syncKey) private var shareWithPhone = false
+    @AppStorage(AppSettings.allDisplaysKey) private var allDisplays = true
 
     @ObservedObject private var updater = UpdaterController.shared
 
     var body: some View {
         Form {
             Toggle("Open the panel when the pointer enters the notch", isOn: $hoverToOpen)
+            Toggle("Show the island on every display", isOn: $allDisplays)
             LaunchAtLoginToggle()
             Toggle("Share with phone on this network", isOn: $shareWithPhone)
                 .onChange(of: shareWithPhone) { _, _ in SyncService.shared.apply() }

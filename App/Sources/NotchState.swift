@@ -20,6 +20,15 @@ enum NotchState: Equatable {
     }
 }
 
+extension NotchState {
+    /// What one display's island shows: the full state on the active display; elsewhere an
+    /// expanded panel stays a collapsed pill (the peek, if one is waiting, still shows).
+    static func shown(_ state: NotchState, onActiveDisplay: Bool, peek: PeekEvent? = nil) -> NotchState {
+        guard state == .expanded, !onActiveDisplay else { return state }
+        return peek.map { .peek($0) } ?? .collapsed
+    }
+}
+
 /// How the expanded panel was opened. Only hover-opened panels close when the mouse leaves.
 enum ExpandOrigin: Equatable {
     case hotkey
