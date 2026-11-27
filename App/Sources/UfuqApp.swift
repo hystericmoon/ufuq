@@ -5,6 +5,9 @@ import UfuqCore
 struct UfuqApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var updater = UpdaterController.shared
+    @StateObject private var stayAwake = StayAwakeController.shared
+    @StateObject private var transcriber = SpeechTranscriber.shared
+    @Environment(\.openWindow) private var openWindow
 
     var body: some Scene {
         MenuBarExtra("Ufuq", systemImage: "moon.stars") {
@@ -14,14 +17,34 @@ struct UfuqApp: App {
             Button("Capture Text (OCR)…") {
                 TrayController.shared.captureScreenOCR()
             }
+            Button(TimerControl.module?.snapshot() == nil ? "Start 25m Focus Timer" : "Stop Timer") {
+                if TimerControl.module?.snapshot() == nil {
+                    TimerControl.startFocus()
+                } else {
+                    TimerControl.stop()
+                }
+            }
+            Button(stayAwake.isActive ? "Allow Mac to Sleep" : "Stay Awake") {
+                stayAwake.toggle()
+            }
+            Button(transcriber.isRecording ? "Stop Voice Transcribe" : "Voice Transcribe…") {
+                transcriber.toggleRecording()
+            }
+            Divider()
             LaunchAtLoginToggle()
             PairPhoneButton()
+            Button("Setup Guide…") {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "onboarding")
+            }
             OpenSettingsButton()
             CheckForUpdatesButton(updater: updater)
             Divider()
             Button("Quit") { NSApp.terminate(nil) }
         }
         Window("Pair phone", id: "pair-phone") { PairingView() }
+            .windowResizability(.contentSize)
+        Window("Welcome to Ufuq", id: "onboarding") { OnboardingView() }
             .windowResizability(.contentSize)
         Settings { SettingsView() }
     }
@@ -65,6 +88,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         CalendarControl.refresh = {
             Task { try? await calendarModule.refresh() }
         }
+        let timerModule = TimerModule()
+        try? registry.register(timerModule)
+        TimerControl.module = timerModule
+        try? registry.register(DownloadsModule(
+            scanner: { DownloadsMonitor.scan() },
+            isEnabled: AppSettings.downloadsEnabled
+        ))
+        try? registry.register(AudioAccessoryModule(
+            provider: { BluetoothAudioMonitor.connectedDevices() },
+            isEnabled: AppSettings.audioAccessoryEnabled
+        ))
         SyncService.shared.contentProvider = {
             SyncSnapshotContent(agents: agentModule.syncAgents(at: Date()))
         }
@@ -72,5 +106,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate, ObservableObject {
         controller.start()
         self.controller = controller
         SyncService.shared.apply()
+        if !AppSettings.hasCompletedOnboarding {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) {
+                NSApp.activate(ignoringOtherApps: true)
+                for window in NSApp.windows where window.title == "Welcome to Ufuq" {
+                    window.makeKeyAndOrderFront(nil)
+                }
+            }
+        }
     }
 }

@@ -285,10 +285,11 @@ struct NotchRootView: View {
     }
 
     static func radius(for kind: NotchState.Kind) -> CGFloat {
+        let style = AppSettings.shapeStyle
         switch kind {
-        case .collapsed: return Tokens.Radius.collapsed
-        case .peek, .hud: return Tokens.Radius.peek
-        case .expanded: return Tokens.Radius.expanded
+        case .collapsed: return CGFloat(style.collapsedRadius)
+        case .peek, .hud: return CGFloat(style.peekRadius)
+        case .expanded: return CGFloat(style.expandedRadius)
         }
     }
 }

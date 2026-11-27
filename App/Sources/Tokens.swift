@@ -12,6 +12,7 @@ enum Tokens {
     static let textMuted = Color(hex: 0x8E8E93)
 
     static let accentPrayer = Color(hex: 0x4FD1A5)
+    static var accent: Color { Color(hex: AppSettings.accent.hex) }
     static let providerClaude = Color(hex: 0xD97757)
     static let providerCodex = Color(hex: 0xE5E5EA)
     static let providerAntigravity = Color(hex: 0x6E9BFF)

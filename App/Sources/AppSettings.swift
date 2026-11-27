@@ -64,6 +64,46 @@ enum AppSettings {
         UserDefaults.standard.string(forKey: autoDNDShortcutKey) ?? ""
     }
 
+    static let accentKey = "appearanceAccent"
+    static let glassStyleKey = "appearanceGlassStyle"
+    static let shapeStyleKey = "appearanceShapeStyle"
+
+    static var accent: UfuqAccent {
+        let raw = UserDefaults.standard.string(forKey: accentKey) ?? ""
+        return UfuqAccent(rawValue: raw) ?? .emerald
+    }
+
+    static var glassStyle: UfuqGlassStyle {
+        let raw = UserDefaults.standard.string(forKey: glassStyleKey) ?? ""
+        return UfuqGlassStyle(rawValue: raw) ?? .automatic
+    }
+
+    static var shapeStyle: UfuqShapeStyle {
+        let raw = UserDefaults.standard.string(forKey: shapeStyleKey) ?? ""
+        return UfuqShapeStyle(rawValue: raw) ?? .standard
+    }
+
+    static let systemStatsKey = "systemStatsEnabled"
+    static var systemStatsEnabled: Bool {
+        UserDefaults.standard.object(forKey: systemStatsKey) as? Bool ?? true
+    }
+
+    static let downloadsKey = "downloadsMonitorEnabled"
+    static var downloadsEnabled: Bool {
+        UserDefaults.standard.object(forKey: downloadsKey) as? Bool ?? true
+    }
+
+    static let audioAccessoryKey = "audioAccessoryEnabled"
+    static var audioAccessoryEnabled: Bool {
+        UserDefaults.standard.object(forKey: audioAccessoryKey) as? Bool ?? true
+    }
+
+    static let onboardingDoneKey = "hasCompletedOnboarding"
+    static var hasCompletedOnboarding: Bool {
+        get { UserDefaults.standard.bool(forKey: onboardingDoneKey) }
+        set { UserDefaults.standard.set(newValue, forKey: onboardingDoneKey) }
+    }
+
     /// Sparkle keeps its own automatic-check preference; this only names the feed host
     /// shown in the privacy line in Settings.
     static let updateDisclosure = "Ufuq contacts GitHub to check for new versions."

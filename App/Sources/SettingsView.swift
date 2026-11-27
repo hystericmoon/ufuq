@@ -68,6 +68,8 @@ struct SettingsView: View {
             GitHubActionsSection()
             CalendarMeetingsSection()
             NowPlayingSection()
+            AppearanceSection()
+            UtilitiesSection()
             UpdateSettingsSection(updater: updater)
         }
         .formStyle(.grouped)
@@ -409,6 +411,53 @@ struct NowPlayingSection: View {
         while !Task.isCancelled {
             text = NowPlayingControl.module?.activeSourceDescription ?? "Unavailable"
             try? await Task.sleep(nanoseconds: 2_000_000_000)
+        }
+    }
+}
+
+/// Make It Yours: accent color, panel glass style, and notch corner shape.
+struct AppearanceSection: View {
+    @AppStorage(AppSettings.accentKey) private var accent = UfuqAccent.emerald.rawValue
+    @AppStorage(AppSettings.glassStyleKey) private var glass = UfuqGlassStyle.automatic.rawValue
+    @AppStorage(AppSettings.shapeStyleKey) private var shape = UfuqShapeStyle.standard.rawValue
+
+    var body: some View {
+        Section("Make It Yours") {
+            Picker("Accent", selection: $accent) {
+                ForEach(UfuqAccent.allCases, id: \.rawValue) { item in
+                    Text(item.displayName).tag(item.rawValue)
+                }
+            }
+            Picker("Panel glass", selection: $glass) {
+                ForEach(UfuqGlassStyle.allCases, id: \.rawValue) { item in
+                    Text(item.displayName).tag(item.rawValue)
+                }
+            }
+            Picker("Notch shape", selection: $shape) {
+                ForEach(UfuqShapeStyle.allCases, id: \.rawValue) { item in
+                    Text(item.displayName).tag(item.rawValue)
+                }
+            }
+        }
+    }
+}
+
+/// Utilities: system stats tile, Downloads live activity, Bluetooth audio devices, and Setup Guide.
+struct UtilitiesSection: View {
+    @AppStorage(AppSettings.systemStatsKey) private var systemStatsEnabled = true
+    @AppStorage(AppSettings.downloadsKey) private var downloadsEnabled = true
+    @AppStorage(AppSettings.audioAccessoryKey) private var audioAccessoryEnabled = true
+    @Environment(\.openWindow) private var openWindow
+
+    var body: some View {
+        Section("Utilities") {
+            Toggle("Show System stats & quick actions tile", isOn: $systemStatsEnabled)
+            Toggle("Downloads live activity & ready alerts", isOn: $downloadsEnabled)
+            Toggle("AirPods & Bluetooth connect alerts", isOn: $audioAccessoryEnabled)
+            Button("Open Setup Guide…") {
+                NSApp.activate(ignoringOtherApps: true)
+                openWindow(id: "onboarding")
+            }
         }
     }
 }

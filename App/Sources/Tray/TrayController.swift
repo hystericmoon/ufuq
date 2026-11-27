@@ -163,6 +163,8 @@ final class TrayController: ObservableObject {
             ocrImage(item.url)
         case .removeBackground:
             removeBackground(item.url)
+        case .transcribe:
+            transcribeAudio(item.url)
         case .rename:
             renameText = item.name
             renamingID = item.id
@@ -286,6 +288,30 @@ final class TrayController: ObservableObject {
             } catch {
                 self?.statusText = nil
                 self?.fail(error.localizedDescription)
+            }
+        }
+    }
+
+    private func transcribeAudio(_ url: URL) {
+        setStatus("Transcribing…", clearAfter: nil)
+        Task { [weak self] in
+            let outcome = await SpeechTranscriber.shared.transcribeFile(at: url)
+            guard let self else { return }
+            switch outcome {
+            case .success(let text):
+                let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+                let words = trimmed.split(whereSeparator: \.isWhitespace).count
+                let msg = TrayActions.formatTranscriptStatus(wordCount: words)
+                if words > 0 {
+                    let pb = NSPasteboard.general
+                    pb.clearContents()
+                    pb.setString(trimmed, forType: .string)
+                }
+                self.setStatus(msg, clearAfter: 3)
+                self.announce(msg)
+            case .failure(let error):
+                self.statusText = nil
+                self.fail(error.localizedDescription)
             }
         }
     }

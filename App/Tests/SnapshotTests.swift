@@ -295,6 +295,44 @@ final class SnapshotTests: XCTestCase {
                    size: CGSize(width: 352, height: 92), name: "peek-meeting-join")
     }
 
+    func testPhase9UtilitiesAndOnboarding() throws {
+        let stats = SystemStatsSnapshot(
+            cpuPercent: 28,
+            memoryUsedBytes: 10 * 1024 * 1024 * 1024,
+            memoryTotalBytes: 16 * 1024 * 1024 * 1024,
+            downloadBytesPerSec: 1_572_864,
+            uploadBytesPerSec: 320 * 1024
+        )
+        let timer = TimerSnapshot(
+            mode: .pomodoroFocus,
+            status: .running,
+            totalDuration: 1500,
+            remaining: 1125,
+            cycleCount: 1
+        )
+        try renderBento(name: "expanded-bento-utilities", content: BentoContent(
+            snapshot: jakarta,
+            now: fixedNow,
+            ai: Self.aiRows,
+            battery: BatteryStatus(percent: 84, isCharging: false, isPluggedIn: false),
+            timer: timer,
+            systemStats: stats,
+            stayAwakeActive: true,
+            transcribeActive: true,
+            transcript: "Review Q4 roadmap with design team"
+        ))
+
+        try renderBento(name: "expanded-bento-timer", content: BentoContent(
+            snapshot: jakarta,
+            now: fixedNow,
+            ai: Self.aiRows,
+            timer: timer,
+            systemStats: stats
+        ))
+
+        try render(OnboardingView(), size: CGSize(width: 480, height: 500), name: "onboarding-view", backdrop: Color(hex: 0x141416))
+    }
+
     private var jakarta: PrayerSnapshot? { PrayerSnapshots.at(fixedNow, location: AppSettings.defaultLocation) }
 
     private static let aiRows = [

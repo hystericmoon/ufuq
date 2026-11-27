@@ -1,0 +1,211 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Ufuq — Your Mac's notch, put to work</title>
+  <meta name="description" content="Prayer times, AI usage limits, Claude Code agents, File Tray, Vision OCR, Calendar meetings, and on-device utilities inside your Mac's notch.">
+  <link rel="icon" type="image/png" href="assets/icon.png">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a class="brand" href="#top">
+        <img src="assets/icon.png" alt="Ufuq icon" width="28" height="28">
+        <span>Ufuq</span>
+      </a>
+      <nav class="nav" aria-label="Primary">
+        <a href="#features">Features</a>
+        <a href="#utilities">Utilities</a>
+        <a href="#privacy">Privacy</a>
+        <a href="https://github.com/hystericmoon/ufuq" target="_blank" rel="noopener">GitHub</a>
+        <a class="btn btn-sm btn-primary" href="https://github.com/hystericmoon/ufuq/releases/latest/download/Ufuq-0.5.0.dmg">Download DMG</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="top">
+    <section class="hero">
+      <div class="container hero-grid">
+        <div class="hero-copy">
+          <div class="eyebrow">v0.5.0 · macOS 14+ · Native Swift &amp; AppKit</div>
+          <h1>Your Mac's notch,<br>put to work.</h1>
+          <p class="lead">
+            Prayer countdowns, AI session limits, Claude Code agents, File Tray, Vision OCR,
+            Calendar meetings, and daily utilities, tucked into the space your Mac already has.
+          </p>
+          <div class="cta-row">
+            <a class="btn btn-primary" href="https://github.com/hystericmoon/ufuq/releases/latest/download/Ufuq-0.5.0.dmg">
+              Download Ufuq 0.5.0
+            </a>
+            <a class="btn btn-ghost" href="https://github.com/hystericmoon/ufuq" target="_blank" rel="noopener">
+              Source on GitHub
+            </a>
+          </div>
+          <p class="meta-line">Universal DMG · Sparkle auto-updates · Keyboard first (<kbd>⌥Space</kbd> / <kbd>⌥⇧T</kbd>)</p>
+        </div>
+
+        <div class="hero-stage" aria-label="Interactive Ufuq notch preview">
+          <div class="preview-controls">
+            <div class="segmented" role="group" aria-label="Notch state">
+              <button type="button" class="seg-btn active" data-state="expanded">Expanded</button>
+              <button type="button" class="seg-btn" data-state="collapsed">Collapsed</button>
+              <button type="button" class="seg-btn" data-state="peek">Peek</button>
+            </div>
+            <div class="accent-dots" role="group" aria-label="Accent color">
+              <button type="button" class="dot active" data-accent="#4FD1A5" style="--c:#4FD1A5" aria-label="Emerald accent"></button>
+              <button type="button" class="dot" data-accent="#6E9BFF" style="--c:#6E9BFF" aria-label="Sky accent"></button>
+              <button type="button" class="dot" data-accent="#FFB340" style="--c:#FFB340" aria-label="Amber accent"></button>
+              <button type="button" class="dot" data-accent="#D97757" style="--c:#D97757" aria-label="Coral accent"></button>
+              <button type="button" class="dot" data-accent="#9B8CFF" style="--c:#9B8CFF" aria-label="Indigo accent"></button>
+            </div>
+          </div>
+
+          <div class="mac-bezel">
+            <div class="notch-shell" id="notch-shell" data-state="expanded">
+              <div class="notch-strip">
+                <span class="wing-left">Ashar 15:12</span>
+                <span class="camera-notch" aria-hidden="true"></span>
+                <span class="wing-right">ufuq · 4m</span>
+              </div>
+
+              <div class="peek-body" aria-hidden="true">
+                <div class="peek-icon"></div>
+                <div class="peek-text">
+                  <strong>Design Review</strong>
+                  <span>In 4 min · Google Meet</span>
+                </div>
+                <span class="peek-cta">Join</span>
+              </div>
+
+              <div class="bento-body">
+                <div class="tile tile-prayer">
+                  <div class="tile-head"><span>PRAYER</span><span>Jakarta</span></div>
+                  <div class="prayer-sub">Ashar in</div>
+                  <div class="prayer-clock">7:00</div>
+                  <div class="prayer-list">
+                    <div><span>Subuh</span><span>04:05</span></div>
+                    <div class="active-row"><span>Ashar</span><span>15:07</span></div>
+                    <div><span>Maghrib</span><span>17:57</span></div>
+                  </div>
+                </div>
+
+                <div class="tile tile-ai">
+                  <div class="tile-head"><span>AI USAGE</span><span>Live</span></div>
+                  <div class="ai-row">
+                    <span class="ring" style="--p:62;--rc:#D97757">62</span>
+                    <div><strong>Claude · Work</strong><span>Week 41% · resets 2h 10m</span></div>
+                  </div>
+                  <div class="ai-row">
+                    <span class="ring" style="--p:84;--rc:#FFB340">84</span>
+                    <div><strong>Codex</strong><span>High · limit in ~38 min</span></div>
+                  </div>
+                  <div class="ai-row">
+                    <span class="ring" style="--p:23;--rc:#6E9BFF">23</span>
+                    <div><strong>Antigravity</strong><span>Pro models · Beta</span></div>
+                  </div>
+                </div>
+
+                <div class="tile tile-small">
+                  <div class="tile-head"><span>FOCUS</span><span>#2</span></div>
+                  <div class="timer-clock">18:45</div>
+                  <div class="track"><span class="track-fill"></span></div>
+                  <div class="tile-meta">Pomodoro active</div>
+                </div>
+
+                <div class="tile tile-small">
+                  <div class="tile-head"><span>SYSTEM</span><span>28%</span></div>
+                  <div class="sys-row"><span>RAM</span><span>10.0/16G</span></div>
+                  <div class="sys-row muted"><span>↓ 1.5M/s</span><span>↑ 320K/s</span></div>
+                  <div class="tile-meta accent-text">Stay Awake on</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section id="features" class="section">
+      <div class="container">
+        <div class="section-head">
+          <h2>Built for the top edge of your screen</h2>
+          <p>Nothing takes space when idle. Small tiles appear only while a module has something live.</p>
+        </div>
+        <div class="feature-grid">
+          <article class="card">
+            <h3>Prayer &amp; Hijri</h3>
+            <p>Kemenag, MWL, and Umm al-Qura calculations with left-wing countdowns, pre-adhan peeks, and full daily schedules.</p>
+          </article>
+          <article class="card">
+            <h3>AI Usage &amp; Agents</h3>
+            <p>Track Claude Code accounts, Codex limits, and Antigravity usage alongside live agent session status and GitHub Actions.</p>
+          </article>
+          <article class="card">
+            <h3>File Tray &amp; Transform</h3>
+            <p>Drop files onto the notch or shake a drag for a floating shelf. Convert images, compress MP4s, combine PDFs, OCR, and remove backgrounds.</p>
+          </article>
+          <article class="card">
+            <h3>Calendar &amp; Meetings</h3>
+            <p>See your next meeting with one-click Join 5 minutes before, live mic/camera indicators, mute control, and optional Auto DND.</p>
+          </article>
+          <article class="card">
+            <h3>Now Playing &amp; HUDs</h3>
+            <p>Universal playback controls in the right wing plus crisp notch capsules for volume, display brightness, and keyboard backlight.</p>
+          </article>
+          <article class="card">
+            <h3>Phone Sync</h3>
+            <p>Share AI limits and agent alerts with Ufuq on Android over encrypted local-network pairing, with no cloud relay required.</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="utilities" class="section section-alt">
+      <div class="container split-band">
+        <div>
+          <div class="eyebrow">New in v0.5.0</div>
+          <h2>On-device utilities &amp; Make It Yours</h2>
+          <p class="lead-sm">
+            Start a Pomodoro cycle, keep your Mac awake during builds, monitor CPU/RAM/network rates,
+            catch AirPods battery peeks, watch Downloads finish, and transcribe voice notes with Apple Speech, all locally.
+          </p>
+        </div>
+        <ul class="check-list">
+          <li>Pomodoro &amp; countdown timer with wing alerts</li>
+          <li>On-device Voice Transcribe (live mic + Tray audio files)</li>
+          <li>Stay Awake via IOKit power assertions</li>
+          <li>CPU, Memory, and Network throughput tile</li>
+          <li>Make It Yours: 5 accents, 3 glass styles, 3 notch shapes</li>
+        </ul>
+      </div>
+    </section>
+
+    <section id="privacy" class="section">
+      <div class="container privacy-box">
+        <div>
+          <h2>Private by design</h2>
+          <p>
+            No analytics, no account, no cloud backend. Calendar, Microphone, and Speech permissions
+            are requested only when you click Allow or trigger a feature.
+          </p>
+        </div>
+        <div class="privacy-actions">
+          <a class="btn btn-primary" href="https://github.com/hystericmoon/ufuq/releases/latest/download/Ufuq-0.5.0.dmg">Download DMG</a>
+          <a class="btn btn-ghost" href="https://github.com/hystericmoon/ufuq/releases" target="_blank" rel="noopener">All Releases</a>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span>Ufuq · Open-source macOS notch companion</span>
+      <span>MIT / Source on <a href="https://github.com/hystericmoon/ufuq" target="_blank" rel="noopener">GitHub</a></span>
+    </div>
+  </footer>
+
+  <script src="app.js"></script>
+</body>
+</html>
