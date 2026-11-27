@@ -58,6 +58,7 @@ struct SettingsView: View {
                 .foregroundStyle(.secondary)
             AgentStatusSection()
             GitHubActionsSection()
+            NowPlayingSection()
             UpdateSettingsSection(updater: updater)
         }
         .formStyle(.grouped)
@@ -311,6 +312,25 @@ struct GitHubActionsSection: View {
             } catch {
                 addMessage = "Could not reach GitHub."
             }
+        }
+    }
+}
+
+/// Which Now Playing source works: the MediaRemote adapter, else Spotify.
+struct NowPlayingSection: View {
+    @State private var text = "Checking…"
+
+    var body: some View {
+        Section("Now Playing") {
+            Text(text)
+                .task { await load() }
+        }
+    }
+
+    private func load() async {
+        while !Task.isCancelled {
+            text = NowPlayingControl.module?.activeSourceDescription ?? "Unavailable"
+            try? await Task.sleep(nanoseconds: 2_000_000_000)
         }
     }
 }

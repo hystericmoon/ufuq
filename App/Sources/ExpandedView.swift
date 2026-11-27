@@ -94,6 +94,8 @@ struct ExpandedView: View {
             AgentsTile(sessions: content.agents, now: content.now)
         case .actions:
             ActionsTile(builds: content.actions, now: content.now)
+        case .nowPlaying:
+            if let nowPlaying = content.nowPlaying { NowPlayingTile(track: nowPlaying, now: content.now) }
         case .prayer, .ai:
             EmptyView()
         }
